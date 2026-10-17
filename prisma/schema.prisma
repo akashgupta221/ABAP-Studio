@@ -1,0 +1,113 @@
+// ABAP Workbench — Prisma Schema
+// Simulated SAP system: repository objects + DDIC + demo DB + logs
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./db/app.db"
+}
+
+// ── Syllabus / Learning ────────────────────────────────────────────────
+model Topic {
+  id        Int        @id @default(autoincrement())
+  srNo      Int        // 1..10 from HCLTech syllabus
+  code      String     @unique // e.g. "TOPIC_01"
+  title     String
+  summary   String
+  details   String     @default("") // markdown: concepts, key points
+  paradigm  String     @default("BOTH") // POP | OOP | BOTH | CONCEPT
+  category  String     @default("CORE") // CORE | REPORTING | MODERN
+  programs  Program[]
+  tables    DbTable[]
+  functions FunctionModule[]
+}
+
+// ── Repository objects (programs / classes / includes / FGroups) ───────
+model Program {
+  id          String         @id @default(cuid())
+  name        String         @unique // Z_REPORT_01 / ZCL_CLASS / Z_INCLUDE
+  title       String         @default("")
+  description String         @default("")
+  type        String         @default("REPORT") // REPORT | CLASS | INCLUDE | FUNCTION_GROUP
+  paradigm    String         @default("BOTH") // POP | OOP | BOTH
+  source      String         @default("")
+  isExample   Boolean        @default(false)
+  tags        String         @default("")
+  version     Int            @default(1)
+  executions  Int            @default(0)
+  topicId     Int?
+  topic       Topic?         @relation(fields: [topicId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  logs        ExecutionLog[]
+}
+
+// ── Data Dictionary (SE11) ─────────────────────────────────────────────
+model DbTable {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique // SFLIGHT, MARA ...
+  description String      @default("")
+  isSap       Boolean     @default(true) // part of simulated SAP model
+  fields      String      @default("[]") // JSON: [{name,type,length,decimals,key,text}]
+  topicId     Int?
+  topic       Topic?      @relation(fields: [topicId], references: [id])
+  rows        DbRow[]
+}
+
+// Simulated DB content (rows of the DDIC tables)
+model DbRow {
+  id      Int      @id @default(autoincrement())
+  tableId Int
+  table   DbTable  @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  data    String   @default("{}") // JSON {field: value}
+  seq     Int      @default(0)
+
+  @@index([tableId])
+}
+
+// ── Function Builder (SE37) ────────────────────────────────────────────
+model FunctionModule {
+  id            String  @id @default(cuid())
+  name          String  @unique // Z_GET_FLIGHT_DETAILS
+  groupName     String  @default("ZFLIGHT_GROUP")
+  title         String  @default("")
+  importParams  String  @default("[]") // JSON param specs
+  exportParams  String  @default("[]")
+  changingParams String @default("[]")
+  tablesParams  String  @default("[]")
+  source        String  @default("")
+  isExample     Boolean @default(false)
+  topicId       Int?
+  topic         Topic?  @relation(fields: [topicId], references: [id])
+}
+
+// ── Execution log (SM21-ish) ───────────────────────────────────────────
+model ExecutionLog {
+  id          Int      @id @default(autoincrement())
+  programId   String?
+  program     Program? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  programName String
+  status      String // SUCCESS | ERROR | SYNTAX_ERROR
+  durationMs  Int      @default(0)
+  message     String   @default("")
+  errorLine   Int?
+  listLines   Int      @default(0)
+  hadAlv      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ── Favorites (Easy Access) ────────────────────────────────────────────
+model Favorite {
+  id         Int      @id @default(autoincrement())
+  objectType String // PROGRAM | CLASS | TABLE | FM | TOPIC
+  objectName String
+  label      String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@unique([objectType, objectName])
+}

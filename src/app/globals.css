@@ -1,0 +1,365 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SAP GUI Workbench theme — classic Blue Crystal feel
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ABAP editor syntax colors (SAP light theme) */
+.tok-plain { color: #111827; }
+.tok-keyword { color: #1660c9; font-weight: 600; }
+.tok-comment { color: #7a8590; font-style: italic; }
+.tok-string { color: #0f7b0f; }
+.tok-template { color: #9a5b00; }
+.tok-template-expr { color: #b0600b; font-weight: 600; }
+.tok-number { color: #b0600b; }
+.tok-operator { color: #444c56; }
+.tok-sysfield { color: #6c3d99; }
+.tok-type { color: #0a6e6e; font-weight: 500; }
+.tok-customer { color: #111827; }
+
+/* SAP chrome surfaces */
+.sap-chrome {
+  background: linear-gradient(to bottom, #dbe5f1 0%, #cfdcee 100%);
+  border-bottom: 1px solid #9db2cc;
+}
+.sap-titlebar {
+  background: linear-gradient(to bottom, #0a6ed1 0%, #354a5f 100%);
+}
+.sap-toolbar {
+  background: linear-gradient(to bottom, #f4f7fb 0%, #e2e9f2 100%);
+  border-bottom: 1px solid #b8c7da;
+}
+.sap-menubar {
+  background: linear-gradient(to bottom, #e8eef6 0%, #d9e3f0 100%);
+  border-bottom: 1px solid #b8c7da;
+}
+.sap-statusbar {
+  background: linear-gradient(to bottom, #eef2f7 0%, #dde5ee 100%);
+  border-top: 1px solid #b0c0d4;
+}
+.sap-sidebar {
+  background: #f2f5fa;
+  border-right: 1px solid #c3d0e0;
+}
+
+/* SAP-ish small buttons */
+.sap-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 1px solid #7f9db9;
+  border-radius: 3px;
+  background: linear-gradient(to bottom, #fdfefe 0%, #eaf0f7 100%);
+  color: #1a2733;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0.3rem 0.7rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  cursor: pointer;
+  user-select: none;
+}
+.sap-btn:hover:not(:disabled) {
+  background: linear-gradient(to bottom, #ffffff 0%, #dce8f5 100%);
+  border-color: #5f87b3;
+  box-shadow: 0 1px 2px rgba(26, 60, 105, 0.18);
+}
+.sap-btn:active:not(:disabled) {
+  background: linear-gradient(to bottom, #d3e2f2 0%, #e4edf7 100%);
+}
+.sap-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.sap-btn-primary {
+  background: linear-gradient(to bottom, #2f8ae0 0%, #0a6ed1 100%);
+  border-color: #0857a8;
+  color: #ffffff;
+}
+.sap-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(to bottom, #4a9ce8 0%, #1b7adc 100%);
+  box-shadow: 0 1px 3px rgba(10, 110, 209, 0.45);
+}
+.sap-btn-danger {
+  background: linear-gradient(to bottom, #e05f5f 0%, #c4302f 100%);
+  border-color: #a02423;
+  color: #fff;
+}
+
+/* Toolbar icon button (classic SAP tool strip) */
+.sap-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #33475c;
+  transition: all 0.12s ease;
+  cursor: pointer;
+}
+.sap-tool-btn:hover:not(:disabled) {
+  background: #dce9f8;
+  border-color: #8fb0d4;
+  color: #0a6ed1;
+}
+.sap-tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Tab strip (editor tabs) */
+.sap-tabstrip {
+  background: linear-gradient(to bottom, #d5dfee 0%, #c9d8ea 100%);
+  border-bottom: 1px solid #a3b8d0;
+}
+.sap-tab {
+  border: 1px solid #a3b8d0;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(to bottom, #e6edf6 0%, #d5dfee 100%);
+  color: #33475c;
+  font-size: 12px;
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  max-width: 260px;
+  transition: background 0.12s ease;
+}
+.sap-tab:hover { background: #e9f0f9; }
+.sap-tab[data-active='true'] {
+  background: #ffffff;
+  color: #0a6ed1;
+  font-weight: 600;
+  border-color: #8fb0d4;
+}
+
+/* Menu bar */
+.sap-menu-item {
+  padding: 2px 10px;
+  font-size: 13px;
+  color: #22364b;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.sap-menu-item:hover, .sap-menu-item[data-state='open'] {
+  background: #c7dcf5;
+  color: #0a3d73;
+}
+
+/* Tree navigator */
+.sap-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12.5px;
+  color: #22364b;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sap-tree-row:hover { background: #dbe8f8; }
+.sap-tree-row[data-active='true'] {
+  background: #bcd8f6;
+  color: #06355f;
+  font-weight: 600;
+}
+
+/* Thin scrollbars for the workbench */
+.wb-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.wb-scroll::-webkit-scrollbar-track { background: #eef2f7; }
+.wb-scroll::-webkit-scrollbar-thumb {
+  background: #b4c4d6;
+  border: 2px solid #eef2f7;
+  border-radius: 6px;
+}
+.wb-scroll::-webkit-scrollbar-thumb:hover { background: #93a9c2; }
+
+/* Selection screen (SAP gray form area) */
+.sap-selscreen {
+  background: #dfe5ee;
+}
+
+/* ALV grid */
+.alv-grid th {
+  background: linear-gradient(to bottom, #eef2f8 0%, #dbe4ef 100%);
+  border-right: 1px solid #c5d2e2;
+  border-bottom: 1px solid #a9bbd0;
+  color: #22364b;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  white-space: nowrap;
+}
+.alv-grid td {
+  border-right: 1px solid #e3eaf2;
+  border-bottom: 1px solid #e3eaf2;
+}
+.alv-grid tbody tr:nth-child(even) td { background: #f5f8fc; }
+.alv-grid tbody tr:hover td { background: #e7f0fb; }
+
+/* Markdown in syllabus */
+.wb-markdown h1 { font-size: 1.35rem; font-weight: 700; margin: 1rem 0 0.5rem; color: #0a3d73; }
+.wb-markdown h2 { font-size: 1.15rem; font-weight: 700; margin: 1rem 0 0.4rem; color: #0a3d73; }
+.wb-markdown h3 { font-size: 1rem; font-weight: 600; margin: 0.8rem 0 0.3rem; color: #1a4e8a; }
+.wb-markdown p { margin: 0.4rem 0; font-size: 0.875rem; line-height: 1.55; }
+.wb-markdown ul { list-style: disc; padding-left: 1.4rem; margin: 0.4rem 0; }
+.wb-markdown ol { list-style: decimal; padding-left: 1.4rem; margin: 0.4rem 0; }
+.wb-markdown li { font-size: 0.875rem; line-height: 1.5; margin: 0.15rem 0; }
+.wb-markdown code {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  background: #eef2f7;
+  border: 1px solid #d5deea;
+  border-radius: 3px;
+  padding: 0 4px;
+  color: #0a3d73;
+}
+.wb-markdown pre {
+  background: #f4f7fa;
+  border: 1px solid #d5deea;
+  border-radius: 4px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+.wb-markdown pre code { background: transparent; border: none; padding: 0; }
+.wb-markdown strong { font-weight: 600; }
+.wb-markdown a { color: #0a6ed1; text-decoration: underline; }
+.wb-markdown table { border-collapse: collapse; margin: 0.5rem 0; font-size: 0.8rem; }
+.wb-markdown th, .wb-markdown td { border: 1px solid #c5d2e2; padding: 3px 8px; text-align: left; }
+.wb-markdown th { background: #e7edf5; font-weight: 600; }
+.wb-markdown blockquote { border-left: 3px solid #0a6ed1; padding-left: 10px; color: #44586c; margin: 0.5rem 0; }
+
+/* Current line in the ABAP editor */
+.editor-cur-line { background: rgba(10, 110, 209, 0.07); }
+.gutter-cur { color: #0a6ed1; font-weight: 700; }
+
