@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
       maxAge: SESSION_TTL_MS / 1000,
     })
     return res
-  } catch {
+  } catch (err) {
+    console.error('[auth/register]', err)
     return NextResponse.json({ error: 'Registration failed — is the database reachable?' }, { status: 500 })
   }
 }
