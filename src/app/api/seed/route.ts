@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic" // always server-rendered (serverless-safe)
+
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 

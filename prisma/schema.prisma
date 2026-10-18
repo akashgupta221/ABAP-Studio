@@ -7,7 +7,9 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./db/app.db"
+  // Local dev: file:./db/app.db (set in .env). Free cloud deploy (Neon/Supabase):
+  // change provider to "postgresql" and set DATABASE_URL to the connection string.
+  url      = env("DATABASE_URL")
 }
 
 // ── Syllabus / Learning ────────────────────────────────────────────────

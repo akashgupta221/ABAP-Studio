@@ -130,3 +130,24 @@ Stage Summary:
 - PROJECT COMPLETE: full-stack SAP-style ABAP Workbench
 - Engine: 37/37 unit tests; Seed: 36/36 programs verified; UI: browser-verified end-to-end
 - All user-visible flows working: t-codes, editor, check, execute, selection screens, ALV, classical output with colors, SE11/SE16/SE37/SE24, search, syllabus, favorites, recents
+
+---
+Task ID: 8
+Agent: main (Z.ai Code)
+Task: Free-of-cost publishing readiness (user request: "i want to publish this in free of cost")
+
+Work Log:
+- Audited deployment readiness: schema hardcoded SQLite URL, no force-dynamic on API routes, .env pointed at unused db/custom.db, private syllabus tracked in git, external CDN favicon
+- prisma/schema.prisma: url = env("DATABASE_URL") (provider stays sqlite locally; switch to "postgresql" for free cloud DBs) + bun run db:generate
+- .env → DATABASE_URL="file:./db/app.db" (points at the seeded prisma/db/app.db; old value referenced unused custom.db which Prisma ignored)
+- Created .env.example (local SQLite default + commented Neon Postgres line); .gitignore: added !.env.example exception, /upload/ (private syllabus)
+- git rm --cached upload/HCLTech_SAP_ABAP_Training_Syllabus.numbers (kept on disk, never pushed)
+- All 12 API routes: export const dynamic = "force-dynamic" (prevents static prerender at build on Vercel serverless)
+- package.json: build made robust (cp steps never fail build), postinstall: prisma generate (Vercel/Render client generation), seed script → scripts/run-seed.ts
+- layout.tsx: local /logo.svg icon (was external CDN), added openGraph metadata
+- VERIFIED after changes: GET / (200), /api/topics (10 topics), /api/programs (38), POST /api/execute (SUCCESS, "Sum: 6" correct formatting); browser E2E: Easy Access renders, command field Z_HELLO_WORLD → editor → F8 → Success + LIST OUTPUT ("Today is 18.10.2026"), 0 console/page errors, mobile 390px responsive (navigator toggle), lint clean
+
+Stage Summary:
+- App is 100% free-hosting ready. Recommended path: GitHub (private repo) → Vercel Hobby (free) + Neon Postgres (free): switch provider to "postgresql", set DATABASE_URL, bun run db:push, bun run seed, deploy with env var
+- Alternates: Render free (SQLite ships in repo; user data resets on redeploy/spin-down), static export not viable (app is API-driven)
+- Turnkey local dev preserved: fresh clone + cp .env.example .env works (seeded app.db is committed)

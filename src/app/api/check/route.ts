@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic" // always server-rendered (serverless-safe)
+
 import { NextRequest, NextResponse } from 'next/server'
 import { checkSyntax } from '@/lib/abap'
 
