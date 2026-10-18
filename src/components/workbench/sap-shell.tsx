@@ -3,6 +3,7 @@
 // ── SAP GUI shell — NetWeaver ABAP Workbench look & feel ──────────────
 import { useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { Redo2, Undo2 } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem,
@@ -171,7 +172,31 @@ const I = {
       <path d="M6 5.2l4.6 2.8L6 10.8z" fill="#2ea52e" stroke="#1c7a1c" strokeWidth="0.8" strokeLinejoin="round" />
     </svg>
   ),
+  help: (
+    <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
+      <circle cx="8" cy="8" r="7" fill="#3b7dbe" stroke="#1c4a7e" />
+      <path d="M6.1 6.1a1.95 1.95 0 113.25 1.5c-.6.5-1 .8-1 1.6v.25" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="8.35" cy="11.7" r="0.95" fill="#fff" />
+    </svg>
+  ),
+  shortcut: (
+    <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
+      <rect x="1.5" y="2.5" width="9.5" height="8" fill="#f2f6fa" stroke="#3c5a7a" />
+      <path d="M1.5 5h9.5" stroke="#3c5a7a" />
+      <path d="M9.2 12.6h4M11 10.9l1.9 1.7-1.9 1.7" fill="none" stroke="#3c5a7a" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 }
+
+const PATTERNS: { label: string; text: string }[] = [
+  { label: 'IF … ENDIF', text: 'IF \n  \nENDIF.' },
+  { label: 'CASE … ENDCASE', text: 'CASE .\n  WHEN .\n    \n  WHEN OTHERS.\n    \nENDCASE.' },
+  { label: 'LOOP AT … ENDLOOP', text: 'LOOP AT  INTO .\n  \nENDLOOP.' },
+  { label: 'SELECT … ENDSELECT', text: 'SELECT * FROM  INTO TABLE \n  WHERE .\n' },
+  { label: 'CALL FUNCTION …', text: "CALL FUNCTION ''\n  EXPORTING\n    \n  EXCEPTIONS\n    .\n" },
+  { label: 'FORM … ENDFORM', text: 'FORM .\n  \nENDFORM.' },
+  { label: 'WRITE', text: 'WRITE: / .' },
+]
 
 function ToolBtn({
   icon, title, onClick, disabled, active,
@@ -330,7 +355,10 @@ export function SapShell() {
     await s.checkProgram(name)
     const issues = useWorkbench.getState().checkResults[name] ?? []
     const errs = issues.filter((i) => i.kind === 'E')
-    if (errs.length === 0) useWorkbench.getState().addMessage('S', `Object ${name} was activated`)
+    if (errs.length === 0) {
+      useWorkbench.getState().setProgramActive(name, true)
+      useWorkbench.getState().addMessage('S', `Object ${name} was activated`)
+    }
   }
 
   const pageMain = (dir: 'first' | 'last' | 'up' | 'down') => {
@@ -347,8 +375,6 @@ export function SapShell() {
     if (t?.kind === 'program') s.setFindOpen(true)
     else s.addMessage('I', 'Find: position the cursor in a source code screen')
   }
-
-  const editorMode = activeProgramName ? 'Change' : null
 
   // ── per-view menu bars (SAP screen menus) ────────────────────────────
   const menus: MMenu[] = useMemo(() => {
@@ -772,7 +798,13 @@ export function SapShell() {
         ? s.tabs.find((x) => x.key === s.activeTabKey)!.programName
         : null
 
-      if (e.key === 'F3' && !e.shiftKey) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'F3' && prog && s.view === 'tab') {
+        e.preventDefault()
+        void activateProgram(prog)
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f' && prog && s.view === 'tab') {
+        e.preventDefault()
+        void s.showWhereUsed(prog)
+      } else if (e.key === 'F3' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
         e.preventDefault()
         back()
       } else if (e.key === 'F3' && e.shiftKey) {
@@ -818,7 +850,7 @@ export function SapShell() {
         pageMain('down')
       } else if (e.key === 'F1') {
         e.preventDefault()
-        s.addMessage('I', 'Help: use the menus above; the syllabus (Environment ▸ Syllabus) contains the ABAP training documentation.')
+        s.setAboutOpen(true)
       } else if (inInput && e.key === 'Escape') {
         ;(target as HTMLElement).blur()
       }
@@ -940,7 +972,7 @@ export function SapShell() {
         <ToolBtn
           icon={I.save}
           title="Save (Ctrl+S)"
-          disabled={!isEditorTab}
+          disabled={!isEditorTab || !activeDirty || activeIsExample}
           onClick={() => activeProgramName && void useWorkbench.getState().saveProgram(activeProgramName)}
         />
         <ToolBtn icon={I.back} title="Back (F3)" onClick={back} />
@@ -959,6 +991,8 @@ export function SapShell() {
         <ToolBtn icon={I.session} title="Create New Session" disabled />
 
         <div className="ml-auto flex items-center">
+          <ToolBtn icon={I.shortcut} title="Create Shortcut" disabled onClick={() => undefined} />
+          <ToolBtn icon={I.help} title="Help (F1)" onClick={() => useWorkbench.getState().setAboutOpen(true)} />
           <DropdownMenu>
             <DropdownMenuTrigger className="sap-tool-btn outline-none" title="Customize Local Layout (Alt+F12)" aria-label="Customize Local Layout">
               {I.customize}
@@ -999,21 +1033,32 @@ export function SapShell() {
 
       {/* ── application toolbar (screen-specific buttons) ── */}
       {isEditorTab && (
-        <div className="sap-apptoolbar flex h-[26px] shrink-0 items-center gap-0.5 px-1.5">
+        <div className="sap-apptoolbar flex h-[26px] shrink-0 items-center gap-0.5 overflow-x-auto px-1.5">
           <ToolBtn
-            icon={I.execute}
-            title="Execute (F8)"
-            onClick={() => activeProgramName && void useWorkbench.getState().runProgram(activeProgramName)}
+            icon={<Undo2 className="h-4 w-4 text-[#2e5b8a]" />}
+            title="Undo (Ctrl+Z)"
+            onClick={() => useWorkbench.getState().requestUndo()}
           />
           <ToolBtn
+            icon={<Redo2 className="h-4 w-4 text-[#2e5b8a]" />}
+            title="Redo (Ctrl+Y)"
+            onClick={() => useWorkbench.getState().requestRedo()}
+          />
+          <span className="sap-toolbar-sep" aria-hidden />
+          <ToolBtn
             icon={I.check}
-            title="Check syntax (Ctrl+F2)"
+            title="Check (Ctrl+F2)"
             onClick={() => activeProgramName && void useWorkbench.getState().checkProgram(activeProgramName)}
           />
           <ToolBtn
             icon={I.activate}
-            title="Activate program"
+            title="Activate (Ctrl+F3)"
             onClick={() => activeProgramName && void activateProgram(activeProgramName)}
+          />
+          <ToolBtn
+            icon={I.execute}
+            title="Execute (F8)"
+            onClick={() => activeProgramName && void useWorkbench.getState().runProgram(activeProgramName)}
           />
           <span className="sap-toolbar-sep" aria-hidden />
           <ToolBtn
@@ -1022,20 +1067,34 @@ export function SapShell() {
             onClick={() => activeProgramName && void useWorkbench.getState().showWhereUsed(activeProgramName)}
           />
           <span className="sap-toolbar-sep" aria-hidden />
-          <ToolBtn
-            icon={I.pretty}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="sap-tool-textbtn" title="Insert a statement pattern">
+              Pattern
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              sideOffset={1}
+              className="min-w-[210px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[12.5px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+            >
+              {PATTERNS.map((p) => (
+                <DropdownMenuItem
+                  key={p.label}
+                  className="rounded-none px-2.5 py-[5px] text-[12.5px] focus:bg-[#bcd6f2]"
+                  onSelect={() => useWorkbench.getState().requestInsert(p.text)}
+                >
+                  {p.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <button
+            type="button"
+            className="sap-tool-textbtn"
             title="Pretty Printer (Shift+F1)"
             onClick={() => useWorkbench.getState().addMessage('I', 'Pretty printer: source is formatted automatically when you execute')}
-          />
-          <span className="ml-2 flex items-center gap-2 text-[11.5px] text-[#3f5468]">
-            <span>
-              {editorMode === 'Change' ? 'Change' : 'Display'}
-              <span className="px-1.5 text-[#8fa0b3]">|</span>
-              <span className={activeDirty ? 'text-[#8a6d1a]' : 'text-[#1c7a1c]'}>
-                {activeDirty ? 'Inactive (revised)' : 'Active'}
-              </span>
-            </span>
-          </span>
+          >
+            Pretty Printer
+          </button>
         </div>
       )}
 

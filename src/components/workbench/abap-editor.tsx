@@ -13,6 +13,11 @@ interface AbapEditorProps {
   fontSize?: number
   /** request to select the next occurrence (bumped nonce triggers a search) */
   findRequest?: { query: string; nonce: number }
+  /** bumped nonce triggers outline undo/redo from the toolbar */
+  undoNonce?: number
+  redoNonce?: number
+  /** request to insert a statement pattern at the cursor */
+  insertRequest?: { text: string; nonce: number } | null
 }
 
 const LINE_HEIGHT = 20
@@ -20,12 +25,30 @@ const LINE_HEIGHT = 20
 const BLOCK_OPENERS =
   /^(IF|ELSE|ELSEIF|WHEN|DO|WHILE|LOOP|TRY|FORM|METHOD|CLASS|INTERFACE|MODULE|AT|CATCH|BEGIN|DATA|TYPES|CONSTANTS|STATICS|SELECT)\b/
 
-export function AbapEditor({ value, onChange, onCursor, readOnly = false, fontSize = 13, findRequest }: AbapEditorProps) {
+export function AbapEditor({
+  value,
+  onChange,
+  onCursor,
+  readOnly = false,
+  fontSize = 13,
+  findRequest,
+  undoNonce = 0,
+  redoNonce = 0,
+  insertRequest = null,
+}: AbapEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null)
   const preRef = useRef<HTMLDivElement>(null)
   const gutterRef = useRef<HTMLDivElement>(null)
   const [curLine, setCurLine] = useState(1)
   const lastFindNonce = useRef(0)
+
+  // ── outline undo/redo history (toolbar + Ctrl+Z / Ctrl+Y) ───────────
+  const pastRef = useRef<string[]>([])
+  const futureRef = useRef<string[]>([])
+  const valueRef = useRef(value)
+  const lastUndoNonce = useRef(0)
+  const lastRedoNonce = useRef(0)
+  const lastInsertNonce = useRef(0)
 
   const lines = useMemo(() => value.split('\n'), [value])
   const tokenLines = useMemo(() => highlightAbap(value), [value])
@@ -57,6 +80,10 @@ export function AbapEditor({ value, onChange, onCursor, readOnly = false, fontSi
 
   useEffect(() => {
     syncScroll()
+  }, [value])
+
+  useEffect(() => {
+    valueRef.current = value
   }, [value])
 
   // ── find next (Ctrl+F bar / Find Next toolbar) ─────────────────────
@@ -106,8 +133,71 @@ export function AbapEditor({ value, onChange, onCursor, readOnly = false, fontSi
     }
   }
 
+  // ── outline undo / redo ─────────────────────────────────────────────
+  const applyHistoryValue = (next: string) => {
+    const ta = taRef.current
+    const pos = ta?.selectionStart ?? 0
+    valueRef.current = next
+    onChange(next)
+    requestAnimationFrame(() => {
+      const el = taRef.current
+      if (!el) return
+      const p = Math.min(pos, next.length)
+      el.setSelectionRange(p, p)
+      updateCursor()
+    })
+  }
+
+  const undo = () => {
+    const prev = pastRef.current.pop()
+    if (prev === undefined) return
+    futureRef.current.push(valueRef.current)
+    applyHistoryValue(prev)
+  }
+
+  const redo = () => {
+    const next = futureRef.current.pop()
+    if (next === undefined) return
+    pastRef.current.push(valueRef.current)
+    applyHistoryValue(next)
+  }
+
+  useEffect(() => {
+    if (undoNonce === 0 || undoNonce === lastUndoNonce.current) return
+    lastUndoNonce.current = undoNonce
+    undo()
+  }, [undoNonce])
+
+  useEffect(() => {
+    if (redoNonce === 0 || redoNonce === lastRedoNonce.current) return
+    lastRedoNonce.current = redoNonce
+    redo()
+  }, [redoNonce])
+
+  useEffect(() => {
+    if (!insertRequest || insertRequest.nonce === 0 || insertRequest.nonce === lastInsertNonce.current) {
+      return
+    }
+    lastInsertNonce.current = insertRequest.nonce
+    insertText(insertRequest.text)
+  }, [insertRequest])
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = e.currentTarget
+
+    if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      const k = e.key.toLowerCase()
+      if (k === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        undo()
+        return
+      }
+      if (k === 'y' || (k === 'z' && e.shiftKey)) {
+        e.preventDefault()
+        redo()
+        return
+      }
+    }
 
     if (e.key === 'Tab') {
       e.preventDefault()
@@ -202,6 +292,12 @@ export function AbapEditor({ value, onChange, onCursor, readOnly = false, fontSi
           spellCheck={false}
           wrap="off"
           onChange={(e) => {
+            if (e.target.value !== valueRef.current) {
+              pastRef.current.push(valueRef.current)
+              if (pastRef.current.length > 200) pastRef.current.shift()
+              futureRef.current = []
+            }
+            valueRef.current = e.target.value
             onChange(e.target.value)
             updateCursor()
           }}

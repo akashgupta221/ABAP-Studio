@@ -23,6 +23,9 @@ export function EditorView({ programName }: { programName: string }) {
   const setFindQuery = useWorkbench((s) => s.setFindQuery)
   const findNonce = useWorkbench((s) => s.findNonce)
   const runFindNext = useWorkbench((s) => s.runFindNext)
+  const undoNonce = useWorkbench((s) => s.undoNonce)
+  const redoNonce = useWorkbench((s) => s.redoNonce)
+  const insertRequest = useWorkbench((s) => s.insertRequest)
 
   const whereUsed = useWorkbench((s) => s.whereUsed)
   const closeWhereUsed = useWorkbench((s) => s.closeWhereUsed)
@@ -59,10 +62,18 @@ export function EditorView({ programName }: { programName: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      {/* SE38 editor info line */}
+      {/* SE38 editor info line: Report <program> Active/Inactive */}
       <div className="flex items-center gap-3 border-b border-[#c5d2e2] bg-[#f7fafd] px-3 py-[3px] text-[12.5px]">
-        <span className="font-mono font-bold text-[#12283c]">{prog.name}</span>
-        {prog.title && <span className="max-w-[360px] truncate text-[#44586c]">{prog.title}</span>}
+        <span className="shrink-0 text-[#33475c]">Report</span>
+        <span
+          className="flex h-[20px] max-w-[300px] items-center border border-[#c6d3e2] bg-[#f4f8fc] px-2 font-mono text-[12.5px] text-[#12283c] shadow-[inset_1px_1px_2px_rgba(0,0,0,0.05)]"
+          title={prog.title || prog.name}
+        >
+          <span className="truncate">{prog.name}</span>
+        </span>
+        <span className="shrink-0 text-[#1c2b3a]">
+          {prog.dirty || prog.active === false ? 'Inactive' : 'Active'}
+        </span>
         {prog.isExample && (
           <span
             className="shrink-0 whitespace-nowrap text-[11.5px] text-[#8a6d1a]"
@@ -72,7 +83,6 @@ export function EditorView({ programName }: { programName: string }) {
           </span>
         )}
         <span className="ml-auto flex items-center gap-3">
-          <span className="font-mono text-[11px] text-[#7b8a9c]">v{prog.version}</span>
           <button
             type="button"
             className="shrink-0"
@@ -131,6 +141,9 @@ export function EditorView({ programName }: { programName: string }) {
             onCursor={(line, col) => setCursor({ line, col })}
             fontSize={editorFontSize}
             findRequest={{ query: findOpen ? findQuery : '', nonce: findNonce }}
+            undoNonce={undoNonce}
+            redoNonce={redoNonce}
+            insertRequest={insertRequest}
           />
         </div>
 
@@ -246,14 +259,12 @@ export function EditorView({ programName }: { programName: string }) {
         )}
       </div>
 
-      {/* editor status line (Ln / Col / INS like the ABAP editor status) */}
+      {/* editor status line ("ABAP · Ln/Col" like the real ABAP editor) */}
       <div className="flex items-center gap-4 border-t border-[#d8e1ec] bg-[#eef2f7] px-3 py-[1px] font-mono text-[11px] text-[#5b6d80]">
-        <span>
-          Ln {cursor.line}, Col {cursor.col}
-        </span>
-        <span>{prog.source.split('\n').length} lines</span>
+        <span className="text-[#33475c]">ABAP</span>
+        <span className="text-[10.5px] text-[#93a9c2]">v{prog.version}</span>
         <span className="ml-auto">
-          Ctrl+S Save · Ctrl+F2 Check · F8 Execute · Ctrl+F Find
+          Ln {cursor.line} Col {cursor.col}
         </span>
       </div>
     </div>

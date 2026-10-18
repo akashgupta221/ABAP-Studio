@@ -2,7 +2,10 @@
 
 // ── ABAP Editor (SE38): initial screen + subobject screens ────────────
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, Pencil, Play } from 'lucide-react'
+import {
+  Bug, ChevronDown, Copy, FileCheck2, FilePlus2, Files, Glasses, Info, Monitor, Pencil, Play,
+  Search, Trash2,
+} from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useWorkbench, api } from './use-workbench'
 import {
@@ -12,7 +15,7 @@ import {
   type Se38Subobject,
 } from './types'
 
-const SUBOBJECT_ORDER: Se38Subobject[] = ['source', 'variants', 'attributes', 'text', 'doc']
+const SUBOBJECT_ORDER: Se38Subobject[] = ['source', 'variants', 'attributes', 'doc', 'text']
 
 const READONLY_FIELD =
   'flex h-[20px] w-full items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px] text-[#1c2b3a] shadow-[inset_1px_1px_2px_rgba(0,0,0,0.05)]'
@@ -40,6 +43,42 @@ export function Se38Initial() {
 }
 
 // ── SE38 initial screen (Program + Subobjects + Display/Change) ───────
+function Se38ToolBtn({
+  icon, title, onClick,
+}: {
+  icon: React.ReactNode
+  title: string
+  onClick: () => void
+}) {
+  return (
+    <button type="button" className="sap-tool-btn" title={title} aria-label={title} onClick={onClick}>
+      {icon}
+    </button>
+  )
+}
+
+function Se38TextBtn({
+  icon, label, title, onClick,
+}: {
+  icon: React.ReactNode
+  label: string
+  title?: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className="sap-tool-textbtn"
+      title={title ?? label}
+      aria-label={title ?? label}
+      onClick={onClick}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  )
+}
+
 function InitialScreen() {
   const storedProgram = useWorkbench((s) => s.se38Program)
   const subobject = useWorkbench((s) => s.se38Subobject)
@@ -88,14 +127,130 @@ function InitialScreen() {
     void se38Display(mode)
   }
 
+  const programName = () => value.trim().toUpperCase()
+
+  const openCreate = () => {
+    setStoredProgram(value)
+    useWorkbench.getState().openNewDialog({ prefillType: 'REPORT' })
+  }
+
+  const ensureLoaded = async () => {
+    const n = programName()
+    if (!n) {
+      useWorkbench.getState().addMessage('E', 'Enter a program name')
+      return null
+    }
+    const s = useWorkbench.getState()
+    if (!s.programs[n]) await s.openProgramByName(n)
+    return useWorkbench.getState().programs[n] ? n : null
+  }
+
+  const checkSyntax = async () => {
+    const n = await ensureLoaded()
+    if (n) void useWorkbench.getState().checkProgram(n)
+  }
+
+  const execute = async () => {
+    const n = await ensureLoaded()
+    if (n) void useWorkbench.getState().runProgram(n)
+  }
+
+  const whereUsed = async () => {
+    const n = await ensureLoaded()
+    if (n) void useWorkbench.getState().showWhereUsed(n)
+  }
+
+  const information = () => {
+    const n = programName()
+    if (!n) {
+      useWorkbench.getState().addMessage('E', 'Enter a program name')
+      return
+    }
+    setStoredProgram(n)
+    setSubobject('attributes')
+    void se38Display('display')
+  }
+
+  const copyProgram = () => {
+    const s = useWorkbench.getState()
+    const n = programName()
+    const prog = n ? s.programs[n] : undefined
+    s.openNewDialog({
+      prefillName: n ? `${n}_COPY`.slice(0, 30) : '',
+      prefillSource: prog?.source,
+      prefillTitle: prog?.title,
+      prefillType: prog?.type ?? 'REPORT',
+      saveAsFrom: n || undefined,
+    })
+  }
+
+  const deleteObject = () => {
+    const s = useWorkbench.getState()
+    const n = programName()
+    if (!n) {
+      s.addMessage('E', 'Enter a program name')
+      return
+    }
+    if (s.programs[n]?.isExample) {
+      s.addMessage('E', `Example program ${n} is read-only and cannot be deleted`)
+      return
+    }
+    setStoredProgram(n)
+    s.setConfirmDelete({ name: n })
+  }
+
+  const debugging = () =>
+    useWorkbench.getState().addMessage(
+      'I',
+      'Debugging: the classic ABAP Debugger is not part of this training system — inspect values with WRITE statements',
+    )
+
+  const withVariant = () =>
+    useWorkbench
+      .getState()
+      .addMessage(
+        'I',
+        `With Variant: no variants are maintained for ${programName() || 'this program'} — the program starts without a variant`,
+      )
+
+  const variants = () => {
+    const n = programName()
+    if (!n) {
+      useWorkbench.getState().addMessage('E', 'Enter a program name')
+      return
+    }
+    setStoredProgram(n)
+    setSubobject('variants')
+    void se38Display('display')
+  }
+
   return (
-    <div className="sap-screen h-full overflow-auto">
-      <div className="grid w-full max-w-[720px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-2 gap-y-5 px-4 pt-7">
+    <div className="flex h-full min-h-0 flex-col bg-white">
+      {/* application toolbar (like the real SE38 initial screen) */}
+      <div className="sap-apptoolbar flex h-[26px] shrink-0 items-center gap-0.5 overflow-x-auto px-1.5">
+        <Se38ToolBtn icon={<FilePlus2 className="h-4 w-4 text-[#1c7a1c]" />} title="Create (F5)" onClick={openCreate} />
+        <Se38ToolBtn icon={<Monitor className="h-4 w-4 text-[#2e5b8a]" />} title="Display (F7)" onClick={() => submit('display')} />
+        <Se38ToolBtn icon={<Pencil className="h-4 w-4 text-[#2e5b8a]" />} title="Change (F6)" onClick={() => submit('change')} />
+        <Se38ToolBtn icon={<Glasses className="h-4 w-4 text-[#2e5b8a]" />} title="Check (Ctrl+F2)" onClick={() => void checkSyntax()} />
+        <Se38ToolBtn icon={<Play className="h-4 w-4 text-[#1c7a1c]" />} title="Execute (F8)" onClick={() => void execute()} />
+        <span className="sap-toolbar-sep" aria-hidden />
+        <Se38ToolBtn icon={<Search className="h-4 w-4 text-[#2e5b8a]" />} title="Where-Used List" onClick={() => void whereUsed()} />
+        <Se38ToolBtn icon={<Info className="h-4 w-4 text-[#2e5b8a]" />} title="Information — program attributes" onClick={information} />
+        <Se38ToolBtn icon={<Copy className="h-4 w-4 text-[#2e5b8a]" />} title="Copy — save the program under a new name" onClick={copyProgram} />
+        <Se38ToolBtn icon={<Trash2 className="h-4 w-4 text-[#a01f1f]" />} title="Delete" onClick={deleteObject} />
+        <span className="sap-toolbar-sep" aria-hidden />
+        <Se38TextBtn icon={<Bug className="h-3.5 w-3.5 text-[#8a6d1a]" />} label="Debugging" title="Debugging" onClick={debugging} />
+        <Se38TextBtn icon={<FileCheck2 className="h-3.5 w-3.5 text-[#2e5b8a]" />} label="With Variant" title="Start the program with a variant" onClick={withVariant} />
+        <Se38TextBtn icon={<Files className="h-3.5 w-3.5 text-[#2e5b8a]" />} label="Variants" title="Maintain variants" onClick={variants} />
+      </div>
+      <div className="sap-screen min-h-0 flex-1 overflow-auto">
+        <div className="grid w-full max-w-[760px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-2 gap-y-5 px-4 pt-7">
         {/* Program */}
-        <label htmlFor="se38-program" className="text-right text-[12.5px] text-[#1c2b3a]">
-          Program:
+        <label htmlFor="se38-program" className="text-[12.5px] text-[#1c2b3a]">
+          Program
         </label>
-        <div className="relative w-[240px]">
+        <div className="flex items-center gap-2">
+          <div className="relative w-[240px]">
           <input
             id="se38-program"
             ref={inputRef}
@@ -114,7 +269,7 @@ function InitialScreen() {
                 openF4()
               }
             }}
-            className="sap-field w-full pr-[22px] font-mono uppercase"
+            className="sap-field sap-field-req w-full pr-[22px] font-mono uppercase"
             spellCheck={false}
             autoComplete="off"
           />
@@ -176,13 +331,25 @@ function InitialScreen() {
               </div>
             </PopoverContent>
           </Popover>
+          </div>
+          <button
+            type="button"
+            className="sap-btn inline-flex items-center gap-1.5 px-2.5"
+            title="Create program"
+            onClick={openCreate}
+          >
+            <FilePlus2 className="h-3.5 w-3.5 text-[#1c7a1c]" />
+            Create
+          </button>
         </div>
 
         {/* Subobjects */}
         <div />
-        <fieldset className="w-[310px] border border-[#a9bdd2] bg-[#f7fafd] px-3 pb-3 pt-0.5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
-          <legend className="px-1 text-[12px] font-semibold text-[#33475c]">Subobjects</legend>
-          <div className="space-y-[6px] pt-1">
+        <div className="w-[310px] border border-[#a9bdd2] bg-[#f4f8fc] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
+          <div className="border-b border-[#a9bdd2] bg-[linear-gradient(180deg,#e9f1fa_0%,#d4e4f4_100%)] px-2 py-[2px] text-[12px] font-semibold text-[#22364b]">
+            Subobjects
+          </div>
+          <div className="space-y-[6px] px-3 py-2.5">
             {SUBOBJECT_ORDER.map((k) => (
               <label key={k} className="flex cursor-pointer items-center gap-2 text-[12.5px] text-[#1c2b3a]">
                 <input
@@ -190,13 +357,13 @@ function InitialScreen() {
                   name="se38-subobject"
                   checked={subobject === k}
                   onChange={() => setSubobject(k)}
-                  className="h-[13px] w-[13px] accent-[#0a6ed1]"
+                  className="sap-radio"
                 />
                 {SE38_SUBOBJECT_LABELS[k]}
               </label>
             ))}
           </div>
-        </fieldset>
+        </div>
 
         {/* Buttons */}
         <div />
@@ -206,7 +373,7 @@ function InitialScreen() {
             className="sap-btn inline-flex min-w-[110px] items-center justify-center gap-1.5"
             onClick={() => submit('display')}
           >
-            <Play className="h-3.5 w-3.5 text-[#1c7a1c]" /> Display
+            <Monitor className="h-3.5 w-3.5 text-[#2e5b8a]" /> Display
           </button>
           <button
             type="button"
@@ -215,6 +382,7 @@ function InitialScreen() {
           >
             <Pencil className="h-3.5 w-3.5 text-[#33475c]" /> Change
           </button>
+        </div>
         </div>
       </div>
     </div>

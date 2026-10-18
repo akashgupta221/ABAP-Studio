@@ -10,8 +10,8 @@
 //   SE37 Function Builder  → Tools ▸ ABAP Workbench ▸ Development ▸ Function Builder
 import { Fragment, useEffect, useState } from 'react'
 import {
-  BookOpen, Braces, ChevronsDownUp, ChevronsUpDown, Database, FolderClosed, FolderOpen,
-  FunctionSquare, ListTree, Pencil, Play, Search, Star, Table2,
+  BookOpen, Braces, ChevronsDownUp, ChevronsUpDown, Database, FileText, FolderClosed, FolderOpen,
+  FunctionSquare, ListTree, Pencil, Play, Star, StarOff, Table2, User, Users,
 } from 'lucide-react'
 import { useWorkbench, api } from './use-workbench'
 import { groupTopicsByCategory, TOPIC_CATEGORIES } from './types'
@@ -57,7 +57,7 @@ function EaToolBtn({
   icon, label, title, onClick,
 }: {
   icon: React.ReactNode
-  label: string
+  label?: string
   title?: string
   onClick: () => void
 }) {
@@ -69,7 +69,7 @@ function EaToolBtn({
       className="flex h-[28px] shrink-0 items-center gap-1.5 rounded-[2px] border border-transparent px-2 text-[13px] text-[#12283c] hover:border-[#a9c2d8] hover:bg-[#cfe0f0] active:border-[#8fb0d0] active:bg-[#bcd4ea]"
     >
       {icon}
-      <span className="whitespace-nowrap">{label}</span>
+      {label && <span className="whitespace-nowrap">{label}</span>}
     </button>
   )
 }
@@ -102,7 +102,7 @@ function TreeFolder({
 
 // ── leaf node (t-code / example program) ───────────────────────────────
 function Leaf({
-  level, icon, label, meta, badge, hint, onClick,
+  level, icon, label, meta, badge, hint, onClick, objType, objName,
 }: {
   level: number
   icon: React.ReactNode
@@ -111,9 +111,21 @@ function Leaf({
   badge?: React.ReactNode
   hint?: string
   onClick: () => void
+  /** repository object this leaf represents (used by the favorites toolbar buttons) */
+  objType?: string
+  objName?: string
 }) {
   return (
-    <button type="button" className={ROW_CLS} style={indent(level)} onClick={onClick} title={hint}>
+    <button
+      type="button"
+      className={ROW_CLS}
+      style={indent(level)}
+      onClick={onClick}
+      title={hint}
+      data-obj-type={objType}
+      data-obj-name={objName}
+      data-obj-label={label}
+    >
       <span className="w-[10px] shrink-0" aria-hidden />
       <span className="flex h-4 w-4 shrink-0 items-center justify-center">{icon}</span>
       <span className="truncate text-[13.5px] text-[#0b4fa8] group-hover:underline">{label}</span>
@@ -136,6 +148,7 @@ export function EasyAccess() {
 
   const [topics, setTopics] = useState<Topic[] | null>(null)
   const [recents, setRecents] = useState<RecentExecution[] | null>(null)
+  const [sel, setSel] = useState<{ type: string; name: string; label: string } | null>(null)
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({
     favorites: true,
     recent: false,
@@ -175,6 +188,57 @@ export function EasyAccess() {
     setOpenMap(Object.fromEntries(ids.map((id) => [id, v])))
   }
 
+  // click on a program leaf → remembered for the favorites buttons
+  const captureSelection = (e: React.MouseEvent) => {
+    const el = (e.target as HTMLElement).closest('[data-obj-name]') as HTMLElement | null
+    if (!el?.dataset.objName) return
+    setSel({
+      type: el.dataset.objType ?? 'REPORT',
+      name: el.dataset.objName,
+      label: el.dataset.objLabel ?? el.dataset.objName,
+    })
+  }
+
+  const addFavorite = () => {
+    const s = useWorkbench.getState()
+    if (!sel) {
+      s.addMessage('I', 'Add to favorites: click a program in the menu first')
+      return
+    }
+    if (s.isFavorite(sel.type, sel.name)) {
+      s.addMessage('W', `${sel.name} is already in your favorites`)
+      return
+    }
+    void s.toggleFavorite(sel.type, sel.name, sel.label)
+  }
+
+  const removeFavorite = () => {
+    const s = useWorkbench.getState()
+    if (!sel) {
+      s.addMessage('I', 'Remove from favorites: click a program in the menu first')
+      return
+    }
+    if (!s.isFavorite(sel.type, sel.name)) {
+      s.addMessage('W', `${sel.name} is not in your favorites`)
+      return
+    }
+    void s.toggleFavorite(sel.type, sel.name, sel.label)
+  }
+
+  const editFavorites = () =>
+    useWorkbench
+      .getState()
+      .addMessage('I', 'Favorites maintenance: use the star on a program to add or remove favorites in this training system')
+
+  const otherMenu = () =>
+    useWorkbench.getState().addMessage('I', 'Other menu: no role menus are maintained in this training system')
+
+  const createRole = () =>
+    useWorkbench.getState().addMessage('I', 'Create role (PFCG): role maintenance is not part of this training system')
+
+  const assignUsers = () =>
+    useWorkbench.getState().addMessage('I', 'Assign users (PFCG): user administration is not part of this training system')
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#f4f8fc]">
       {/* ── banner ── */}
@@ -184,37 +248,64 @@ export function EasyAccess() {
         </span>
       </div>
 
-      {/* ── application toolbar ── */}
+      {/* ── application toolbar (real SAP Easy Access button set) ── */}
       <div className="flex h-[34px] shrink-0 items-center gap-1 overflow-x-auto border-b border-[#b6c9dc] bg-[#e2ecf6] px-2">
         <EaToolBtn
-          icon={<ChevronsUpDown className="h-4 w-4 text-[#2e5b8a]" />}
-          label="Expand all"
-          title="Expand the whole menu"
-          onClick={() => setAll(true)}
-        />
-        <EaToolBtn
-          icon={<ChevronsDownUp className="h-4 w-4 text-[#2e5b8a]" />}
-          label="Collapse all"
-          title="Collapse the whole menu"
-          onClick={() => setAll(false)}
+          icon={<ListTree className="h-4 w-4 text-[#2e5b8a]" />}
+          label="Other menu"
+          title="Other menu — display a role menu"
+          onClick={otherMenu}
         />
         <span className="sap-toolbar-sep" aria-hidden />
         <EaToolBtn
-          icon={<Search className="h-4 w-4 text-[#2e5b8a]" />}
-          label="Search"
-          title="Search repository objects (Ctrl+K quick search)"
-          onClick={() => navigate('search')}
+          icon={<Star className="h-4 w-4" style={{ color: '#c9a227' }} />}
+          title="Add to favorites"
+          onClick={addFavorite}
         />
         <EaToolBtn
-          icon={<BookOpen className="h-4 w-4 text-[#0e7b7b]" />}
+          icon={<StarOff className="h-4 w-4 text-[#2e5b8a]" />}
+          title="Remove from favorites"
+          onClick={removeFavorite}
+        />
+        <EaToolBtn
+          icon={<Pencil className="h-4 w-4 text-[#2e5b8a]" />}
+          title="Edit favorites"
+          onClick={editFavorites}
+        />
+        <span className="sap-toolbar-sep" aria-hidden />
+        <EaToolBtn
+          icon={<ChevronsDownUp className="h-4 w-4 text-[#2e5b8a]" />}
+          title="Collapse all"
+          onClick={() => setAll(false)}
+        />
+        <EaToolBtn
+          icon={<ChevronsUpDown className="h-4 w-4 text-[#2e5b8a]" />}
+          title="Expand all"
+          onClick={() => setAll(true)}
+        />
+        <span className="sap-toolbar-sep" aria-hidden />
+        <EaToolBtn
+          icon={<User className="h-4 w-4 text-[#2e5b8a]" />}
+          label="Create role"
+          title="Create role (PFCG)"
+          onClick={createRole}
+        />
+        <EaToolBtn
+          icon={<Users className="h-4 w-4 text-[#2e5b8a]" />}
+          label="Assign users"
+          title="Assign users to a role"
+          onClick={assignUsers}
+        />
+        <EaToolBtn
+          icon={<FileText className="h-4 w-4 text-[#0e7b7b]" />}
           label="Documentation"
-          title="Open the ABAP training syllabus"
+          title="Documentation — open the ABAP training syllabus"
           onClick={() => openSyllabusTopic(-1)}
         />
       </div>
 
       {/* ── menu tree ── */}
-      <div className="wb-scroll min-h-0 flex-1 overflow-auto pb-6 pt-1.5">
+      <div className="wb-scroll min-h-0 flex-1 overflow-auto pb-6 pt-1.5" onClickCapture={captureSelection}>
         {/* Favorites */}
         <TreeFolder level={0} label="Favorites" open={open('favorites')} onToggle={() => toggle('favorites')}>
           {favorites.length === 0 ? (
@@ -228,6 +319,8 @@ export function EasyAccess() {
                 level={1}
                 icon={<Star className="h-4 w-4" style={{ color: '#c9a227' }} />}
                 label={fv.label || fv.objectName}
+                objType={fv.objectType}
+                objName={fv.objectName}
                 onClick={() => {
                   if (fv.objectType === 'TABLE') openBrowserFor(fv.objectName)
                   else void openProgramByName(fv.objectName)
@@ -256,6 +349,8 @@ export function EasyAccess() {
                 level={1}
                 icon={<Play className="h-4 w-4" style={{ color: C_PROGRAM }} />}
                 label={r.programName}
+                objType="REPORT"
+                objName={r.programName}
                 hint={r.message || r.programName}
                 meta={`${r.durationMs} ms · ${fmtDate(r.createdAt)}`}
                 badge={
@@ -354,6 +449,8 @@ export function EasyAccess() {
             level={1}
             icon={<Pencil className="h-4 w-4" style={{ color: C_PRACTICE }} />}
             label="My Practice Program"
+            objType="REPORT"
+            objName="Z_MY_PRACTICE"
             meta="Z_MY_PRACTICE"
             hint="Your own editable program — examples stay read-only; write, run and save your code here"
             onClick={() => void openProgramByName('Z_MY_PRACTICE')}
@@ -400,6 +497,8 @@ export function EasyAccess() {
                           level={3}
                           icon={<Play className="h-4 w-4" style={{ color: C_PROGRAM }} />}
                           label={ex.name}
+                          objType="REPORT"
+                          objName={ex.name}
                           hint={ex.title}
                           meta={ex.title}
                           onClick={() => void openProgramByName(ex.name)}

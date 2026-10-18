@@ -273,6 +273,8 @@ export interface ProgramTabData {
   paradigm: Paradigm
   isExample: boolean
   version: number
+  /** false = saved but not activated yet (classic SE38 Active/Inactive state) */
+  active?: boolean
   executions: number
   tags: string
   topicId: number | null

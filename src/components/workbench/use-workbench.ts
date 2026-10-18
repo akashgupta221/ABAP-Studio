@@ -132,6 +132,14 @@ interface WorkbenchState {
   findNonce: number
   runFindNext: () => void
 
+  // ── editor history / statement patterns (toolbar-driven) ────────────
+  undoNonce: number
+  redoNonce: number
+  insertRequest: { text: string; nonce: number } | null
+  requestUndo: () => void
+  requestRedo: () => void
+  requestInsert: (text: string) => void
+
   // actions
   navigate: (view: ViewKind) => void
   setCommandPaletteOpen: (open: boolean) => void
@@ -169,6 +177,7 @@ interface WorkbenchState {
     description?: string
   }) => Promise<boolean>
   deleteProgram: (name: string) => Promise<void>
+  setProgramActive: (name: string, active: boolean) => void
 
   openNewDialog: (prefill?: Partial<NewDialogState>) => void
   closeNewDialog: () => void
@@ -227,6 +236,9 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   findOpen: false,
   findQuery: '',
   findNonce: 0,
+  undoNonce: 0,
+  redoNonce: 0,
+  insertRequest: null,
 
   navigate: (view) => {
     if (view !== 'tab') set({ view })
@@ -525,7 +537,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       set((s) => ({
         programs: {
           ...s.programs,
-          [name]: { ...s.programs[name], dirty: false, version: program.version },
+          [name]: { ...s.programs[name], dirty: false, active: false, version: program.version },
         },
       }))
       get().addMessage('S', `${name} saved (version ${program.version})`)
@@ -585,6 +597,13 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       get().addMessage('E', (e as Error).message)
     }
   },
+
+  setProgramActive: (name, active) =>
+    set((s) =>
+      s.programs[name]
+        ? { programs: { ...s.programs, [name]: { ...s.programs[name], active } } }
+        : {},
+    ),
 
   openNewDialog: (prefill) =>
     set({ newDialog: { open: true, ...prefill } }),
@@ -694,6 +713,11 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   setFindOpen: (v) => set({ findOpen: v }),
   setFindQuery: (v) => set({ findQuery: v }),
   runFindNext: () => set((s) => ({ findNonce: s.findNonce + 1 })),
+
+  requestUndo: () => set((s) => ({ undoNonce: s.undoNonce + 1 })),
+  requestRedo: () => set((s) => ({ redoNonce: s.redoNonce + 1 })),
+  requestInsert: (text) =>
+    set((s) => ({ insertRequest: { text, nonce: (s.insertRequest?.nonce ?? 0) + 1 } })),
 
   showWhereUsed: async (name) => {
     set({ whereUsed: { program: name, open: true, loading: true, hits: [] } })

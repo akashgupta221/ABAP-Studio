@@ -348,6 +348,30 @@ input[type='radio'].sap-radio:checked::after {
 }
 .sap-tool-btn:disabled { opacity: 0.35; cursor: default; }
 
+/* toolbar button with text label (Pattern, Pretty Printer, Debugging, …) */
+.sap-tool-textbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  font-size: 12px;
+  color: #22364b;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sap-tool-textbtn:hover:not(:disabled) {
+  background: #d7e6f7;
+  border-color: #8fb0d4;
+  color: #0a2f57;
+}
+.sap-tool-textbtn:disabled { opacity: 0.35; cursor: default; }
+
+/* required-entry field — classic SAP yellow */
+.sap-field-req { background: #fcf7be; }
+
 /* tab strip (kept: multi-session object tabs) */
 .sap-tabstrip {
   background: linear-gradient(to bottom, #dbe4f0 0%, #cfdbeb 100%);
