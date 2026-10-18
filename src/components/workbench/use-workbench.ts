@@ -13,6 +13,7 @@ import type {
   ProgramTabData,
   ProgramType,
   RunResult,
+  Se38Subobject,
   SearchGroup,
   SearchHit,
   SelectionScreenItem,
@@ -20,6 +21,7 @@ import type {
   TabItem,
   ViewKind,
 } from './types'
+import { SE38_SUBOBJECT_LABELS } from './types'
 
 // ── tiny fetch helper ─────────────────────────────────────────────────
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -84,6 +86,10 @@ interface WorkbenchState {
   browserTable: string | null
   syllabusTopicId: number | null
   selectedFunction: string | null
+  // SE38 (ABAP Editor) initial screen + subobjects
+  se38Program: string
+  se38Subobject: Se38Subobject
+  se38ShowSubobject: boolean
   lastTcode: string
   repoVersion: number // bump → navigator refreshes
   // dialogs
@@ -136,6 +142,11 @@ interface WorkbenchState {
   openBrowserFor: (table: string) => void
   openSyllabusTopic: (id: number) => void
   setSelectedFunction: (name: string | null) => void
+  openSe38Initial: (program?: string) => void
+  setSe38Program: (name: string) => void
+  setSe38Subobject: (subobject: Se38Subobject) => void
+  setSe38ShowSubobject: (v: boolean) => void
+  se38Display: (mode?: 'display' | 'change') => Promise<void>
   addMessage: (msgType: MessageType, text: string) => void
 
   openProgramByName: (name: string) => Promise<void>
@@ -198,6 +209,9 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   browserTable: null,
   syllabusTopicId: null,
   selectedFunction: null,
+  se38Program: '',
+  se38Subobject: 'source',
+  se38ShowSubobject: false,
   lastTcode: 'SESSION_MANAGER',
   repoVersion: 0,
   pendingSelection: null,
@@ -233,6 +247,56 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   openSyllabusTopic: (id) => set({ view: 'syllabus', syllabusTopicId: id, lastTcode: 'TRAINING' }),
 
   setSelectedFunction: (name) => set({ view: 'functions', selectedFunction: name, lastTcode: 'SE37' }),
+
+  // ── SE38 (ABAP Editor): initial screen + subobjects ──
+  openSe38Initial: (program) => {
+    const s = get()
+    const activeProg = s.tabs.find((t) => t.key === s.activeTabKey)?.programName ?? ''
+    const fallback = s.se38Program || activeProg
+    set({
+      view: 'se38',
+      lastTcode: 'SE38',
+      se38ShowSubobject: false,
+      se38Program: (program ?? fallback).toUpperCase(),
+    })
+  },
+  setSe38Program: (name) => set({ se38Program: name.toUpperCase() }),
+  setSe38Subobject: (subobject) => set({ se38Subobject: subobject }),
+  setSe38ShowSubobject: (v) => set({ se38ShowSubobject: v }),
+
+  se38Display: async (mode = 'display') => {
+    const s = get()
+    const name = s.se38Program.trim().toUpperCase()
+    if (!name) {
+      s.addMessage('E', 'Enter a program name')
+      return
+    }
+    set({ se38Program: name })
+    try {
+      const { programs } = await api<{ programs: ProgramListItem[] }>(
+        `/api/programs?q=${encodeURIComponent(name)}`,
+      )
+      const hit = programs.find((p) => p.name === name)
+      if (!hit) {
+        // classic SE38: Change on an unknown Z/Y name offers to create it
+        if (mode === 'change' && /^[ZY]/.test(name)) {
+          set({ confirmCreate: { name } })
+          return
+        }
+        get().addMessage('E', `Program ${name} does not exist`)
+        return
+      }
+      if (s.se38Subobject === 'source') {
+        await get().openProgramByName(name)
+        get().addMessage('S', `ABAP Editor: ${name}`)
+        return
+      }
+      set({ se38ShowSubobject: true })
+      get().addMessage('S', `ABAP Editor: ${name} — ${SE38_SUBOBJECT_LABELS[s.se38Subobject]}`)
+    } catch {
+      get().addMessage('E', `Program ${name} does not exist`)
+    }
+  },
 
   addMessage: (msgType, text) =>
     set((s) => ({
@@ -620,6 +684,9 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       checkResults: {},
       messages: [],
       view: 'home',
+      se38Program: '',
+      se38Subobject: 'source',
+      se38ShowSubobject: false,
       pendingSelection: null,
       findOpen: false,
       systemStatusOpen: false,

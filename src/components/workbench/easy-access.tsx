@@ -1,16 +1,16 @@
 'use client'
 
-// ── SAP Easy Access (home view) ────────────────────────────────────────
+// ── SAP Easy Access (classic SAP GUI for HTML layout) ──────────────────
 import { useEffect, useState } from 'react'
 import {
-  BookOpen, Braces, ChevronDown, ChevronRight, Database, FolderClosed, FolderOpen,
-  FunctionSquare, ListTree, Play, Search, Star, Table2,
+  BookOpen, Braces, ChevronsDownUp, ChevronsUpDown, Database, FolderClosed, FolderOpen,
+  FolderTree, FunctionSquare, ListTree, Play, Star, Table2, UserCog, Users,
 } from 'lucide-react'
 import { useWorkbench, api } from './use-workbench'
 import type { RecentExecution, Topic } from './types'
 
 // SAP menu indentation steps (px)
-const INDENT = [8, 24, 40, 56]
+const INDENT = [12, 28, 44, 60]
 const indent = (level: number) => ({ paddingLeft: INDENT[Math.min(level, INDENT.length - 1)] })
 
 const C_FOLDER = '#e8b53a'
@@ -31,66 +31,71 @@ function fmtDate(iso: string) {
 const ROW_CLS =
   'group flex min-h-[19px] w-full items-center gap-1.5 pr-2 text-left hover:bg-[#dbe8f8]'
 
-function SectionHead({ label }: { label: string }) {
+type FolderId = 'favorites' | 'recent' | 'menu' | 'tools' | 'workbench' | 'training'
+
+// ── application toolbar button (icon + label, SAP GUI for HTML style) ──
+function EaToolBtn({
+  icon, label, title, onClick,
+}: {
+  icon: React.ReactNode
+  label: string
+  title?: string
+  onClick: () => void
+}) {
   return (
-    <h2 className="border-b border-[#d8dee6] pb-[2px] text-[10.5px] font-bold uppercase tracking-wide text-[#6b7a8c]">
-      {label}
-    </h2>
+    <button
+      type="button"
+      title={title ?? label}
+      onClick={onClick}
+      className="flex h-[22px] shrink-0 items-center gap-1 rounded-[2px] border border-transparent px-1.5 text-[11.5px] text-[#1c2b3a] hover:border-[#a9c2d8] hover:bg-[#cfe0f0] active:bg-[#bcd4ea] active:border-[#8fb0d0]"
+    >
+      {icon}
+      <span className="whitespace-nowrap">{label}</span>
+    </button>
   )
 }
 
-function MenuFolder({
-  level, label, defaultOpen = true, children,
+// ── folder row (▼/▶ triangle + folder icon + label) ────────────────────
+function FolderRow({
+  level, label, open, onToggle,
 }: {
   level: number
   label: string
-  defaultOpen?: boolean
-  children: React.ReactNode
+  open: boolean
+  onToggle: () => void
 }) {
-  const [open, setOpen] = useState(defaultOpen)
   return (
-    <div>
-      <button
-        type="button"
-        className={ROW_CLS}
-        style={indent(level)}
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-      >
-        {open
-          ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#5b6d80]" />
-          : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#5b6d80]" />}
-        {open
-          ? <FolderOpen className="h-3.5 w-3.5 shrink-0" style={{ color: C_FOLDER }} />
-          : <FolderClosed className="h-3.5 w-3.5 shrink-0" style={{ color: C_FOLDER }} />}
-        <span className="truncate text-[12.5px] font-semibold text-[#1c2b3a]">{label}</span>
-      </button>
-      {open && <div>{children}</div>}
-    </div>
+    <button type="button" className={ROW_CLS} style={indent(level)} onClick={onToggle} aria-expanded={open}>
+      <span className="w-[9px] shrink-0 text-center text-[8px] leading-none text-[#3d3d3d]" aria-hidden>
+        {open ? '▼' : '▶'}
+      </span>
+      {open
+        ? <FolderOpen className="h-[15px] w-[15px] shrink-0" style={{ color: C_FOLDER }} />
+        : <FolderClosed className="h-[15px] w-[15px] shrink-0" style={{ color: C_FOLDER }} />}
+      <span className="truncate text-[12.5px] text-[#1c2b3a]">{label}</span>
+    </button>
   )
 }
 
-function MenuRow({
-  level, icon, label, hint, meta, onClick,
+// ── leaf row (t-code / object / topic) ─────────────────────────────────
+function LeafRow({
+  level, icon, label, hint, meta, metaSuffix, onClick,
 }: {
   level: number
   icon: React.ReactNode
   label: string
   hint?: string
   meta?: string
+  metaSuffix?: React.ReactNode
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      className={ROW_CLS}
-      style={indent(level)}
-      onClick={onClick}
-      title={hint}
-    >
-      {icon}
-      <span className="truncate text-[12.5px] text-[#22364b] group-hover:text-[#0b4fa8]">{label}</span>
+    <button type="button" className={ROW_CLS} style={indent(level)} onClick={onClick} title={hint}>
+      <span className="w-[9px] shrink-0" aria-hidden />
+      <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">{icon}</span>
+      <span className="truncate text-[12.5px] text-[#0b4fa8] group-hover:underline">{label}</span>
       {meta && <span className="ml-auto shrink-0 pl-3 text-[10.5px] text-[#98a4b2]">{meta}</span>}
+      {metaSuffix}
     </button>
   )
 }
@@ -99,16 +104,23 @@ export function EasyAccess() {
   const favorites = useWorkbench((s) => s.favorites)
   const refreshFavorites = useWorkbench((s) => s.refreshFavorites)
   const openProgramByName = useWorkbench((s) => s.openProgramByName)
+  const openSe38Initial = useWorkbench((s) => s.openSe38Initial)
   const navigate = useWorkbench((s) => s.navigate)
   const openBrowserFor = useWorkbench((s) => s.openBrowserFor)
   const openSyllabusTopic = useWorkbench((s) => s.openSyllabusTopic)
-  const openNewDialog = useWorkbench((s) => s.openNewDialog)
-  const setSearchQuery = useWorkbench((s) => s.setSearchQuery)
   const setNavigatorOpen = useWorkbench((s) => s.setNavigatorOpen)
+  const addMessage = useWorkbench((s) => s.addMessage)
 
   const [topics, setTopics] = useState<Topic[] | null>(null)
   const [recents, setRecents] = useState<RecentExecution[] | null>(null)
-  const [search, setSearch] = useState('')
+  const [openFolders, setOpenFolders] = useState<Record<FolderId, boolean>>({
+    favorites: true,
+    recent: false,
+    menu: true,
+    tools: true,
+    workbench: true,
+    training: true,
+  })
 
   useEffect(() => {
     void refreshFavorites()
@@ -120,179 +132,219 @@ export function EasyAccess() {
       .catch(() => setRecents([]))
   }, [refreshFavorites])
 
-  const doSearch = () => {
-    const q = search.trim()
-    if (q) {
-      setSearchQuery(q)
-      navigate('search')
-    }
-  }
+  const toggle = (id: FolderId) => setOpenFolders((o) => ({ ...o, [id]: !o[id] }))
+  const setAll = (v: boolean) =>
+    setOpenFolders({ favorites: v, recent: v, menu: v, tools: v, workbench: v, training: v })
 
   return (
-    <div className="wb-scroll h-full overflow-auto bg-white">
-      <div className="mx-auto max-w-[860px] px-4 pb-6 pt-3">
-        {/* top line */}
-        <div className="flex items-baseline gap-2">
-          <h1 className="text-[13px] font-bold text-[#1c2b3a]">SAP Easy Access</h1>
-          <span className="text-[11px] text-[#7b8a9c]">Object Navigator</span>
-        </div>
+    <div className="flex h-full min-h-0 flex-col bg-[#f4f8fc]">
+      {/* ── banner ── */}
+      <div className="flex h-[34px] shrink-0 items-center border-b border-[#a9c2d8] bg-[linear-gradient(180deg,#f4f9fd_0%,#d9e8f6_55%,#c6dcf0_100%)] px-3">
+        <span className="text-[16px] font-bold italic leading-none text-[#1c4a7e] [text-shadow:1px_1px_0_rgba(255,255,255,0.9)]">
+          SAP Easy Access
+        </span>
+      </div>
 
-        {/* object search */}
-        <div className="mt-2 flex items-center gap-1.5">
-          <Search className="h-3.5 w-3.5 shrink-0 text-[#7f9db9]" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && doSearch()}
-            placeholder="Search all objects…"
-            className="sap-field w-full max-w-[340px]"
-            aria-label="Search all objects"
-          />
-        </div>
+      {/* ── application toolbar ── */}
+      <div className="flex h-[27px] shrink-0 items-center gap-0.5 overflow-x-auto border-b border-[#b6c9dc] bg-[#e2ecf6] px-1.5">
+        <EaToolBtn
+          icon={<ChevronsUpDown className="h-3.5 w-3.5 text-[#2e5b8a]" />}
+          label="Expand"
+          title="Expand all folders"
+          onClick={() => setAll(true)}
+        />
+        <EaToolBtn
+          icon={<ChevronsDownUp className="h-3.5 w-3.5 text-[#2e5b8a]" />}
+          label="Collapse"
+          title="Collapse all folders"
+          onClick={() => setAll(false)}
+        />
+        <span className="sap-toolbar-sep" aria-hidden />
+        <EaToolBtn
+          icon={<FolderTree className="h-3.5 w-3.5 text-[#b8860b]" />}
+          label="Other menu"
+          title="Open the repository navigator (SE80)"
+          onClick={() => {
+            setNavigatorOpen(true)
+            addMessage('I', 'Object Navigator (SE80)')
+          }}
+        />
+        <EaToolBtn
+          icon={<Star className="h-3.5 w-3.5 text-[#c9a227]" />}
+          label="Favorites"
+          title="Add a program to your favorites from the editor title bar"
+          onClick={() => addMessage('I', 'Favorites: open a program and use the star in the editor')}
+        />
+        <span className="sap-toolbar-sep" aria-hidden />
+        <EaToolBtn
+          icon={<UserCog className="h-3.5 w-3.5 text-[#5b6d80]" />}
+          label="Create role"
+          title="Role maintenance (S_USER_GRP)"
+          onClick={() => addMessage('E', 'You are not authorized to perform role maintenance (S_USER_GRP)')}
+        />
+        <EaToolBtn
+          icon={<Users className="h-3.5 w-3.5 text-[#5b6d80]" />}
+          label="Assign users"
+          title="User maintenance (S_USER_AGR)"
+          onClick={() => addMessage('E', 'You are not authorized to assign users to roles (S_USER_AGR)')}
+        />
+        <EaToolBtn
+          icon={<BookOpen className="h-3.5 w-3.5 text-[#0e7b7b]" />}
+          label="Documentation"
+          title="Open the ABAP training syllabus"
+          onClick={() => openSyllabusTopic(-1)}
+        />
+      </div>
 
-        <div className="mt-3 space-y-4">
-          {/* favorites */}
-          <section aria-label="Favorites">
-            <SectionHead label="Favorites" />
+      {/* ── menu tree ── */}
+      <div className="wb-scroll min-h-0 flex-1 overflow-auto pb-4 pt-1">
+        {/* Favorites */}
+        <FolderRow level={0} label="Favorites" open={openFolders.favorites} onToggle={() => toggle('favorites')} />
+        {openFolders.favorites && (
+          <div>
             {favorites.length === 0 && (
-              <p className="py-1 text-[11.5px] italic text-[#9aa8b8]">
+              <p className="py-[2px] text-[11.5px] italic text-[#8395a8]" style={indent(1)}>
                 No favorites yet — star a program in the editor
               </p>
             )}
-            <div>
-              {favorites.map((fv) => (
-                <button
-                  key={fv.id}
-                  type="button"
-                  className={ROW_CLS}
-                  onClick={() => {
-                    if (fv.objectType === 'TABLE') openBrowserFor(fv.objectName)
-                    else void openProgramByName(fv.objectName)
-                  }}
-                >
-                  <Star className="h-3.5 w-3.5 shrink-0" style={{ color: '#c9a227' }} />
-                  <span className="truncate text-[12.5px] text-[#0b4fa8] group-hover:underline">
-                    {fv.label || fv.objectName}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
+            {favorites.map((fv) => (
+              <LeafRow
+                key={fv.id}
+                level={1}
+                icon={<Star className="h-3.5 w-3.5" style={{ color: '#c9a227' }} />}
+                label={fv.label || fv.objectName}
+                onClick={() => {
+                  if (fv.objectType === 'TABLE') openBrowserFor(fv.objectName)
+                  else void openProgramByName(fv.objectName)
+                }}
+              />
+            ))}
+          </div>
+        )}
 
-          {/* recent executions */}
-          <section aria-label="Recent executions">
-            <SectionHead label="Recent Executions" />
+        {/* Recently Used */}
+        <FolderRow level={0} label="Recently Used" open={openFolders.recent} onToggle={() => toggle('recent')} />
+        {openFolders.recent && (
+          <div>
             {recents === null && (
-              <div className="space-y-1 py-1">
+              <div className="space-y-0.5 py-0.5" style={indent(1)}>
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-[13px] animate-pulse bg-[#eef2f7]" />
+                  <div key={i} className="h-[13px] w-64 animate-pulse bg-[#e6eef7]" />
                 ))}
               </div>
             )}
             {recents !== null && recents.length === 0 && (
-              <p className="py-1 text-[11.5px] italic text-[#9aa8b8]">
-                No executions yet — press F8 in the editor or on any example.
+              <p className="py-[2px] text-[11.5px] italic text-[#8395a8]" style={indent(1)}>
+                No executions yet — press F8 in the editor.
               </p>
             )}
-            <ul>
-              {recents?.map((r) => (
-                <li key={r.id} className="border-b border-[#eef1f5] last:border-0">
-                  <button
-                    type="button"
-                    className={ROW_CLS}
-                    onClick={() => void openProgramByName(r.programName)}
-                    title={r.message || r.programName}
-                  >
-                    <span className="shrink-0 text-[12.5px] text-[#0b4fa8] group-hover:underline">
-                      {r.programName}
-                    </span>
-                    <span className="shrink-0 text-[12.5px] text-[#8a94a0]">
-                      — {r.durationMs} ms — {fmtDate(r.createdAt)}
-                    </span>
-                    {r.status !== 'SUCCESS' && (
-                      <span className="shrink-0 text-[11px] font-medium text-[#b00020]">{r.status}</span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
+            {recents?.map((r) => (
+              <LeafRow
+                key={r.id}
+                level={1}
+                icon={<Play className="h-3.5 w-3.5" style={{ color: C_PROGRAM }} />}
+                label={r.programName}
+                hint={r.message || r.programName}
+                meta={`${r.durationMs} ms — ${fmtDate(r.createdAt)}`}
+                metaSuffix={
+                  r.status !== 'SUCCESS' ? (
+                    <span className="shrink-0 pl-2 text-[11px] font-medium text-[#b00020]">{r.status}</span>
+                  ) : undefined
+                }
+                onClick={() => void openProgramByName(r.programName)}
+              />
+            ))}
+          </div>
+        )}
 
-          {/* SAP menu */}
-          <section aria-label="SAP menu">
-            <SectionHead label="SAP Menu" />
-            <div className="pt-0.5">
-              <MenuFolder level={0} label="Development">
-                <MenuFolder level={1} label="ABAP Workbench">
-                  <MenuRow
-                    level={2}
-                    icon={<Play className="h-3.5 w-3.5 shrink-0" style={{ color: C_PROGRAM }} />}
-                    label="ABAP Editor (SE38)"
-                    hint="Create and execute ABAP reports"
-                    onClick={() => openNewDialog({ prefillType: 'REPORT' })}
-                  />
-                  <MenuRow
-                    level={2}
-                    icon={<ListTree className="h-3.5 w-3.5 shrink-0" style={{ color: C_PROGRAM }} />}
-                    label="Object Navigator (SE80)"
-                    hint="Open the Repository Browser"
-                    onClick={() => {
-                      setNavigatorOpen(true)
-                      navigate('home')
-                    }}
-                  />
-                  <MenuRow
-                    level={2}
-                    icon={<Database className="h-3.5 w-3.5 shrink-0" style={{ color: C_TABLE }} />}
-                    label="Dictionary (SE11)"
-                    hint="Tables and field catalogs"
-                    onClick={() => navigate('dictionary')}
-                  />
-                  <MenuRow
-                    level={2}
-                    icon={<Table2 className="h-3.5 w-3.5 shrink-0" style={{ color: C_TABLE }} />}
-                    label="Data Browser (SE16)"
-                    hint="Browse table contents"
-                    onClick={() => navigate('browser')}
-                  />
-                  <MenuRow
-                    level={2}
-                    icon={<FunctionSquare className="h-3.5 w-3.5 shrink-0" style={{ color: C_FM }} />}
-                    label="Function Builder (SE37)"
-                    hint="Function modules"
-                    onClick={() => navigate('functions')}
-                  />
-                  <MenuRow
-                    level={2}
-                    icon={<Braces className="h-3.5 w-3.5 shrink-0" style={{ color: C_CLASS }} />}
-                    label="Class Builder (SE24)"
-                    hint="ABAP Objects classes"
-                    onClick={() => navigate('classes')}
-                  />
-                </MenuFolder>
-              </MenuFolder>
+        {/* SAP Menu */}
+        <FolderRow level={0} label="SAP Menu" open={openFolders.menu} onToggle={() => toggle('menu')} />
+        {openFolders.menu && (
+          <div>
+            <FolderRow level={1} label="Tools" open={openFolders.tools} onToggle={() => toggle('tools')} />
+            {openFolders.tools && (
+              <div>
+                <FolderRow
+                  level={2}
+                  label="ABAP Workbench"
+                  open={openFolders.workbench}
+                  onToggle={() => toggle('workbench')}
+                />
+                {openFolders.workbench && (
+                  <div>
+                    <LeafRow
+                      level={3}
+                      icon={<Play className="h-3.5 w-3.5" style={{ color: C_PROGRAM }} />}
+                      label="ABAP Editor (SE38)"
+                      hint="ABAP Editor: initial screen"
+                      onClick={() => openSe38Initial()}
+                    />
+                    <LeafRow
+                      level={3}
+                      icon={<ListTree className="h-3.5 w-3.5" style={{ color: C_PROGRAM }} />}
+                      label="Object Navigator (SE80)"
+                      hint="Open the Repository Browser"
+                      onClick={() => {
+                        setNavigatorOpen(true)
+                        navigate('home')
+                      }}
+                    />
+                    <LeafRow
+                      level={3}
+                      icon={<Database className="h-3.5 w-3.5" style={{ color: C_TABLE }} />}
+                      label="Dictionary (SE11)"
+                      hint="Tables and field catalogs"
+                      onClick={() => navigate('dictionary')}
+                    />
+                    <LeafRow
+                      level={3}
+                      icon={<Table2 className="h-3.5 w-3.5" style={{ color: C_TABLE }} />}
+                      label="Data Browser (SE16)"
+                      hint="Browse table contents"
+                      onClick={() => navigate('browser')}
+                    />
+                    <LeafRow
+                      level={3}
+                      icon={<FunctionSquare className="h-3.5 w-3.5" style={{ color: C_FM }} />}
+                      label="Function Builder (SE37)"
+                      hint="Function modules"
+                      onClick={() => navigate('functions')}
+                    />
+                    <LeafRow
+                      level={3}
+                      icon={<Braces className="h-3.5 w-3.5" style={{ color: C_CLASS }} />}
+                      label="Class Builder (SE24)"
+                      hint="ABAP Objects classes"
+                      onClick={() => navigate('classes')}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
-              <MenuFolder level={0} label="Training">
-                <MenuRow
-                  level={1}
-                  icon={<BookOpen className="h-3.5 w-3.5 shrink-0" style={{ color: C_TABLE }} />}
+            <FolderRow level={1} label="Training" open={openFolders.training} onToggle={() => toggle('training')} />
+            {openFolders.training && (
+              <div>
+                <LeafRow
+                  level={2}
+                  icon={<BookOpen className="h-3.5 w-3.5" style={{ color: C_TABLE }} />}
                   label="ABAP Syllabus"
                   hint="Open the syllabus view"
                   meta={topics ? `${topics.length} topics` : undefined}
                   onClick={() => openSyllabusTopic(-1)}
                 />
                 {topics === null && (
-                  <div className="space-y-0.5 py-0.5" style={indent(2)}>
+                  <div className="space-y-0.5 py-0.5" style={indent(3)}>
                     {[...Array(5)].map((_, i) => (
-                      <div key={i} className="h-[13px] animate-pulse bg-[#eef2f7]" />
+                      <div key={i} className="h-[13px] w-64 animate-pulse bg-[#e6eef7]" />
                     ))}
                   </div>
                 )}
                 {topics?.map((t) => (
-                  <MenuRow
+                  <LeafRow
                     key={t.id}
                     level={2}
-                    icon={<BookOpen className="h-3.5 w-3.5 shrink-0" style={{ color: C_TABLE }} />}
+                    icon={<BookOpen className="h-3.5 w-3.5" style={{ color: C_TABLE }} />}
                     label={t.title}
                     hint={t.summary}
                     meta={`${t.paradigm} · ${t.exampleCount} example${t.exampleCount === 1 ? '' : 's'}`}
@@ -300,27 +352,14 @@ export function EasyAccess() {
                   />
                 ))}
                 {topics !== null && topics.length === 0 && (
-                  <p className="py-1 text-[11.5px] italic text-[#9aa8b8]" style={indent(2)}>
+                  <p className="py-[2px] text-[11.5px] italic text-[#8395a8]" style={indent(2)}>
                     The training content is being seeded — topics will appear here shortly.
                   </p>
                 )}
-              </MenuFolder>
-            </div>
-          </section>
-
-          {/* quick start hint */}
-          <p className="border-t border-[#eef1f5] pt-2 text-[11.5px] text-[#7b8a9c]">
-            Quick start: type <span className="font-mono text-[11px]">SE38</span> in the command field ·
-            press <span className="font-mono text-[11px]">F8</span> to execute · try{' '}
-            <button
-              type="button"
-              className="font-mono text-[11px] font-semibold text-[#0b4fa8] hover:underline"
-              onClick={() => void openProgramByName('Z_HELLO_WORLD')}
-            >
-              Z_HELLO_WORLD
-            </button>
-          </p>
-        </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

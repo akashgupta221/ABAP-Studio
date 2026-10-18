@@ -23,6 +23,7 @@ export function CommandPalette() {
   const openBrowserFor = useWorkbench((s) => s.openBrowserFor)
   const setSelectedFunction = useWorkbench((s) => s.setSelectedFunction)
   const openSyllabusTopic = useWorkbench((s) => s.openSyllabusTopic)
+  const openSe38Initial = useWorkbench((s) => s.openSe38Initial)
 
   const [term, setTerm] = useState('')
   const [hits, setHits] = useState<SearchHit[]>([])
@@ -120,7 +121,7 @@ export function CommandPalette() {
               <CommandItem onSelect={() => { close(); useWorkbench.setState({ view: 'home' }) }}>
                 <Home className="h-4 w-4" /> SAP Easy Access — SE80
               </CommandItem>
-              <CommandItem onSelect={() => { close(); openNewDialog({ prefillType: 'REPORT' }) }}>
+              <CommandItem onSelect={() => { close(); openSe38Initial() }}>
                 <Play className="h-4 w-4" /> ABAP Editor — SE38
               </CommandItem>
               <CommandItem onSelect={() => { close(); navigate('dictionary') }}>

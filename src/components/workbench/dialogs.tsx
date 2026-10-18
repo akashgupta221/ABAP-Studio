@@ -3,7 +3,7 @@
 // ── Dialogs: New Object, Confirm Create, About, T-code Registry, ──────
 //    Confirm Delete, Log Off, System Status (classic SAP GUI popups) ──
 import { useEffect, useState } from 'react'
-import { CircleHelp, FilePlus2, Info, TerminalSquare } from 'lucide-react'
+import { CircleHelp, FilePlus2, TerminalSquare } from 'lucide-react'
 import {
   Dialog, DialogContent, DialogDescription, DialogTitle,
 } from '@/components/ui/dialog'
@@ -266,41 +266,91 @@ export function ConfirmCreateDialog() {
   )
 }
 
-// ── About dialog ──────────────────────────────────────────────────────
+// ── About dialog (SAP GUI version-info layout) ────────────────────────
 export function AboutDialog() {
   const open = useWorkbench((s) => s.aboutOpen)
   const setOpen = useWorkbench((s) => s.setAboutOpen)
+  const session = useWorkbench((s) => s.session)
+  const setSystemStatusOpen = useWorkbench((s) => s.setSystemStatusOpen)
+  const addMessage = useWorkbench((s) => s.addMessage)
+
+  const rows: [string, string][] = [
+    ['Component', 'ABAPForge Workbench — web edition'],
+    ['Release', '1.0 (SAP GUI 7.70 look-alike)'],
+    ['System', `NPL (1) (750) — Client ${session.client}`],
+    ['User', session.user],
+    ['File Name', 'abapforge-web'],
+    ['Build', '2026.10'],
+    ['Kernel', 'in-browser ABAP interpreter'],
+    ['Database', 'simulated SFLIGHT / HDB'],
+  ]
+
+  const copyInfo = () => {
+    const text = rows.map(([k, v]) => `${k}: ${v}`).join('\n')
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(
+        () => addMessage('S', 'System information copied to clipboard'),
+        () => addMessage('E', 'Clipboard is not available in this browser'),
+      )
+    } else {
+      addMessage('E', 'Clipboard is not available in this browser')
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent showCloseButton={false} className="sap-popup max-w-[460px] gap-0 p-0 sm:max-w-[460px]">
+      <DialogContent showCloseButton={false} className="sap-popup max-w-[470px] gap-0 p-0 sm:max-w-[470px]">
         <SapPopupTitle
-          title="About"
-          description="ABAPForge — The Modern ABAP Studio"
+          title="About ABAPForge"
+          description="Information about this ABAP Workbench"
           onClose={() => setOpen(false)}
         />
-        <div className="sap-popup-body space-y-2.5 text-[12.5px] text-[#1c2b3a]">
-          <div className="flex items-start gap-2.5">
-            <Info className="mt-[2px] h-4 w-4 shrink-0 text-[#33475c]" aria-hidden />
-            <p>
-              <strong>ABAPForge</strong> — the modern ABAP studio: a free, browser-based SAP-style IDE
-              for learning ABAP development, modeled on SE38/SE80/SE11/SE16/SE24/SE37.
-            </p>
-          </div>
-          <ul className="list-disc space-y-1 pl-8 text-[11.5px] text-[#44586c]">
-            <li>Custom ABAP interpreter (procedural, ABAP Objects, Open SQL on a simulated SFLIGHT database)</li>
-            <li>Classical list output with SAP color semantics and interactive ALV grids</li>
-            <li>10-topic training syllabus with runnable examples, from basics to CDS &amp; RAP concepts</li>
-            <li>Modern 7.40+ syntax support: VALUE, COND, REDUCE, string templates</li>
-            <li>100% free and self-hostable — deploy anywhere at no cost</li>
-          </ul>
-          <p className="border-t border-[#cfd6dd] pt-2 text-[11.5px] text-[#5b6d80]">
-            System ABF · Client 100 · User DEVELOPER · Training content: HCLTech SAP ABAP syllabus
+        <div className="sap-popup-body text-[12.5px] text-[#1c2b3a]">
+          <h3 className="mb-3 text-[17px] font-bold leading-tight">ABAPForge Workbench</h3>
+          <table className="w-full text-[12px]">
+            <tbody>
+              {rows.map(([k, v]) => (
+                <tr key={k}>
+                  <td className="w-[130px] py-[2px] pr-3 align-top text-[#44586c]">{k}:</td>
+                  <td className="py-[2px] font-mono text-[11.5px] text-[#1c2b3a]">{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-3 text-[11.5px] leading-[1.45] text-[#5b6d80]">
+            A free, browser-based SAP-style ABAP IDE for learning: SE38 · SE80 · SE11 · SE16 · SE24 · SE37,
+            with a custom ABAP interpreter and a runnable training syllabus.
           </p>
+          <p className="mt-2 text-[11px] text-[#7b8a9c]">
+            Copyright (C) 2026 ABAPForge Project · Not affiliated with SAP SE
+          </p>
+          <div className="mt-3 flex items-center gap-2 border-t border-[#d8dee6] pt-2.5" aria-hidden>
+            <span className="flex h-8 w-8 items-center justify-center rounded-[2px] bg-[#0a6ed1]">
+              <svg viewBox="0 0 16 16" className="h-6 w-6">
+                <rect x="1.5" y="2.5" width="13" height="10" fill="#fff" opacity="0.95" />
+                <rect x="1.5" y="2.5" width="13" height="2.4" fill="#0a6ed1" />
+                <path d="M5 9.6l2 2 4-4.4" fill="none" stroke="#1c7a1c" strokeWidth="1.6" />
+              </svg>
+            </span>
+            <span className="text-[11px] text-[#7b8a9c]">ABAPForge — the modern ABAP studio</span>
+          </div>
         </div>
         <div className="sap-popup-buttons">
+          <button type="button" className="sap-btn" onClick={copyInfo}>
+            Copy Info
+          </button>
+          <button
+            type="button"
+            className="sap-btn"
+            onClick={() => {
+              setOpen(false)
+              setSystemStatusOpen(true)
+            }}
+          >
+            System Status…
+          </button>
           <button type="button" className="sap-btn sap-btn-primary" onClick={() => setOpen(false)}>
-            Close
+            OK
           </button>
         </div>
       </DialogContent>

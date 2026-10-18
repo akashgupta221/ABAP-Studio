@@ -223,9 +223,21 @@ export interface SearchGroup {
 
 // ── UI models ─────────────────────────────────────────────────────────
 
+// SE38 subobjects (ABAP Editor initial screen)
+export type Se38Subobject = 'source' | 'variants' | 'attributes' | 'text' | 'doc'
+
+export const SE38_SUBOBJECT_LABELS: Record<Se38Subobject, string> = {
+  source: 'Source code',
+  variants: 'Variants',
+  attributes: 'Attributes',
+  text: 'Text elements',
+  doc: 'Documentation',
+}
+
 export type ViewKind =
   | 'home'
   | 'tab' // program editor / output tabs
+  | 'se38' // ABAP Editor initial screen + subobject screens
   | 'search'
   | 'syllabus'
   | 'dictionary'

@@ -15,6 +15,7 @@ import { StatusBar } from './status-bar'
 import { NavigatorTree } from './navigator-tree'
 import { EasyAccess } from './easy-access'
 import { EditorView } from './editor-view'
+import { Se38Initial } from './se38-initial'
 import { OutputView } from './output-view'
 import { SyllabusView } from './syllabus-view'
 import { SearchView } from './search-view'
@@ -270,6 +271,9 @@ export function SapShell() {
   const lastTcode = useWorkbench((s) => s.lastTcode)
   const browserTable = useWorkbench((s) => s.browserTable)
   const selectedFunction = useWorkbench((s) => s.selectedFunction)
+  const se38Program = useWorkbench((s) => s.se38Program)
+  const se38Subobject = useWorkbench((s) => s.se38Subobject)
+  const se38ShowSubobject = useWorkbench((s) => s.se38ShowSubobject)
 
   const title = getContextTitle({
     view,
@@ -279,6 +283,9 @@ export function SapShell() {
     browserTable,
     selectedFunction,
     selectionProgram: pendingSelectionObj?.programName ?? null,
+    se38Program,
+    se38Subobject,
+    se38ShowSubobject,
   })
 
   // window (document) title — like the SAP GUI window caption
@@ -289,6 +296,11 @@ export function SapShell() {
   // ── common actions (store-level, stable) ─────────────────────────────
   const back = () => {
     const s = useWorkbench.getState()
+    if (s.view === 'se38') {
+      if (s.se38ShowSubobject) s.setSe38ShowSubobject(false)
+      else s.navigate('home')
+      return
+    }
     if (s.view !== 'tab') {
       s.navigate('home')
       return
@@ -641,8 +653,68 @@ export function SapShell() {
       ]
     }
 
+    if (view === 'se38') {
+      return [
+        {
+          label: 'Program',
+          items: [
+            { label: 'Display', run: () => void w().se38Display('display') },
+            { label: 'Change', run: () => void w().se38Display('change') },
+            { sep: true },
+            { label: 'Check', shortcut: 'Ctrl+F2', disabled: true },
+            { label: 'Execute', shortcut: 'F8', disabled: true },
+            { sep: true },
+            { label: 'Exit', shortcut: 'Shift+F3', run: exitToHome },
+          ],
+        },
+        {
+          label: 'Goto',
+          items: [
+            { label: 'Back', shortcut: 'F3', run: back },
+            { label: 'Exit', shortcut: 'Shift+F3', run: exitToHome },
+            { sep: true },
+            { label: 'Object Navigator', shortcut: 'SE80', run: () => { w().setNavigatorOpen(true); w().navigate('home'); w().addMessage('I', 'Object Navigator (SE80)') } },
+          ],
+        },
+        {
+          label: 'Utilities',
+          items: [
+            { label: 'Text Elements', run: () => { w().setSe38Subobject('text'); void w().se38Display('display') } },
+            { label: 'Display Documentation', run: () => { w().setSe38Subobject('doc'); void w().se38Display('display') } },
+            { sep: true },
+            { label: 'Pretty Printer', disabled: true },
+          ],
+        },
+        {
+          label: 'Environment',
+          items: [
+            { label: 'Object Navigator', shortcut: 'SE80', run: () => { w().setNavigatorOpen(true); w().addMessage('I', 'Object Navigator (SE80)') } },
+            { sep: true },
+            { label: 'Dictionary', shortcut: 'SE11', run: () => w().navigate('dictionary') },
+            { label: 'Data Browser', shortcut: 'SE16', run: () => w().navigate('browser') },
+            { label: 'Function Builder', shortcut: 'SE37', run: () => w().navigate('functions') },
+            { label: 'Class Builder', shortcut: 'SE24', run: () => w().navigate('classes') },
+            { label: 'Syllabus / Training', run: () => w().openSyllabusTopic(-1) },
+          ],
+        },
+        systemMenu,
+        helpMenu,
+      ]
+    }
+
     // SAP Easy Access (home)
     return [
+      {
+        label: 'Menu',
+        items: [
+          { label: 'SAP Easy Access', run: () => w().navigate('home') },
+          { sep: true },
+          { label: 'ABAP Editor (SE38)', run: () => w().openSe38Initial() },
+          { label: 'Object Navigator (SE80)', run: () => { w().setNavigatorOpen(true); w().addMessage('I', 'Object Navigator (SE80)') } },
+          { sep: true },
+          { label: 'Syllabus / Training', run: () => w().openSyllabusTopic(-1) },
+        ],
+      },
       {
         label: 'Edit',
         items: [
@@ -712,20 +784,23 @@ export function SapShell() {
       } else if (e.key === 'F12') {
         e.preventDefault()
         cancel()
-      } else if (e.key === 'F8' && prog) {
+      } else if (e.key === 'F8' && s.view === 'se38') {
+        e.preventDefault()
+        void s.se38Display('display')
+      } else if (e.key === 'F8' && prog && s.view === 'tab') {
         e.preventDefault()
         void s.runProgram(prog)
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && prog) {
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && prog && s.view === 'tab') {
         e.preventDefault()
         void s.saveProgram(prog)
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'F2' && prog) {
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'F2' && prog && s.view === 'tab') {
         e.preventDefault()
         void s.checkProgram(prog)
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
         e.preventDefault()
         window.print()
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
-        if (prog) {
+        if (prog && s.view === 'tab') {
           e.preventDefault()
           s.setFindOpen(true)
         }
@@ -764,6 +839,40 @@ export function SapShell() {
     <div className="flex h-screen flex-col overflow-hidden bg-[#d6e0ec] text-[#1c2b3a]" data-app="abapforge">
       {/* ── window title bar ── */}
       <header className="sap-titlebar relative flex h-7 shrink-0 items-center gap-2 px-2 text-white" role="banner">
+        {/* System menu (hamburger) */}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className="flex h-5 w-5 items-center justify-center rounded-[2px] text-[13px] leading-none text-white/90 outline-none hover:bg-white/15 focus-visible:bg-white/15"
+            title="System menu"
+            aria-label="System menu"
+          >
+            ≡
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            sideOffset={2}
+            className="min-w-[220px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[12.5px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+          >
+            <MenuList
+              items={[
+                { label: 'Find Object…', shortcut: 'Ctrl+K', run: () => useWorkbench.getState().setCommandPaletteOpen(true) },
+                { sep: true },
+                { label: 'Status…', run: () => setSystemStatusOpen(true) },
+                { label: 'Log Off', run: () => setLogoffConfirm(true) },
+              ]}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {/* Back (F3) */}
+        <button
+          type="button"
+          className="flex h-5 w-5 items-center justify-center rounded-[2px] text-[15px] leading-none text-white/90 hover:bg-white/15"
+          title="Back (F3)"
+          aria-label="Back"
+          onClick={back}
+        >
+          ‹
+        </button>
         <span className="flex h-4 w-4 items-center justify-center rounded-[2px] bg-white/15" aria-hidden>
           <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
             <rect x="1.5" y="2.5" width="13" height="10" fill="#fff" opacity="0.92" />
@@ -1023,6 +1132,7 @@ export function SapShell() {
 
           <div className="min-h-0 flex-1">
             {view === 'home' && <EasyAccess />}
+            {view === 'se38' && <Se38Initial />}
             {view === 'tab' &&
               (activeTab?.kind === 'program' ? (
                 pendingSelectionObj && pendingSelectionObj.programName === activeTab.programName ? (

@@ -88,10 +88,7 @@ export function CommandField() {
               await openProgramByName(arg)
               return
             }
-            const s2 = st()
-            const progTab = [...s2.tabs].reverse().find((t) => t.kind === 'program')
-            if (progTab) s2.activateTab(progTab.key)
-            else s2.openNewDialog({ prefillType: 'REPORT' })
+            st().openSe38Initial()
             addMessage('S', 'ABAP Editor (SE38)')
             return
           }
