@@ -1,6 +1,6 @@
 <div align="center">
 
-# ABAPForge
+# ABAP-STUDIO
 
 **A browser-based SAP NetWeaver®-style ABAP training workbench.**
 Faithful SAP GUI feel, a from-scratch ABAP interpreter, and a 100% free cloud deployment.
