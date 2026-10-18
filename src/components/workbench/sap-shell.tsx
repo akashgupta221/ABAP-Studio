@@ -12,7 +12,6 @@ import { Toaster } from '@/components/ui/sonner'
 import { useWorkbench } from './use-workbench'
 import { CommandField } from './command-field'
 import { StatusBar } from './status-bar'
-import { NavigatorTree } from './navigator-tree'
 import { EasyAccess } from './easy-access'
 import { EditorView } from './editor-view'
 import { Se38Initial } from './se38-initial'
@@ -236,8 +235,6 @@ export function SapShell() {
   const view = useWorkbench((s) => s.view)
   const tabs = useWorkbench((s) => s.tabs)
   const activeTabKey = useWorkbench((s) => s.activeTabKey)
-  const navigatorOpen = useWorkbench((s) => s.navigatorOpen)
-  const setNavigatorOpen = useWorkbench((s) => s.setNavigatorOpen)
   const activateTab = useWorkbench((s) => s.activateTab)
   const closeTab = useWorkbench((s) => s.closeTab)
   const logon = useWorkbench((s) => s.session.loggedIn)
@@ -487,7 +484,7 @@ export function SapShell() {
         {
           label: 'Environment',
           items: [
-            { label: 'Object Navigator', shortcut: 'SE80', run: () => { w().setNavigatorOpen(true); w().navigate('home'); w().addMessage('I', 'Object Navigator (SE80)') } },
+            { label: 'Object Navigator', shortcut: 'SE80', run: () => { w().navigate('search'); w().addMessage('I', 'Object Navigator (SE80)') } },
             { label: 'Where-Used List', shortcut: 'Ctrl+Shift+F', run: () => void w().showWhereUsed(n) },
             { sep: true },
             { label: 'Dictionary', shortcut: 'SE11', run: () => w().navigate('dictionary') },
@@ -593,7 +590,7 @@ export function SapShell() {
         {
           label: 'Environment',
           items: [
-            { label: 'Object Navigator (SE80)', run: () => { w().setNavigatorOpen(true); w().navigate('home') } },
+            { label: 'Object Navigator (SE80)', run: () => w().navigate('search') },
             { label: 'Where-Used List', disabled: true },
           ],
         },
@@ -644,7 +641,7 @@ export function SapShell() {
           items: [
             { label: 'Overview', run: () => w().openSyllabusTopic(-1) },
             { sep: true },
-            { label: 'Open in Object Navigator', run: () => { w().setNavigatorOpen(true); w().navigate('home') } },
+            { label: 'Show in Easy Access Menu', run: () => w().navigate('home') },
           ],
         },
         gotoMenu,
@@ -673,7 +670,7 @@ export function SapShell() {
             { label: 'Back', shortcut: 'F3', run: back },
             { label: 'Exit', shortcut: 'Shift+F3', run: exitToHome },
             { sep: true },
-            { label: 'Object Navigator', shortcut: 'SE80', run: () => { w().setNavigatorOpen(true); w().navigate('home'); w().addMessage('I', 'Object Navigator (SE80)') } },
+            { label: 'Object Navigator', shortcut: 'SE80', run: () => { w().navigate('search'); w().addMessage('I', 'Object Navigator (SE80)') } },
           ],
         },
         {
@@ -688,7 +685,7 @@ export function SapShell() {
         {
           label: 'Environment',
           items: [
-            { label: 'Object Navigator', shortcut: 'SE80', run: () => { w().setNavigatorOpen(true); w().addMessage('I', 'Object Navigator (SE80)') } },
+            { label: 'Object Navigator', shortcut: 'SE80', run: () => { w().navigate('search'); w().addMessage('I', 'Object Navigator (SE80)') } },
             { sep: true },
             { label: 'Dictionary', shortcut: 'SE11', run: () => w().navigate('dictionary') },
             { label: 'Data Browser', shortcut: 'SE16', run: () => w().navigate('browser') },
@@ -710,7 +707,7 @@ export function SapShell() {
           { label: 'SAP Easy Access', run: () => w().navigate('home') },
           { sep: true },
           { label: 'ABAP Editor (SE38)', run: () => w().openSe38Initial() },
-          { label: 'Object Navigator (SE80)', run: () => { w().setNavigatorOpen(true); w().addMessage('I', 'Object Navigator (SE80)') } },
+          { label: 'Object Navigator (SE80)', run: () => { w().navigate('search'); w().addMessage('I', 'Object Navigator (SE80)') } },
           { sep: true },
           { label: 'Syllabus / Training', run: () => w().openSyllabusTopic(-1) },
         ],
@@ -960,12 +957,6 @@ export function SapShell() {
         <ToolBtn icon={I.last} title="Last Page (Ctrl+PgDn)" onClick={() => pageMain('last')} />
         <span className="sap-toolbar-sep" aria-hidden />
         <ToolBtn icon={I.session} title="Create New Session" disabled />
-        <ToolBtn
-          icon={I.toggleNav}
-          title="Object Navigator (SE80)"
-          active={navigatorOpen}
-          onClick={() => setNavigatorOpen(!navigatorOpen)}
-        />
 
         <div className="ml-auto flex items-center">
           <DropdownMenu>
@@ -1030,11 +1021,6 @@ export function SapShell() {
             title="Where-Used List (Ctrl+Shift+F)"
             onClick={() => activeProgramName && void useWorkbench.getState().showWhereUsed(activeProgramName)}
           />
-          <ToolBtn
-            icon={I.objectList}
-            title="Display Object List"
-            onClick={() => setNavigatorOpen(true)}
-          />
           <span className="sap-toolbar-sep" aria-hidden />
           <ToolBtn
             icon={I.pretty}
@@ -1055,24 +1041,6 @@ export function SapShell() {
 
       {/* ── main area ── */}
       <div className="relative flex min-h-0 flex-1 gap-[3px] bg-[#c3d1e2] p-[3px]">
-        {navigatorOpen && (
-          <>
-            <aside
-              className="sap-sidebar absolute inset-y-0 left-0 z-30 w-[278px] shrink-0 border border-[#9db2cc] shadow-xl md:relative md:z-auto md:shadow-none"
-              aria-label="Object Navigator"
-            >
-              <NavigatorTree />
-            </aside>
-            <button
-              type="button"
-              className="absolute inset-0 z-20 bg-black/15 md:hidden"
-              onClick={() => setNavigatorOpen(false)}
-              aria-label="Close navigator"
-              tabIndex={-1}
-            />
-          </>
-        )}
-
         <main
           id="wb-main"
           className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[2px] border border-[#9db2cc] bg-white"

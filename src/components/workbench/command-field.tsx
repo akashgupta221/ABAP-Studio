@@ -93,8 +93,9 @@ export function CommandField() {
             return
           }
           case 'SE80':
-            useWorkbench.setState({ lastTcode: 'SE80', view: 'home', navigatorOpen: true })
-            addMessage('S', 'Object Navigator (SE80)')
+            useWorkbench.setState({ lastTcode: 'SE80' })
+            navigate('search')
+            addMessage('S', 'Object Navigator (SE80) — repository search')
             return
           case 'SE11':
             useWorkbench.setState({ lastTcode: 'SE11' })

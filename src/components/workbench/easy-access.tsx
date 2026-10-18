@@ -133,7 +133,6 @@ export function EasyAccess() {
   const navigate = useWorkbench((s) => s.navigate)
   const openBrowserFor = useWorkbench((s) => s.openBrowserFor)
   const openSyllabusTopic = useWorkbench((s) => s.openSyllabusTopic)
-  const setNavigatorOpen = useWorkbench((s) => s.setNavigatorOpen)
 
   const [topics, setTopics] = useState<Topic[] | null>(null)
   const [recents, setRecents] = useState<RecentExecution[] | null>(null)
@@ -293,11 +292,8 @@ export function EasyAccess() {
                   icon={<ListTree className="h-4 w-4" style={{ color: C_PROGRAM }} />}
                   label="Object Navigator"
                   meta="SE80"
-                  hint="Repository Browser — the central ABAP Workbench entry point"
-                  onClick={() => {
-                    setNavigatorOpen(true)
-                    navigate('home')
-                  }}
+                  hint="Search repository objects — programs, tables, classes, function modules"
+                  onClick={() => navigate('search')}
                 />
                 <Leaf
                   level={4}

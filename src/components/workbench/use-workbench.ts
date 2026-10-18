@@ -80,7 +80,6 @@ interface WorkbenchState {
   checkResults: Record<string, CheckIssue[]>
   messages: SystemMessage[]
   // UI
-  navigatorOpen: boolean
   commandPaletteOpen: boolean
   searchQuery: string
   browserTable: string | null
@@ -91,7 +90,6 @@ interface WorkbenchState {
   se38Subobject: Se38Subobject
   se38ShowSubobject: boolean
   lastTcode: string
-  repoVersion: number // bump → navigator refreshes
   // dialogs
   pendingSelection: PendingSelection | null
   selectionBusy: boolean
@@ -136,7 +134,6 @@ interface WorkbenchState {
 
   // actions
   navigate: (view: ViewKind) => void
-  setNavigatorOpen: (open: boolean) => void
   setCommandPaletteOpen: (open: boolean) => void
   setSearchQuery: (q: string) => void
   openBrowserFor: (table: string) => void
@@ -182,7 +179,6 @@ interface WorkbenchState {
   refreshFavorites: () => Promise<void>
   toggleFavorite: (objectType: string, objectName: string, label?: string) => Promise<void>
   isFavorite: (objectType: string, objectName: string) => boolean
-  bumpRepo: () => void
 }
 
 let msgId = 1
@@ -203,7 +199,6 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   outputs: {},
   checkResults: {},
   messages: [],
-  navigatorOpen: true,
   commandPaletteOpen: false,
   searchQuery: '',
   browserTable: null,
@@ -213,7 +208,6 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   se38Subobject: 'source',
   se38ShowSubobject: false,
   lastTcode: 'SESSION_MANAGER',
-  repoVersion: 0,
   pendingSelection: null,
   selectionBusy: false,
   newDialog: { open: false },
@@ -238,7 +232,6 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     if (view !== 'tab') set({ view })
   },
 
-  setNavigatorOpen: (open) => set({ navigatorOpen: open }),
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setSearchQuery: (q) => set({ searchQuery: q }),
 
@@ -537,7 +530,6 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       }))
       get().addMessage('S', `${name} saved (version ${program.version})`)
       toast.success('Saved', { description: `${name} · version ${program.version}` })
-      get().bumpRepo()
     } catch (e) {
       toast.error((e as Error).message)
       get().addMessage('E', (e as Error).message)
@@ -564,7 +556,6 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       get().addMessage('S', `Object ${program.name} created`)
       toast.success('Object created', { description: `${program.name} (${program.type})` })
       set((s) => ({ newDialog: { open: false } }))
-      get().bumpRepo()
       await get().openProgramById(program.id)
       return true
     } catch (e) {
@@ -589,7 +580,6 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         delete programs[name]
         return { tabs, activeTabKey, view, programs }
       })
-      get().bumpRepo()
     } catch (e) {
       toast.error((e as Error).message)
       get().addMessage('E', (e as Error).message)
@@ -722,6 +712,4 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   },
 
   closeWhereUsed: () => set((s) => ({ whereUsed: { ...s.whereUsed, open: false } })),
-
-  bumpRepo: () => set((s) => ({ repoVersion: s.repoVersion + 1 })),
 }))
