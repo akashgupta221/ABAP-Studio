@@ -234,6 +234,19 @@ export const SE38_SUBOBJECT_LABELS: Record<Se38Subobject, string> = {
   doc: 'Documentation',
 }
 
+// syllabus topic categories → menu sub-nodes (which topic sits under which sub-topic)
+export const TOPIC_CATEGORIES: { id: string; label: string; hint: string }[] = [
+  { id: 'CORE', label: 'Core ABAP', hint: 'Fundamentals: types, control flow, modularization, internal tables, OOP' },
+  { id: 'REPORTING', label: 'Reporting', hint: 'Classic and ALV list output' },
+  { id: 'MODERN', label: 'Modern ABAP', hint: 'SAP HANA, ABAP 7.40+ syntax, virtual data model' },
+]
+
+export function groupTopicsByCategory<T extends { category: string }>(topics: T[]) {
+  return TOPIC_CATEGORIES
+    .map((cat) => ({ ...cat, topics: topics.filter((t) => (t.category ?? '').toUpperCase() === cat.id) }))
+    .filter((g) => g.topics.length > 0)
+}
+
 export type ViewKind =
   | 'home'
   | 'tab' // program editor / output tabs

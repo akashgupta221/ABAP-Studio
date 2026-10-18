@@ -152,12 +152,12 @@ html, body {
   border-bottom: 1px solid #a9bcd0;
 }
 .sap-menu-item {
-  padding: 1px 8px 2px;
-  font-size: 12.5px;
+  padding: 2px 9px 3px;
+  font-size: 13px;
   color: #12283c;
   border-radius: 2px;
   cursor: default;
-  line-height: 16px;
+  line-height: 17px;
 }
 .sap-menu-item:hover, .sap-menu-item[data-state='open'] {
   background: #bcd6f2;
@@ -333,8 +333,8 @@ input[type='radio'].sap-radio:checked::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 22px;
+  width: 26px;
+  height: 24px;
   border: 1px solid transparent;
   border-radius: 2px;
   color: #33475c;
@@ -359,8 +359,8 @@ input[type='radio'].sap-radio:checked::after {
   border-radius: 3px 3px 0 0;
   background: linear-gradient(to bottom, #ecf1f8 0%, #dbe4f0 100%);
   color: #33475c;
-  font-size: 12px;
-  padding: 3px 9px;
+  font-size: 13px;
+  padding: 4px 10px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -380,13 +380,13 @@ input[type='radio'].sap-radio:checked::after {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 5px;
+  padding: 2px 6px;
   border-radius: 2px;
-  font-size: 12.2px;
+  font-size: 13px;
   color: #1c2b3a;
   cursor: pointer;
   white-space: nowrap;
-  min-height: 18px;
+  min-height: 24px;
 }
 .sap-tree-row:hover { background: #dbe8f8; }
 .sap-tree-row[data-active='true'] {

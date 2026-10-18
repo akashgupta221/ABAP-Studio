@@ -219,10 +219,10 @@ function MenuList({ items }: { items: MItem[] }) {
             key={i}
             disabled={it.disabled}
             onSelect={() => it.run?.()}
-            className="flex items-center justify-between gap-8 rounded-none px-2.5 py-[5px] text-[12.5px] text-[#12283c] focus:bg-[#bcd6f2] focus:text-[#0a2f57] data-[disabled]:opacity-40"
+            className="flex items-center justify-between gap-8 rounded-none px-2.5 py-[6px] text-[13px] text-[#12283c] focus:bg-[#bcd6f2] focus:text-[#0a2f57] data-[disabled]:opacity-40"
           >
             <span>{it.label}</span>
-            {it.shortcut && <span className="font-mono text-[10.5px] text-[#6b7f95]">{it.shortcut}</span>}
+            {it.shortcut && <span className="font-mono text-[11px] text-[#6b7f95]">{it.shortcut}</span>}
           </DropdownMenuItem>
         ),
       )}
@@ -911,14 +911,14 @@ export function SapShell() {
       </header>
 
       {/* ── menu bar ── */}
-      <nav className="sap-menubar flex h-[24px] shrink-0 items-center px-1" role="menubar" aria-label="Main menu">
+      <nav className="sap-menubar flex h-[26px] shrink-0 items-center px-1" role="menubar" aria-label="Main menu">
         {menus.map((m) => (
           <DropdownMenu key={m.label}>
             <DropdownMenuTrigger className="sap-menu-item outline-none">{m.label}</DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
               sideOffset={1}
-              className="min-w-[230px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[12.5px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+              className="min-w-[230px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
             >
               <MenuList items={m.items} />
             </DropdownMenuContent>
@@ -927,7 +927,7 @@ export function SapShell() {
       </nav>
 
       {/* ── standard toolbar ── */}
-      <div className="sap-toolbar flex h-[28px] shrink-0 items-center gap-0.5 px-1.5">
+      <div className="sap-toolbar flex h-[30px] shrink-0 items-center gap-0.5 px-1.5">
         <ToolBtn
           icon={I.enter}
           title="Enter"
@@ -972,22 +972,22 @@ export function SapShell() {
             <DropdownMenuTrigger className="sap-tool-btn outline-none" title="Customize Local Layout (Alt+F12)" aria-label="Customize Local Layout">
               {I.customize}
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={1} className="min-w-[240px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[12.5px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]">
+            <DropdownMenuContent align="end" sideOffset={1} className="min-w-[240px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]">
               <DropdownMenuLabel className="px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#5b6d80]">
                 SAP GUI Settings
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="my-0.5 bg-[#d6dfe8]" />
               <DropdownMenuLabel className="px-2.5 py-[3px] text-[11.5px] text-[#5b6d80]">Font size (ABAP editor)</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={String(editorFontSize)} onValueChange={(v) => setEditorFontSize(Number(v))}>
-                <DropdownMenuRadioItem value="12" className="rounded-none px-2.5 py-[5px] text-[12.5px] focus:bg-[#bcd6f2]">Small</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="13" className="rounded-none px-2.5 py-[5px] text-[12.5px] focus:bg-[#bcd6f2]">Medium (default)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="14" className="rounded-none px-2.5 py-[5px] text-[12.5px] focus:bg-[#bcd6f2]">Large</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="12" className="rounded-none px-2.5 py-[6px] text-[13px] focus:bg-[#bcd6f2]">Small</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="13" className="rounded-none px-2.5 py-[6px] text-[13px] focus:bg-[#bcd6f2]">Medium (default)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="14" className="rounded-none px-2.5 py-[6px] text-[13px] focus:bg-[#bcd6f2]">Large</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
               <DropdownMenuSeparator className="my-0.5 bg-[#d6dfe8]" />
               <DropdownMenuCheckboxItem
                 checked={systemInfoVisible}
                 onCheckedChange={toggleSystemInfo}
-                className="rounded-none px-2.5 py-[5px] text-[12.5px] focus:bg-[#bcd6f2]"
+                className="rounded-none px-2.5 py-[6px] text-[13px] focus:bg-[#bcd6f2]"
               >
                 Status bar: system information
               </DropdownMenuCheckboxItem>
@@ -996,7 +996,7 @@ export function SapShell() {
                 Command Field History
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="rounded-none px-2.5 py-[5px] text-[12.5px] focus:bg-[#bcd6f2]"
+                className="rounded-none px-2.5 py-[6px] text-[13px] focus:bg-[#bcd6f2]"
                 onSelect={() => setSystemStatusOpen(true)}
               >
                 System Status…
@@ -1079,7 +1079,7 @@ export function SapShell() {
           role="main"
         >
           {hasTabs && (
-            <div className="sap-tabstrip flex min-h-[26px] items-end gap-1 overflow-x-auto px-1.5 pt-1">
+            <div className="sap-tabstrip flex min-h-[28px] items-end gap-1 overflow-x-auto px-1.5 pt-1">
               <button
                 type="button"
                 className={`sap-tab shrink-0 ${view === 'home' ? 'bg-white' : ''}`}

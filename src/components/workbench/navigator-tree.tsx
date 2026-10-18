@@ -7,10 +7,11 @@ import {
   FunctionSquare, GraduationCap, Search, Table2, X,
 } from 'lucide-react'
 import { useWorkbench, api } from './use-workbench'
-import type { DdicTable, FunctionModule, ProgramListItem } from './types'
+import { groupTopicsByCategory } from './types'
+import type { DdicTable, FunctionModule, ProgramListItem, Topic } from './types'
 
 // SE80 tree indentation steps (px)
-const INDENT = [8, 22, 36, 50]
+const INDENT = [10, 28, 46, 64]
 const indent = (level: number) => ({ paddingLeft: INDENT[Math.min(level, INDENT.length - 1)] })
 
 // classic SE80 icon colors
@@ -22,13 +23,13 @@ const C_FM = '#b35c00'
 
 const FolderGlyph = ({ open }: { open: boolean }) =>
   open
-    ? <FolderOpen className="h-3.5 w-3.5 shrink-0" style={{ color: C_FOLDER }} />
-    : <FolderClosed className="h-3.5 w-3.5 shrink-0" style={{ color: C_FOLDER }} />
+    ? <FolderOpen className="h-4 w-4 shrink-0" style={{ color: C_FOLDER }} />
+    : <FolderClosed className="h-4 w-4 shrink-0" style={{ color: C_FOLDER }} />
 
-const ProgramIcon = () => <FileCode2 className="h-3.5 w-3.5 shrink-0" style={{ color: C_PROGRAM }} />
-const ClassIcon = () => <Braces className="h-3.5 w-3.5 shrink-0" style={{ color: C_CLASS }} />
-const TableIcon = () => <Table2 className="h-3.5 w-3.5 shrink-0" style={{ color: C_TABLE }} />
-const FmIcon = () => <FunctionSquare className="h-3.5 w-3.5 shrink-0" style={{ color: C_FM }} />
+const ProgramIcon = () => <FileCode2 className="h-4 w-4 shrink-0" style={{ color: C_PROGRAM }} />
+const ClassIcon = () => <Braces className="h-4 w-4 shrink-0" style={{ color: C_CLASS }} />
+const TableIcon = () => <Table2 className="h-4 w-4 shrink-0" style={{ color: C_TABLE }} />
+const FmIcon = () => <FunctionSquare className="h-4 w-4 shrink-0" style={{ color: C_FM }} />
 
 // navigator entry points (SE80 header dropdown)
 const MODES = [
@@ -58,12 +59,12 @@ function TreeSection({
         aria-expanded={open}
       >
         {open
-          ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#5b6d80]" />
-          : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#5b6d80]" />}
+          ? <ChevronDown className="h-4 w-4 shrink-0 text-[#5b6d80]" />
+          : <ChevronRight className="h-4 w-4 shrink-0 text-[#5b6d80]" />}
         <FolderGlyph open={open} />
-        <span className="truncate text-[12px] font-semibold">{label}</span>
+        <span className="truncate text-[13px] font-semibold">{label}</span>
         {badge !== undefined && (
-          <span className="shrink-0 text-[11px] font-normal text-[#8a96a3]">({badge})</span>
+          <span className="shrink-0 text-[11.5px] font-normal text-[#8a96a3]">({badge})</span>
         )}
       </button>
       {open && <div>{children}</div>}
@@ -92,9 +93,9 @@ function ObjectRow({
       title={title}
     >
       {icon}
-      <span className="truncate text-[12px]">{label}</span>
+      <span className="truncate text-[13px]">{label}</span>
       {trailing !== undefined && (
-        <span className="ml-auto shrink-0 pl-2 text-[10.5px] text-[#8a96a3]">{trailing}</span>
+        <span className="ml-auto shrink-0 pl-2 text-[11px] text-[#8a96a3]">{trailing}</span>
       )}
     </button>
   )
@@ -102,7 +103,7 @@ function ObjectRow({
 
 function EmptyRow({ level, text }: { level: number; text: string }) {
   return (
-    <p className="py-0.5 text-[11.5px] italic text-[#8a96a3]" style={indent(level)}>
+    <p className="py-0.5 text-[12.5px] italic text-[#8a96a3]" style={indent(level)}>
       {text}
     </p>
   )
@@ -123,6 +124,7 @@ export function NavigatorTree() {
   const [programs, setPrograms] = useState<ProgramListItem[] | null>(null)
   const [tables, setTables] = useState<DdicTable[] | null>(null)
   const [fms, setFms] = useState<FunctionModule[] | null>(null)
+  const [topics, setTopics] = useState<Topic[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [mode, setMode] = useState<NavMode>('repo')
@@ -130,18 +132,21 @@ export function NavigatorTree() {
   const loadAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [p, t, f] = await Promise.all([
+      const [p, t, f, tp] = await Promise.all([
         api<{ programs: ProgramListItem[] }>('/api/programs'),
         api<{ tables: DdicTable[] }>('/api/tables'),
         api<{ functions: FunctionModule[] }>('/api/functions'),
+        api<{ topics: Topic[] }>('/api/topics'),
       ])
       setPrograms(p.programs)
       setTables(t.tables)
       setFms(f.functions)
+      setTopics(tp.topics)
     } catch {
       setPrograms([])
       setTables([])
       setFms([])
+      setTopics([])
     } finally {
       setLoading(false)
     }
@@ -187,7 +192,7 @@ export function NavigatorTree() {
           aria-haspopup="menu"
           aria-expanded={menuOpen}
         >
-          <span className="truncate text-[12px] font-bold text-[#1c3a5f]">{modeLabel}</span>
+          <span className="truncate text-[13px] font-bold text-[#1c3a5f]">{modeLabel}</span>
           <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-[#3f5468]" />
         </button>
         {menuOpen && (
@@ -199,7 +204,7 @@ export function NavigatorTree() {
                   key={m.id}
                   type="button"
                   role="menuitem"
-                  className="flex w-full items-center gap-1.5 px-2 py-[3px] text-left text-[12px] hover:bg-[#dbe8f8]"
+                  className="flex w-full items-center gap-1.5 px-2 py-[4px] text-left text-[13px] hover:bg-[#dbe8f8]"
                   onClick={() => {
                     setMode(m.id)
                     setMenuOpen(false)
@@ -217,18 +222,18 @@ export function NavigatorTree() {
       {/* filter */}
       <div className="shrink-0 border-b border-[#d3dde8] px-2 py-1.5">
         <div className="flex items-center gap-1">
-          <Search className="h-3 w-3 shrink-0 text-[#7f9db9]" />
+          <Search className="h-3.5 w-3.5 shrink-0 text-[#7f9db9]" />
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter objects…"
             className="sap-field w-full"
-            style={{ fontSize: 12 }}
+            style={{ fontSize: 13 }}
             aria-label="Filter repository objects"
           />
           {filter && (
             <button type="button" onClick={() => setFilter('')} aria-label="Clear filter" className="shrink-0">
-              <X className="h-3 w-3 text-[#7f9db9] hover:text-[#c4302f]" />
+              <X className="h-3.5 w-3.5 text-[#7f9db9] hover:text-[#c4302f]" />
             </button>
           )}
         </div>
@@ -377,16 +382,46 @@ export function NavigatorTree() {
           ))}
         </TreeSection>
 
-        {/* training */}
-        <TreeSection label="Training">
+        {/* training — categories ▸ topics ▸ example programs */}
+        <TreeSection label="Training" badge={topics?.length ?? undefined}>
           <ObjectRow
             level={1}
             active={view === 'syllabus'}
-            icon={<GraduationCap className="h-3.5 w-3.5 shrink-0" style={{ color: C_TABLE }} />}
+            icon={<GraduationCap className="h-4 w-4 shrink-0" style={{ color: C_TABLE }} />}
             label="Syllabus & Learning Path"
             title="Syllabus & learning path"
             onClick={() => openSyllabusTopic(-1)}
           />
+          {topics === null && (
+            <div className="space-y-0.5 px-2 py-0.5">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-[14px] animate-pulse bg-[#e2e9f2]" />
+              ))}
+            </div>
+          )}
+          {topics !== null && topics.length === 0 && (
+            <EmptyRow level={1} text="The syllabus is being seeded…" />
+          )}
+          {topics !== null && groupTopicsByCategory(topics).map((g) => (
+            <TreeSection key={g.id} label={g.label} level={1} badge={g.topics.length}>
+              {g.topics.map((t) => (
+                <TreeSection key={t.id} label={`${t.srNo} · ${t.title}`} level={2} badge={t.examples.length}>
+                  {t.examples.length === 0 && <EmptyRow level={3} text="No examples yet" />}
+                  {t.examples.map((ex) => (
+                    <ObjectRow
+                      key={ex.id}
+                      level={3}
+                      active={activeTabKey === `prog:${ex.name}`}
+                      icon={<ProgramIcon />}
+                      label={ex.name}
+                      title={ex.title}
+                      onClick={() => void openProgramByName(ex.name)}
+                    />
+                  ))}
+                </TreeSection>
+              ))}
+            </TreeSection>
+          ))}
         </TreeSection>
       </nav>
     </div>
