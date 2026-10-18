@@ -856,6 +856,42 @@ SKIP.
 WRITE: / 'From WRITE lists to RAP — ABAP keeps evolving!' COLOR 5.
 `,
   },
+  // ══════════ Practice sandbox — the ONE editable program ══════════
+  {
+    name: 'Z_MY_PRACTICE',
+    title: 'My Practice Program — Free Coding Sandbox',
+    description: 'Your own editable program. Training examples are read-only; this one is yours to change, run and save.',
+    type: 'REPORT', paradigm: 'BOTH', isExample: false,
+    tags: 'practice,sandbox,own program,free coding',
+    source: `REPORT Z_MY_PRACTICE.
+
+*════════════════════════════════════════════════════════════════
+*  YOUR PRACTICE PROGRAM — free coding sandbox
+*════════════════════════════════════════════════════════════════
+*  The training examples are read-only. THIS program is yours:
+*    F8       execute the program
+*    Ctrl+S   save your changes
+*    Ctrl+F2  syntax check
+*  Change anything below, or paste code from any lesson.
+*════════════════════════════════════════════════════════════════
+
+DATA gv_greeting TYPE string VALUE 'Hello from my own practice program!'.
+
+WRITE gv_greeting.
+SKIP.
+WRITE / |Today is { sy-datum DATE = ISO } — user { sy-uname }, client { sy-mandt }|.
+WRITE / |System { sy-sysid } · program { sy-repid }|.
+SKIP.
+
+* ── Try it yourself: remove the * in front of these lines ─────────
+* DATA gv_name TYPE string VALUE 'ABAP'.
+* WRITE / |Welcome to ABAP, { gv_name }!|.
+*
+* DO 5 TIMES.
+*   WRITE / |Loop pass { sy-index }|.
+* ENDDO.
+`,
+  },
 ]
 
 // ── Function modules ───────────────────────────────────────────────────

@@ -11,7 +11,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import {
   BookOpen, Braces, ChevronsDownUp, ChevronsUpDown, Database, FolderClosed, FolderOpen,
-  FunctionSquare, ListTree, Play, Search, Star, Table2,
+  FunctionSquare, ListTree, Pencil, Play, Search, Star, Table2,
 } from 'lucide-react'
 import { useWorkbench, api } from './use-workbench'
 import { groupTopicsByCategory, TOPIC_CATEGORIES } from './types'
@@ -26,6 +26,7 @@ const C_PROGRAM = '#2b6cb8'
 const C_TABLE = '#0e7b7b'
 const C_CLASS = '#7a3ea8'
 const C_FM = '#b35c00'
+const C_PRACTICE = '#2e7d32'
 
 // standard SAP top-level folders (empty in a pure training system)
 const STANDARD_FOLDERS = [
@@ -353,6 +354,14 @@ export function EasyAccess() {
 
         {/* ABAP Training — custom area menu (topics → example programs) */}
         <TreeFolder level={0} label="ABAP Training" open={open('training')} onToggle={() => toggle('training')}>
+          <Leaf
+            level={1}
+            icon={<Pencil className="h-4 w-4" style={{ color: C_PRACTICE }} />}
+            label="My Practice Program"
+            meta="Z_MY_PRACTICE"
+            hint="Your own editable program — examples stay read-only; write, run and save your code here"
+            onClick={() => void openProgramByName('Z_MY_PRACTICE')}
+          />
           <Leaf
             level={1}
             icon={<BookOpen className="h-4 w-4" style={{ color: C_TABLE }} />}

@@ -1,5 +1,6 @@
 // Auto-seed guard — ensures the pre-stored content (10 syllabus topics,
-// 11 SAP demo tables + rows, 36 example programs, FMs) always exists.
+// 11 SAP demo tables + rows, 37 example programs + 1 practice sandbox, FMs)
+// always exists.
 //
 // Why: the SQLite file can be missing/empty after a fresh clone, a redeploy,
 // or an environment reset. Instead of requiring a manual `bun run seed`,

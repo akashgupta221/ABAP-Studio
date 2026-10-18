@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Braces, ChevronDown, ChevronRight, FileCode2, FolderClosed, FolderOpen,
-  FunctionSquare, GraduationCap, Search, Table2, X,
+  FunctionSquare, GraduationCap, Pencil, Search, Table2, X,
 } from 'lucide-react'
 import { useWorkbench, api } from './use-workbench'
 import { groupTopicsByCategory } from './types'
@@ -391,6 +391,15 @@ export function NavigatorTree() {
             label="Syllabus & Learning Path"
             title="Syllabus & learning path"
             onClick={() => openSyllabusTopic(-1)}
+          />
+          <ObjectRow
+            level={1}
+            active={activeTabKey === 'prog:Z_MY_PRACTICE'}
+            icon={<Pencil className="h-4 w-4 shrink-0" style={{ color: '#2e7d32' }} />}
+            label="My Practice Program"
+            trailing="Z_MY_PRACTICE"
+            title="Your own editable program — free coding sandbox (examples stay read-only)"
+            onClick={() => void openProgramByName('Z_MY_PRACTICE')}
           />
           {topics === null && (
             <div className="space-y-0.5 px-2 py-0.5">
