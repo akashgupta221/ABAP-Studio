@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Standalone output is only used by the local bun server; Vercel builds its own bundle.
+  output: process.env.VERCEL ? undefined : "standalone",
   /* config options here */
+  devIndicators: false,
   typescript: {
     ignoreBuildErrors: true,
   },
