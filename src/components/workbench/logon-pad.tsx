@@ -1,8 +1,11 @@
 'use client'
 
 // ── SAP GUI style logon pad (Client / User / Password / Language) ──────
+// Real authentication against the system's user master: passwords are
+// scrypt-hashed on the server, the session is an HTTP-only cookie.
+// New users can register from this screen ("Register").
 import { useEffect, useState } from 'react'
-import { useWorkbench, type SapSession } from './use-workbench'
+import { useWorkbench } from './use-workbench'
 
 function WindowGlyphs() {
   return (
@@ -14,37 +17,128 @@ function WindowGlyphs() {
   )
 }
 
+type Mode = 'logon' | 'register'
+
 export function LogonPad() {
   const logon = useWorkbench((s) => s.logon)
   const restoreSession = useWorkbench((s) => s.restoreSession)
 
+  const [mode, setMode] = useState<Mode>('logon')
   const [client, setClient] = useState('100')
-  const [user, setUser] = useState('DEVELOPER')
-  const [password, setPassword] = useState('welcome')
+  const [user, setUser] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [language, setLanguage] = useState('EN')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // remember me — restore a previous logon in this browser
+  // session cookie — if this browser already logged on, skip the pad once
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem('sap.session')
-      if (raw) {
-        const s = JSON.parse(raw) as SapSession
-        if (s?.loggedIn && s.user) restoreSession(s)
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        const data = (await res.json()) as { user?: { username: string } | null }
+        if (!cancelled && data.user?.username) {
+          restoreSession({ user: data.user.username, client: '100', language: 'EN', loggedIn: true })
+        }
+      } catch {
+        /* stay on the logon pad */
       }
-    } catch {
-      /* ignore */
+    })()
+    return () => {
+      cancelled = true
     }
   }, [restoreSession])
 
-  const doLogon = () => {
+  const enterSystem = (username: string, lang = language) => {
     const c = (client.trim() || '100').padStart(3, '0')
-    logon({ user, client: c, language })
+    logon({ user: username, client: c, language: lang })
+  }
+
+  const switchMode = (m: Mode) => {
+    setMode(m)
+    setError(null)
+    setPassword('')
+    setConfirm('')
+  }
+
+  const doLogon = async () => {
+    if (busy) return
+    const username = user.trim().toUpperCase()
+    if (!username) {
+      setError('Enter your user name')
+      return
+    }
+    if (!password) {
+      setError('Enter your password')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { user?: { username: string }; error?: string }
+      if (!res.ok || !data.user) {
+        setError(data.error ?? 'Logon failed')
+        return
+      }
+      enterSystem(data.user.username)
+    } catch {
+      setError('Cannot reach the system — check that the server is running')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const doRegister = async () => {
+    if (busy) return
+    const username = user.trim().toUpperCase()
+    if (!username) {
+      setError('Enter a user name')
+      return
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+    if (password !== confirm) {
+      setError('Passwords do not match')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { user?: { username: string }; error?: string }
+      if (!res.ok || !data.user) {
+        setError(data.error ?? 'Registration failed')
+        return
+      }
+      enterSystem(data.user.username)
+    } catch {
+      setError('Cannot reach the system — check that the server is running')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const submit = () => {
+    void (mode === 'logon' ? doLogon() : doRegister())
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      doLogon()
+      submit()
     }
   }
 
@@ -54,18 +148,18 @@ export function LogonPad() {
         {/* window title bar */}
         <div className="sap-titlebar flex h-7 items-center gap-2 px-2 text-white">
           <span className="flex h-4 w-4 items-center justify-center rounded-[2px] bg-white/15 text-[9px] font-black">S</span>
-          <span className="text-[12.5px] font-semibold">SAP</span>
+          <span className="text-[12.5px] font-semibold">{mode === 'logon' ? 'SAP' : 'SAP — Create User'}</span>
           <WindowGlyphs />
         </div>
 
-        {/* logon toolbar (classic green check / exit) */}
+        {/* logon toolbar (classic green check / red cancel) */}
         <div className="sap-toolbar flex h-[28px] items-center gap-1 px-1.5">
           <button
             type="button"
             className="sap-tool-btn"
-            title="Log On (Enter)"
-            onClick={doLogon}
-            aria-label="Log on"
+            title={mode === 'logon' ? 'Log On (Enter)' : 'Create User (Enter)'}
+            onClick={submit}
+            aria-label={mode === 'logon' ? 'Log on' : 'Create user'}
           >
             <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
               <circle cx="8" cy="8" r="7" fill="#2ea52e" stroke="#1c7a1c" />
@@ -76,7 +170,8 @@ export function LogonPad() {
           <button
             type="button"
             className="sap-tool-btn"
-            title="Exit"
+            title={mode === 'logon' ? 'Clear entries' : 'Back to log on'}
+            onClick={() => switchMode('logon')}
             aria-label="Exit logon"
           >
             <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
@@ -89,19 +184,21 @@ export function LogonPad() {
         <div className="flex gap-6 px-6 py-6">
           <table className="border-separate border-spacing-y-[7px]">
             <tbody>
-              <tr>
-                <td className="pr-3 text-right align-middle text-[12.5px] text-[#1c2b3a]">Client</td>
-                <td>
-                  <input
-                    className="sap-field w-[150px] font-mono"
-                    value={client}
-                    onChange={(e) => setClient(e.target.value)}
-                    onKeyDown={onKeyDown}
-                    maxLength={3}
-                    aria-label="Client"
-                  />
-                </td>
-              </tr>
+              {mode === 'logon' && (
+                <tr>
+                  <td className="pr-3 text-right align-middle text-[12.5px] text-[#1c2b3a]">Client</td>
+                  <td>
+                    <input
+                      className="sap-field w-[150px] font-mono"
+                      value={client}
+                      onChange={(e) => setClient(e.target.value)}
+                      onKeyDown={onKeyDown}
+                      maxLength={3}
+                      aria-label="Client"
+                    />
+                  </td>
+                </tr>
+              )}
               <tr>
                 <td className="pr-3 text-right text-[12.5px] text-[#1c2b3a]">User</td>
                 <td>
@@ -111,6 +208,7 @@ export function LogonPad() {
                     onChange={(e) => setUser(e.target.value)}
                     onKeyDown={onKeyDown}
                     spellCheck={false}
+                    autoFocus
                     aria-label="User"
                   />
                 </td>
@@ -128,26 +226,45 @@ export function LogonPad() {
                   />
                 </td>
               </tr>
-              <tr>
-                <td className="pr-3 text-right text-[12.5px] text-[#1c2b3a]">Language</td>
-                <td>
-                  <input
-                    className="sap-field w-[150px] font-mono uppercase"
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    onKeyDown={onKeyDown}
-                    maxLength={2}
-                    aria-label="Language"
-                  />
-                </td>
-              </tr>
-              <tr>
-                <td className="pr-3 text-right align-top text-[12.5px] text-[#1c2b3a]">System</td>
-                <td className="pt-[3px] text-[12.5px] text-[#1c2b3a]">
-                  <span className="font-mono">NPL</span>
-                  <span className="pl-2 text-[#44586c]">SAP NetWeaver AS ABAP — Training Edition</span>
-                </td>
-              </tr>
+              {mode === 'register' && (
+                <tr>
+                  <td className="pr-3 text-right text-[12.5px] text-[#1c2b3a]">Repeat&nbsp;Password</td>
+                  <td>
+                    <input
+                      type="password"
+                      className="sap-field w-[150px] font-mono"
+                      value={confirm}
+                      onChange={(e) => setConfirm(e.target.value)}
+                      onKeyDown={onKeyDown}
+                      aria-label="Repeat password"
+                    />
+                  </td>
+                </tr>
+              )}
+              {mode === 'logon' && (
+                <>
+                  <tr>
+                    <td className="pr-3 text-right text-[12.5px] text-[#1c2b3a]">Language</td>
+                    <td>
+                      <input
+                        className="sap-field w-[150px] font-mono uppercase"
+                        value={language}
+                        onChange={(e) => setLanguage(e.target.value)}
+                        onKeyDown={onKeyDown}
+                        maxLength={2}
+                        aria-label="Language"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="pr-3 text-right align-top text-[12.5px] text-[#1c2b3a]">System</td>
+                    <td className="pt-[3px] text-[12.5px] text-[#1c2b3a]">
+                      <span className="font-mono">NPL</span>
+                      <span className="pl-2 text-[#44586c]">SAP NetWeaver AS ABAP — Training Edition</span>
+                    </td>
+                  </tr>
+                </>
+              )}
             </tbody>
           </table>
 
@@ -160,16 +277,35 @@ export function LogonPad() {
           </div>
         </div>
 
+        {/* messages (like a real SAP error line) */}
+        {error && (
+          <div className="mx-6 mb-1 border border-[#d9a7a7] bg-[#fbeaea] px-3 py-[6px] text-[12px] text-[#8a1f1f]">
+            {error}
+          </div>
+        )}
+
         {/* footer */}
         <div className="border-t border-[#cfd6dd] bg-[#e8ebef] px-6 py-3">
-          <div className="flex items-center gap-3">
-            <button type="button" className="sap-btn sap-btn-default" onClick={doLogon}>
-              Log On
-            </button>
-            <span className="text-[11px] text-[#5b6b7d]">
-              Press Enter to log on · any password is accepted (training system, no data leaves your browser)
-            </span>
-          </div>
+          {mode === 'logon' ? (
+            <div className="flex items-center gap-3">
+              <button type="button" className="sap-btn sap-btn-default" onClick={submit} disabled={busy}>
+                {busy ? 'Logging on…' : 'Log On'}
+              </button>
+              <span className="text-[11.5px] text-[#5b6b7d]">New user?</span>
+              <button type="button" className="sap-btn" onClick={() => switchMode('register')}>
+                Register
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <button type="button" className="sap-btn sap-btn-default" onClick={submit} disabled={busy}>
+                {busy ? 'Creating…' : 'Create User'}
+              </button>
+              <button type="button" className="sap-btn" onClick={() => switchMode('logon')}>
+                « Back to Log On
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

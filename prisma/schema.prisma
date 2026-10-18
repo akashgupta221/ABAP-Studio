@@ -103,6 +103,16 @@ model ExecutionLog {
   @@index([createdAt])
 }
 
+// ── User master (SAP-style logon: user + password) ─────────────────────
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique // stored uppercase, like SAP user names
+  passwordHash String // scrypt: "<salt-hex>:<hash-hex>"
+  displayName  String    @default("")
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+}
+
 // ── Favorites (Easy Access) ────────────────────────────────────────────
 model Favorite {
   id         Int      @id @default(autoincrement())

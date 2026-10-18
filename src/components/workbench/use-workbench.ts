@@ -667,41 +667,39 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       loggedIn: true,
     }
     set({ session })
-    try {
-      window.localStorage.setItem('sap.session', JSON.stringify(session))
-    } catch {
-      /* private mode */
-    }
     get().addMessage('S', `Logon to system NPL (client ${session.client}) successful`)
   },
 
   restoreSession: (session) => set({ session: { ...session, loggedIn: true } }),
 
   logoff: () => {
-    // forget the remembered session so the logon pad stays visible
-    try {
-      window.localStorage.removeItem('sap.session')
-    } catch {
-      /* private mode */
-    }
-    set({
-      session: { ...get().session, loggedIn: false },
-      tabs: [],
-      activeTabKey: null,
-      programs: {},
-      outputs: {},
-      checkResults: {},
-      messages: [],
-      view: 'home',
-      se38Program: '',
-      se38Subobject: 'source',
-      se38ShowSubobject: false,
-      pendingSelection: null,
-      findOpen: false,
-      systemStatusOpen: false,
-      confirmDelete: null,
-      whereUsed: { program: '', open: false, loading: false, hits: [] },
-    })
+    // end the server session (HTTP-only cookie) first, then show the logon
+    // pad — so the pad's session check can never silently log back in
+    void (async () => {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST' })
+      } catch {
+        /* offline — still clear the local state */
+      }
+      set({
+        session: { ...get().session, loggedIn: false },
+        tabs: [],
+        activeTabKey: null,
+        programs: {},
+        outputs: {},
+        checkResults: {},
+        messages: [],
+        view: 'home',
+        se38Program: '',
+        se38Subobject: 'source',
+        se38ShowSubobject: false,
+        pendingSelection: null,
+        findOpen: false,
+        systemStatusOpen: false,
+        confirmDelete: null,
+        whereUsed: { program: '', open: false, loading: false, hits: [] },
+      })
+    })()
   },
 
   toggleInsertMode: () => set((s) => ({ insertMode: s.insertMode === 'INS' ? 'OVR' : 'INS' })),

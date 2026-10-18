@@ -41,12 +41,13 @@ turso db tokens create abapforge
 1. Go to vercel.com → **Sign up with GitHub**.
 2. **Add New → Project → Import** the `abapforge` repository.
 3. Framework preset is detected automatically (**Next.js**) — leave build settings alone.
-4. Under **Environment Variables**, add both:
+4. Under **Environment Variables**, add all three:
 
    | Name                 | Value                |
    | -------------------- | -------------------- |
    | `TURSO_DATABASE_URL` | `libsql://...` (Part 2) |
    | `TURSO_AUTH_TOKEN`   | the token (Part 2)   |
+   | `AUTH_SECRET`        | any long random string — generate with `openssl rand -base64 32`. Used to sign logon sessions (user master). |
 
 5. Click **Deploy**. The site opens — but the database is still empty. Part 4 fixes that.
 
