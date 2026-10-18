@@ -176,3 +176,22 @@ Work Log:
 Stage Summary:
 - App fully rebranded to ABAPForge (modern name + title) across UI, metadata, engine system fields, logo, and DB content
 - All flows re-verified working; free-publishing readiness from Task 8 unaffected (Vercel Hobby + Neon free path recommended)
+
+---
+Task ID: 10
+Agent: main (Z.ai Code)
+Task: Fix "pre-stored data not showing on published site" — restore seed data + add permanent auto-seed guard
+
+Work Log:
+- Diagnosed root cause: the SQLite file prisma/db/app.db (resolved from DATABASE_URL "file:./db/app.db" relative to schema) had been recreated EMPTY on Oct 18 04:35 — tables missing entirely, so all pre-stored content (topics/programs/tables/FMs) was gone; dev server was also stopped
+- bun run db:push → recreated all tables (Topic/Program/DbTable/DbRow/FunctionModule/ExecutionLog/Favorite)
+- bun run seed → re-seeded & engine-verified all content: 10 topics, 36 programs (36/36 pass), 11 SAP tables / 113 rows, 2 FMs, 1 include
+- Restarted dev server on port 3000 (background); verified all APIs: /api/topics=10, /api/programs=36, /api/tables=11, /api/functions=2, /api/search works
+- NEW: src/lib/ensure-seed.ts — auto-seed guard (module-level cached promise, non-destructive: only seeds when Topic count = 0; imports seed data from scripts/seed-*.ts dynamically server-side; logs to dev.log)
+- Wired ensureSeeded() into GET handlers of: /api/topics, /api/programs, /api/tables, /api/functions, /api/search
+- Proved the fix end-to-end: wiped DB → restarted server (fresh process) → GET /api/topics auto-seeded everything (10/36/11/113/2) and returned 10 topics — simulates exactly the fresh-deploy scenario
+- Browser E2E re-verified (agent-browser): Easy Access renders 10 syllabus topic cards with example counts (3+3+3+4+4+7+3+2+5+2=36), Repository Browser 36 programs/1 include/11 dictionary/2 FMs, Z_HELLO_WORLD F8 → Success + list output, SE16 SFLIGHT shows real rows (AA/LH carriers), 0 page/console errors, dev.log clean
+- Cleanup: removed temp wipe-db script; kept scripts/check-db.ts as diagnostic; lint 0 errors
+
+Stage Summary:
+- Pre-stored data fully restored on the live dev site; auto-seed guard guarantees it can never go missing again on any fresh deployment (serverless-safe: first API request re-seeds an empty repository automatically)

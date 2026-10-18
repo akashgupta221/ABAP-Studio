@@ -2,10 +2,12 @@ export const dynamic = "force-dynamic" // always server-rendered (serverless-saf
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { ensureSeeded } from '@/lib/ensure-seed'
 
 // GET /api/programs?type=&topic=&q= — list programs (repository browser)
 export async function GET(req: NextRequest) {
   try {
+    await ensureSeeded()
     const sp = req.nextUrl.searchParams
     const type = sp.get('type')
     const topicId = sp.get('topicId')

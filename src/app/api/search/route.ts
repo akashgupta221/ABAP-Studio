@@ -2,12 +2,14 @@ export const dynamic = "force-dynamic" // always server-rendered (serverless-saf
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { ensureSeeded } from '@/lib/ensure-seed'
 
 // GET /api/search?q=&types=PROGRAM,CLASS,TABLE,FM,TOPIC — SAP-like global search
 // Searches across: program names, titles, descriptions, source code, tags,
 // table names & field texts, function modules, syllabus topics
 export async function GET(req: NextRequest) {
   try {
+    await ensureSeeded()
     const sp = req.nextUrl.searchParams
     const q = (sp.get('q') || '').trim()
     const types = (sp.get('types') || 'PROGRAM,CLASS,INCLUDE,FUNCTION_GROUP,TABLE,FM,TOPIC').split(',').map((t) => t.trim().toUpperCase())

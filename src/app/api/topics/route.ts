@@ -2,10 +2,12 @@ export const dynamic = "force-dynamic" // always server-rendered (serverless-saf
 
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { ensureSeeded } from '@/lib/ensure-seed'
 
 // GET /api/topics — syllabus topics with example counts
 export async function GET() {
   try {
+    await ensureSeeded()
     const topics = await db.topic.findMany({
       orderBy: { srNo: 'asc' },
       include: {

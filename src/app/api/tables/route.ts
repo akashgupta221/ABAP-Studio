@@ -2,10 +2,12 @@ export const dynamic = "force-dynamic" // always server-rendered (serverless-saf
 
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { ensureSeeded } from '@/lib/ensure-seed'
 
 // GET /api/tables — Data Dictionary (SE11) table list
 export async function GET() {
   try {
+    await ensureSeeded()
     const tables = await db.dbTable.findMany({
       orderBy: { name: 'asc' },
       include: { _count: { select: { rows: true } } },

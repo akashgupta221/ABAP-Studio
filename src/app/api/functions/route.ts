@@ -2,10 +2,12 @@ export const dynamic = "force-dynamic" // always server-rendered (serverless-saf
 
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { ensureSeeded } from '@/lib/ensure-seed'
 
 // GET /api/functions — Function Builder (SE37) list
 export async function GET() {
   try {
+    await ensureSeeded()
     const fms = await db.functionModule.findMany({ orderBy: { name: 'asc' } })
     return NextResponse.json({
       functions: fms.map((fm) => ({
