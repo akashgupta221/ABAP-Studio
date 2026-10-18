@@ -40,8 +40,12 @@ try {
   console.log('Schema applied (tables/indexes ensured).')
 
   // 3) seed + verify — the seed script picks up TURSO_* from the environment and
-  //    writes to the remote database instead of the local file.
-  execSync('bun run scripts/run-seed.ts', { stdio: 'inherit', env: process.env })
+  //    writes to the remote database instead of the local file. DATABASE_URL is
+  //    pinned to the remote too so no .env value can ever redirect the writes.
+  execSync('bun run scripts/run-seed.ts', {
+    stdio: 'inherit',
+    env: { ...process.env, DATABASE_URL: url, TURSO_DATABASE_URL: url, TURSO_AUTH_TOKEN: authToken },
+  })
 
   console.log('\nDone. The deployed app now reads this database.')
 } finally {
