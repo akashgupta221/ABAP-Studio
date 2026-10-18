@@ -195,3 +195,18 @@ Work Log:
 
 Stage Summary:
 - Pre-stored data fully restored on the live dev site; auto-seed guard guarantees it can never go missing again on any fresh deployment (serverless-safe: first API request re-seeds an empty repository automatically)
+
+---
+Task ID: 11
+Agent: main (Z.ai Code)
+Task: Make ABAPForge deploy-ready for free publishing; verify serverless-safe seeding
+
+Work Log:
+- src/lib/ensure-seed.ts v2: entire seed now runs inside db.$transaction (timeout 120s) with upserts on all unique keys (Topic.code, Program.name, DbTable.name, FunctionModule.name) + per-table row replacement → fully idempotent & atomic; safe against concurrent cold-start instances on Vercel/Netlify serverless
+- src/lib/db.ts: production-safe Prisma logging (['error'] in prod, ['query'] only in dev)
+- Verified wipe → fresh process → auto-seed: 10/36/11/113/2 restored, execute API SUCCESS, lint clean, browser shows all 10 topic cards, 0 errors
+- Confirmed deploy-blockers absent: page.tsx is 'use client' SPA (no DB at build), postinstall runs prisma generate, all API routes force-dynamic
+
+Stage Summary:
+- App is free-publish ready. Recommended path documented to user: GitHub (private/free) → Neon Postgres free tier (switch provider to postgresql + prisma db push) → Vercel Hobby import with DATABASE_URL env → first visit auto-seeds everything
+- No code changes required for deploy besides the one-line provider switch in prisma/schema.prisma
