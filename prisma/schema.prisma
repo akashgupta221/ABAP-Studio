@@ -1,4 +1,4 @@
-// ABAP Workbench — Prisma Schema
+// ABAPForge — Prisma Schema
 // Simulated SAP system: repository objects + DDIC + demo DB + logs
 
 generator client {

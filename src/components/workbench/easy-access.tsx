@@ -218,15 +218,15 @@ export function EasyAccess() {
               <Layers className="h-6 w-6 text-white" />
               <div>
                 <h1 className="text-[16px] font-bold text-white">
-                  ABAP Workbench — Development Training System
+                  ABAPForge — The Modern ABAP Studio
                 </h1>
                 <p className="text-[12px] text-[#cfe2f5]">
-                  Learn SAP ABAP: procedural, object-oriented, ALV reporting and modern 7.40+ syntax —
-                  right in your browser.
+                  Write, run and master SAP ABAP: procedural, object-oriented, ALV reporting and
+                  modern 7.40+ syntax — free, right in your browser.
                 </p>
               </div>
               <span className="ml-auto hidden rounded-sm border border-white/30 bg-white/10 px-2 py-1 font-mono text-[11px] text-white md:block">
-                NetWeaver Training Edition
+                Free · In-Browser ABAP Runtime
               </span>
             </div>
             <div className="grid grid-cols-2 gap-px bg-[#e2e9f2] sm:grid-cols-4">

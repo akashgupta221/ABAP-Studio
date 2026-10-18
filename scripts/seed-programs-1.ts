@@ -13,7 +13,7 @@ export const programsPart1 = [
 
 * Your first ABAP program!
 WRITE 'Hello ABAP World!'.
-WRITE / 'Welcome to the ABAP Workbench training system.'.
+WRITE / 'Welcome to the ABAPForge training system.'.
 WRITE / |Today is { sy-datum DATE = ISO } — program: { sy-repid }|.
 `,
   },

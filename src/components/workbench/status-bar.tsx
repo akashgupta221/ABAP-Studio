@@ -81,7 +81,7 @@ export function StatusBar() {
         <span className="h-3.5 w-px bg-[#b0c0d4]" aria-hidden />
         <span title="Client">100</span>
         <span className="h-3.5 w-px bg-[#b0c0d4]" aria-hidden />
-        <span title="System">NPL</span>
+        <span title="System">ABF</span>
         <span className="h-3.5 w-px bg-[#b0c0d4]" aria-hidden />
         <span title="User">DEVELOPER</span>
       </div>

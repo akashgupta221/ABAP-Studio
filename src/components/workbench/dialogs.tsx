@@ -256,25 +256,26 @@ export function AboutDialog() {
         <DialogHeader className="sap-titlebar px-4 py-2 text-left">
           <DialogTitle className="flex items-center gap-2 text-[14px] font-semibold text-white">
             <Info className="h-4 w-4" />
-            About ABAP Workbench
+            About ABAPForge
           </DialogTitle>
           <DialogDescription className="text-[11.5px] text-[#cfe2f5]">
-            Development Training System
+            The Modern ABAP Studio
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2.5 bg-white p-4 text-[12.5px] text-[#22364b]">
           <p>
-            <strong>ABAP Workbench</strong> — a browser-based SAP GUI-style IDE for learning ABAP
-            development, modeled on SE38/SE80/SE11/SE16/SE24/SE37.
+            <strong>ABAPForge</strong> — the modern ABAP studio: a free, browser-based SAP-style IDE
+            for learning ABAP development, modeled on SE38/SE80/SE11/SE16/SE24/SE37.
           </p>
           <ul className="list-disc space-y-1 pl-5 text-[12px] text-[#44586c]">
             <li>Custom ABAP interpreter (procedural, ABAP Objects, Open SQL on a simulated SFLIGHT database)</li>
             <li>Classical list output with SAP color semantics and interactive ALV grids</li>
             <li>10-topic training syllabus with runnable examples, from basics to CDS &amp; RAP concepts</li>
             <li>Modern 7.40+ syntax support: VALUE, COND, REDUCE, string templates</li>
+            <li>100% free and self-hostable — deploy anywhere at no cost</li>
           </ul>
           <p className="border-t border-[#e2e9f2] pt-2 text-[11.5px] text-[#7b8a9c]">
-            System NPL · Client 100 · User DEVELOPER · Training content: HCLTech SAP ABAP syllabus
+            System ABF · Client 100 · User DEVELOPER · Training content: HCLTech SAP ABAP syllabus
           </p>
         </div>
         <DialogFooter className="border-t border-[#b8c7da] bg-[#e8eef6] px-4 py-2.5">

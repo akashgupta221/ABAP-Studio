@@ -3,7 +3,7 @@
 // ── SAP Shell: the complete workbench window ──────────────────────────
 import { useEffect } from 'react'
 import {
-  BookOpen, Braces, CheckCircle2, ChevronDown, Database, FileCode2, FilePlus2,
+  Anvil, BookOpen, Braces, CheckCircle2, ChevronDown, Database, FileCode2, FilePlus2,
   FunctionSquare, Home, LogOut, Menu, Monitor, Play, Save, Search, Settings, Table2,
   Terminal, Undo2, X,
 } from 'lucide-react'
@@ -134,7 +134,7 @@ export function SapShell() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#dbe5f1] text-[#1a2733]" data-app="abap-workbench">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#dbe5f1] text-[#1a2733]" data-app="abapforge">
       {/* ── title bar ── */}
       <header
         className="sap-titlebar flex h-10 shrink-0 items-center gap-3 px-3 text-white"
@@ -148,14 +148,17 @@ export function SapShell() {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <span className="select-none text-[19px] font-black tracking-tight" aria-hidden>
-          SAP
+        <span className="flex select-none items-center gap-2" aria-hidden>
+          <span className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-gradient-to-br from-[#37a5e8] via-[#0a6ed1] to-[#123c5f] shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
+            <Anvil className="h-4 w-4 text-white" />
+          </span>
+          <span className="text-[18px] font-black tracking-tight">ABAPForge</span>
         </span>
         <span className="hidden select-none text-[12.5px] font-medium text-white/90 sm:block">
-          ABAP Workbench — Development Training System
+          The Modern ABAP Studio — Development Training System
         </span>
         <div className="ml-auto flex items-center gap-1.5">
-          <SystemPill label="System" value="NPL" />
+          <SystemPill label="System" value="ABF" />
           <SystemPill label="Client" value="100" />
           <SystemPill label="User" value="DEVELOPER" />
         </div>
@@ -290,7 +293,7 @@ export function SapShell() {
 
         <MenuBarButton label="Help">
           <DropdownMenuItem onClick={() => setAboutOpen(true)}>
-            <Monitor className="h-3.5 w-3.5" /> About ABAP Workbench
+            <Monitor className="h-3.5 w-3.5" /> About ABAPForge
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setTcodeDialogOpen(true)}>
             <Terminal className="h-3.5 w-3.5" /> Available Transaction Codes

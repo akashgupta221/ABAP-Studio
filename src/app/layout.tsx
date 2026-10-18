@@ -14,17 +14,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ABAP Workbench — SAP Development Training",
+  title: "ABAPForge — The Modern ABAP Studio (Free)",
   description:
-    "Web-based SAP GUI-style ABAP Workbench: learn procedural ABAP, ABAP Objects, ALV reporting and modern 7.40+ syntax. Editor (SE38), Dictionary (SE11), Data Browser (SE16), Class Builder (SE24), Function Builder (SE37).",
-  keywords: ["ABAP", "SAP", "Workbench", "SE38", "SE80", "ALV", "training", "ABAP Objects"],
+    "ABAPForge is a free, browser-based SAP-style ABAP studio: procedural + object-oriented ABAP, ALV reports, simulated SFLIGHT database with Open SQL, and modern 7.40+ syntax. SE38 editor, SE11 dictionary, SE16 data browser, SE24 class builder, SE37 function builder — no setup, no cost.",
+  keywords: [
+    "ABAPForge", "ABAP", "SAP", "ABAP IDE", "ABAP editor", "SE38", "SE80", "SE11", "SE16",
+    "SE24", "SE37", "ALV", "ABAP Objects", "OOP", "POP", "training", "free", "online ABAP compiler",
+  ],
   icons: {
     icon: "/logo.svg",
   },
   openGraph: {
-    title: "ABAP Workbench — SAP Development Training",
+    title: "ABAPForge — The Modern ABAP Studio",
     description:
-      "Browser-based SAP GUI-style ABAP IDE: procedural + OO ABAP, ALV reports, SE11/SE16/SE24/SE37, 40+ runnable examples.",
+      "Write, run and master ABAP in your browser — procedural + OO ABAP, ALV grids, simulated SAP database, 36 runnable examples. Free forever.",
     type: "website",
   },
 };

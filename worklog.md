@@ -1,4 +1,4 @@
-# ABAP Workbench — Project Worklog
+# ABAPForge — Project Worklog
 
 ---
 Task ID: 0
@@ -151,3 +151,28 @@ Stage Summary:
 - App is 100% free-hosting ready. Recommended path: GitHub (private repo) → Vercel Hobby (free) + Neon Postgres (free): switch provider to "postgresql", set DATABASE_URL, bun run db:push, bun run seed, deploy with env var
 - Alternates: Render free (SQLite ships in repo; user data resets on redeploy/spin-down), static export not viable (app is API-driven)
 - Turnkey local dev preserved: fresh clone + cp .env.example .env works (seeded app.db is committed)
+
+---
+Task ID: 9
+Agent: main (Z.ai Code)
+Task: Rebrand app with modern name & title (user request: "yes give a modern name and title")
+
+Work Log:
+- Chose brand: **ABAPForge — The Modern ABAP Studio** (tagline: "Write. Run. Master ABAP — free, right in your browser.")
+- sap-shell.tsx: new title bar (gradient tile + Anvil lucide icon + "ABAPForge" wordmark + "The Modern ABAP Studio — Development Training System"), data-app="abapforge", System pill NPL→ABF, Help menu "About ABAPForge"
+- easy-access.tsx: welcome h1 → "ABAPForge — The Modern ABAP Studio", subtitle rebrand, badge "NetWeaver Training Edition" → "Free · In-Browser ABAP Runtime"
+- dialogs.tsx: About dialog rebranded (title/description/body/footer System ABF, added "100% free and self-hostable" bullet)
+- status-bar.tsx: System NPL → ABF
+- layout.tsx: metadata rebrand (title "ABAPForge — The Modern ABAP Studio (Free)", new description/keywords/openGraph)
+- interpreter.ts: sy-sysid NPL→ABF, sy-host NPLAPP01→ABFAPP01 (engine verified: SELECT/OOP/F8 all still SUCCESS)
+- public/logo.svg: new modern logo — steel-blue gradient rounded tile, white anvil silhouette, amber forge spark with pulse animation
+- package.json: name "abapforge", version 1.0.0
+- .env.example / prisma/schema.prisma / globals.css comments rebranded
+- seed-programs-1.ts: Z_HELLO_WORLD welcome text → "ABAPForge"; live DB row patched via PUT /api/programs/[id] (1 of 38 programs needed it)
+- Educational content about real SAP/NetWeaver (syllabus, Z_SAP_OVERVIEW) intentionally unchanged — it teaches real SAP concepts
+- lint: 0 errors · dev server clean
+- Browser E2E (agent-browser): title "ABAPForge — The Modern ABAP Studio (Free)" loads, 0 page/console errors; DOM verified (title bar ABAPForge, pills ABF/100/DEVELOPER, welcome h1, status bar ABF); command field Z_HELLO_WORLD → editor → F8 → Success + "Welcome to the ABAPForge training system." in list output; About dialog verified; logo.svg 200; mobile 390px OK; API regression: sy-sysid→ABF, OOP class execution SUCCESS
+
+Stage Summary:
+- App fully rebranded to ABAPForge (modern name + title) across UI, metadata, engine system fields, logo, and DB content
+- All flows re-verified working; free-publishing readiness from Task 8 unaffected (Vercel Hobby + Neon free path recommended)
