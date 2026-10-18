@@ -1,7 +1,7 @@
 'use client'
 
 // ── Output view for one executed program ──────────────────────────────
-import { CircleCheck, Clock3, Database, FileCode2, Info, ListOrdered, OctagonAlert, Play, RefreshCw, AlertTriangle, AlertOctagon, FileText, Sigma } from 'lucide-react'
+import { AlertOctagon, AlertTriangle, CircleCheck, FileCode2, Info, OctagonAlert, Play, RefreshCw } from 'lucide-react'
 import type { MessageType, RunResult } from './types'
 import { AlvGridPanel } from './alv-grid'
 import { ListOutput } from './list-output'
@@ -31,7 +31,7 @@ export function OutputView({ programName }: { programName: string }) {
 
   if (!result) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-[#7b8a9c]">
+      <div className="flex h-full items-center justify-center bg-white text-[12.5px] text-[#5b6d80]">
         No output yet — press F8 to execute {programName}.
       </div>
     )
@@ -40,45 +40,27 @@ export function OutputView({ programName }: { programName: string }) {
   const isError = result.status === 'ERROR'
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#eef2f7]">
-      {/* status strip */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-[#c5d2e2] bg-gradient-to-b from-[#f4f7fb] to-[#e4ebf3] px-3 py-1.5 text-[12px] text-[#2c3f53]">
+    <div className="flex h-full min-h-0 flex-col bg-white">
+      {/* SAP list header: program · status · stats | actions */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[#b4c4d6] bg-[#eef2f7] px-2 py-[3px]">
+        <span className="text-[12.5px] font-bold text-[#12283c]">List: {programName}</span>
         <span
-          className={`inline-flex items-center gap-1.5 rounded-sm border px-2 py-0.5 font-semibold ${
-            isError
-              ? 'border-red-300 bg-red-100 text-red-700'
-              : 'border-green-300 bg-green-100 text-green-700'
+          className={`inline-flex items-center gap-1 text-[12px] font-semibold ${
+            isError ? 'text-[#b3261e]' : 'text-[#17692c]'
           }`}
         >
           {isError ? <AlertOctagon className="h-3.5 w-3.5" /> : <CircleCheck className="h-3.5 w-3.5" />}
           {isError ? 'Terminated' : 'Success'}
         </span>
-        <span className="inline-flex items-center gap-1" title="Execution time">
-          <Clock3 className="h-3.5 w-3.5 text-[#5b6d80]" />
-          {result.durationMs} ms
+        <span className="text-[11.5px] text-[#5b6d80]">
+          {result.durationMs} ms · {result.stats.steps} steps · {result.stats.linesWritten} list lines ·{' '}
+          {result.stats.selects} selects · {result.stats.dbReads} DB reads
         </span>
-        <span className="inline-flex items-center gap-1" title="Interpreter steps">
-          <Sigma className="h-3.5 w-3.5 text-[#5b6d80]" />
-          {result.stats.steps} steps
-        </span>
-        <span className="inline-flex items-center gap-1" title="List lines written">
-          <ListOrdered className="h-3.5 w-3.5 text-[#5b6d80]" />
-          {result.stats.linesWritten} list lines
-        </span>
-        <span className="inline-flex items-center gap-1" title="SELECT statements / DB reads">
-          <Database className="h-3.5 w-3.5 text-[#5b6d80]" />
-          {result.stats.selects} selects · {result.stats.dbReads} reads
-        </span>
-        {result.alv && (
-          <span className="inline-flex items-center gap-1 rounded-sm border border-[#b6c6d9] bg-white px-1.5 py-0.5 text-[11px] font-medium text-[#1c3a5f]" title="ALV grid present">
-            <FileText className="h-3 w-3 text-[#0a6ed1]" />
-            ALV
-          </span>
-        )}
+        {result.alv && <span className="text-[11.5px] text-[#5b6d80]">· ALV grid</span>}
         <div className="ml-auto flex items-center gap-1.5">
           <button
             type="button"
-            className="sap-btn"
+            className="sap-btn sap-btn-primary"
             onClick={() => void runProgram(programName)}
             disabled={!prog || prog.running}
             title={prog ? 'Re-run program (F8)' : 'Program tab is closed — reopen it to re-run'}
@@ -103,28 +85,28 @@ export function OutputView({ programName }: { programName: string }) {
         </div>
       </div>
 
-      {/* scrollable content */}
-      <div className="wb-scroll min-h-0 flex-1 overflow-auto p-3">
-        {/* error dump */}
+      {/* scrollable content — plain white SAP output page */}
+      <div className="wb-scroll min-h-0 flex-1 overflow-auto bg-white p-2 pb-3">
+        {/* error dump (SAP syntax/runtime error style) */}
         {isError && result.error && (
-          <div className="mb-3 overflow-hidden rounded-[3px] border-2 border-red-400 bg-[#fff5f5]">
-            <div className="flex items-center gap-2 border-b border-red-300 bg-gradient-to-b from-[#ffe0e0] to-[#ffd0d0] px-3 py-2">
-              <Play className="h-4 w-4 rotate-90 text-red-700" />
-              <h2 className="text-[13.5px] font-bold text-red-800">
+          <div className="mb-3 border border-[#c0392b] bg-[#fff8f8]">
+            <div className="flex items-center gap-2 border-b border-[#e0b4b0] bg-[#f7e7e5] px-2 py-1">
+              <Play className="h-3.5 w-3.5 rotate-90 text-[#a02121]" />
+              <h2 className="text-[12.5px] font-bold text-[#7a1f1f]">
                 {result.error.kind === 'SYNTAX' ? 'Syntax error' : 'Runtime error'}
                 {result.error.abapType ? ` — ${result.error.abapType}` : ''}
               </h2>
-              <span className="ml-auto font-mono text-[11px] text-red-700/80">{programName}</span>
+              <span className="ml-auto font-mono text-[11px] text-[#8a4b4b]">{programName}</span>
             </div>
-            <div className="space-y-2 px-4 py-3 text-[13px] text-[#3a1f1f]">
+            <div className="space-y-2 px-3 py-2 text-[12.5px] text-[#3a1f1f]">
               <p className="font-medium">{result.error.message}</p>
               {typeof result.error.line === 'number' && (
-                <p className="font-mono text-[12.5px]">
+                <p className="font-mono text-[12px]">
                   Error occurred at <span className="font-bold">line {result.error.line}</span>
                 </p>
               )}
               {result.error.statement && (
-                <pre className="overflow-x-auto rounded-sm border border-red-200 bg-white px-3 py-2 font-mono text-[12.5px] text-[#7a1f1f]">
+                <pre className="overflow-x-auto border border-[#e0c0c0] bg-white px-2 py-1 font-mono text-[12px] text-[#7a1f1f]">
                   {result.error.statement}
                 </pre>
               )}
@@ -134,13 +116,13 @@ export function OutputView({ programName }: { programName: string }) {
 
         {/* messages */}
         {result.messages.length > 0 && (
-          <div className="mb-3 overflow-hidden rounded-[3px] border border-[#c5d2e2] bg-white">
-            <div className="border-b border-[#d8e1ec] bg-[#eef2f8] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#3f5468]">
+          <div className="mb-3 border border-[#b8b8b8] bg-white">
+            <div className="border-b border-[#d0d0d0] bg-[#f0f0f0] px-2 py-1 text-[11.5px] font-semibold text-[#333333]">
               Messages
             </div>
-            <ul className="divide-y divide-[#eef2f7]">
+            <ul className="divide-y divide-[#eeeeee]">
               {result.messages.map((m, i) => (
-                <li key={i} className="flex items-start gap-2 px-3 py-1.5 text-[12.5px]">
+                <li key={i} className="flex items-start gap-2 px-2 py-1 text-[12.5px]">
                   <span className="mt-[2px]">
                     <MsgIcon t={m.msgType} />
                   </span>
@@ -158,15 +140,12 @@ export function OutputView({ programName }: { programName: string }) {
           </div>
         )}
 
-        {/* classical list */}
-        <div className="overflow-hidden rounded-[3px] border border-[#b6c6d9] bg-white">
-          <div className="flex items-center gap-2 border-b border-[#d8e1ec] bg-[#eef2f8] px-3 py-1.5">
-            <FileText className="h-3.5 w-3.5 text-[#0a6ed1]" />
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-[#3f5468]">
-              List output
-            </span>
-            <span className="ml-auto font-mono text-[11px] text-[#5b6d80]">{result.list.length} lines</span>
-          </div>
+        {/* classical list — raw SAP list page in a thin frame */}
+        <div className="mb-1 flex items-baseline justify-between px-0.5 text-[11.5px] text-[#5b6d80]">
+          <span className="font-semibold text-[#12283c]">List output</span>
+          <span className="font-mono">{result.list.length} lines</span>
+        </div>
+        <div className="border border-[#b8b8b8] bg-white">
           <div className="h-[340px]">
             <ListOutput list={result.list} />
           </div>

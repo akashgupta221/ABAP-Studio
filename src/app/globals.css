@@ -112,87 +112,207 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
 /* ══════════════════════════════════════════════════════════════════════
-   ABAPForge theme — SAP GUI classic Blue Crystal feel
+   SAP GUI (NetWeaver ABAP Workbench) look & feel — Blue Crystal theme
+   All classes prefixed .sap-* are "chrome"; .wb-* are workbench widgets.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ABAP editor syntax colors (SAP light theme) */
-.tok-plain { color: #111827; }
-.tok-keyword { color: #1660c9; font-weight: 600; }
-.tok-comment { color: #7a8590; font-style: italic; }
-.tok-string { color: #0f7b0f; }
-.tok-template { color: #9a5b00; }
-.tok-template-expr { color: #b0600b; font-weight: 600; }
-.tok-number { color: #b0600b; }
-.tok-operator { color: #444c56; }
-.tok-sysfield { color: #6c3d99; }
-.tok-type { color: #0a6e6e; font-weight: 500; }
-.tok-customer { color: #111827; }
+:root {
+  --sap-ui-font: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --sap-ui-mono: "Courier New", Courier, monospace;
+  --sap-field-border: #7f9db9;
+  --sap-field-border-focus: #3c74b5;
+  --sap-sel-bg: #cfe3f8;
+  --sap-sel-border: #7aa7d9;
+  --sap-link: #0b4fa8;
+}
 
-/* SAP chrome surfaces */
-.sap-chrome {
-  background: linear-gradient(to bottom, #dbe5f1 0%, #cfdcee 100%);
-  border-bottom: 1px solid #9db2cc;
+html, body {
+  font-family: var(--sap-ui-font);
+  font-size: 12.5px;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* everything monospace in SAP = Courier New */
+.font-mono, pre, code, kbd, samp {
+  font-family: var(--sap-ui-mono);
+}
+
+/* ── window chrome ──────────────────────────────────────────────────── */
+
 .sap-titlebar {
-  background: linear-gradient(to bottom, #0a6ed1 0%, #354a5f 100%);
+  background: linear-gradient(to bottom, #3878bd 0%, #205a9b 45%, #174a80 100%);
+  border-bottom: 1px solid #0e3560;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
-.sap-toolbar {
-  background: linear-gradient(to bottom, #f4f7fb 0%, #e2e9f2 100%);
-  border-bottom: 1px solid #b8c7da;
-}
+.sap-titlebar-close:hover { background: #c43b32; }
+
 .sap-menubar {
-  background: linear-gradient(to bottom, #e8eef6 0%, #d9e3f0 100%);
-  border-bottom: 1px solid #b8c7da;
+  background: linear-gradient(to bottom, #f5f8fc 0%, #e9f0f8 100%);
+  border-bottom: 1px solid #a9bcd0;
 }
+.sap-menu-item {
+  padding: 1px 8px 2px;
+  font-size: 12.5px;
+  color: #12283c;
+  border-radius: 2px;
+  cursor: default;
+  line-height: 16px;
+}
+.sap-menu-item:hover, .sap-menu-item[data-state='open'] {
+  background: #bcd6f2;
+  color: #0a2f57;
+  box-shadow: inset 0 0 0 1px #8fb5e0;
+}
+
+.sap-toolbar {
+  background: linear-gradient(to bottom, #f8fafc 0%, #e6edf6 100%);
+  border-bottom: 1px solid #b4c4d6;
+}
+.sap-apptoolbar {
+  background: linear-gradient(to bottom, #f8fafc 0%, #e6edf6 100%);
+  border-bottom: 1px solid #b4c4d6;
+}
+.sap-toolbar-sep {
+  width: 1px;
+  height: 17px;
+  margin: 0 3px;
+  background: #b4c4d6;
+  box-shadow: 1px 0 0 #ffffff;
+}
+
 .sap-statusbar {
-  background: linear-gradient(to bottom, #eef2f7 0%, #dde5ee 100%);
-  border-top: 1px solid #b0c0d4;
+  background: linear-gradient(to bottom, #f4f7fb 0%, #e2e9f1 100%);
+  border-top: 1px solid #a9bcd0;
 }
+.sap-status-seg {
+  border-left: 1px solid #b7c6d8;
+  box-shadow: -1px 0 0 #ffffff inset;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
+}
+.sap-status-seg:first-child { border-left: none; box-shadow: none; }
+
 .sap-sidebar {
   background: #f2f5fa;
   border-right: 1px solid #c3d0e0;
 }
 
-/* SAP-ish small buttons */
+/* classic dynpro screen (SE80 / SE38 initial / SE11 / selection screens) */
+.sap-screen {
+  background: #f0f0f0;
+}
+.sap-screen-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1c2b3a;
+  letter-spacing: 0.1px;
+}
+.sap-frame {
+  border: 1px solid #b8b8b8;
+  background: #f5f5f5;
+}
+.sap-frame-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* sunken SAP input fields */
+.sap-field {
+  background: #ffffff;
+  border: 1px solid var(--sap-field-border);
+  border-radius: 0;
+  box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.06);
+  height: 22px;
+  font-size: 12.5px;
+  padding: 0 5px;
+  color: #111827;
+}
+.sap-field:focus {
+  outline: none;
+  border-color: var(--sap-field-border-focus);
+  box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.06), 0 0 0 1px #a5c6ee;
+}
+.sap-field:disabled, .sap-field[readonly] {
+  background: #eceff3;
+  color: #4b5563;
+}
+
+/* SAP checkbox / radio (classic 3D sunken controls) */
+input[type='checkbox'].sap-checkbox {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  background: #fff;
+  border: 1px solid var(--sap-field-border);
+  box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.10);
+  position: relative;
+  cursor: pointer;
+  vertical-align: -2px;
+}
+input[type='checkbox'].sap-checkbox:checked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.5 4.6 9 10 3.2' fill='none' stroke='%230b3d78' stroke-width='2.2'/%3E%3C/svg%3E");
+  background-size: 11px 11px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+input[type='radio'].sap-radio {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--sap-field-border);
+  box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.10);
+  position: relative;
+  cursor: pointer;
+  vertical-align: -2px;
+}
+input[type='radio'].sap-radio:checked::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: #0b3d78;
+}
+
+/* SAP pushbutton */
 .sap-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.375rem;
-  border: 1px solid #7f9db9;
-  border-radius: 3px;
-  background: linear-gradient(to bottom, #fdfefe 0%, #eaf0f7 100%);
+  gap: 0.3rem;
+  border: 1px solid #93a7bb;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, #fefefe 0%, #e7eef6 100%);
   color: #1a2733;
   font-size: 12px;
-  font-weight: 500;
-  padding: 0.3rem 0.7rem;
+  font-weight: 400;
+  padding: 2px 10px;
+  min-height: 22px;
   line-height: 1.2;
   white-space: nowrap;
-  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  transition: background 0.1s ease, border-color 0.1s ease;
   cursor: pointer;
   user-select: none;
 }
 .sap-btn:hover:not(:disabled) {
-  background: linear-gradient(to bottom, #ffffff 0%, #dce8f5 100%);
-  border-color: #5f87b3;
-  box-shadow: 0 1px 2px rgba(26, 60, 105, 0.18);
+  background: linear-gradient(to bottom, #ffffff 0%, #dbe8f5 100%);
+  border-color: #6d8dad;
 }
 .sap-btn:active:not(:disabled) {
   background: linear-gradient(to bottom, #d3e2f2 0%, #e4edf7 100%);
 }
-.sap-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.sap-btn:disabled { opacity: 0.45; cursor: default; }
+.sap-btn-default {
+  border-color: #4d7398;
+  box-shadow: 0 0 0 1px #cfe0f0 inset;
 }
 .sap-btn-primary {
   background: linear-gradient(to bottom, #2f8ae0 0%, #0a6ed1 100%);
@@ -201,7 +321,6 @@
 }
 .sap-btn-primary:hover:not(:disabled) {
   background: linear-gradient(to bottom, #4a9ce8 0%, #1b7adc 100%);
-  box-shadow: 0 1px 3px rgba(10, 110, 209, 0.45);
 }
 .sap-btn-danger {
   background: linear-gradient(to bottom, #e05f5f 0%, #c4302f 100%);
@@ -209,90 +328,109 @@
   color: #fff;
 }
 
-/* Toolbar icon button (classic SAP tool strip) */
+/* toolbar icon button (classic SAP tool strip) */
 .sap-tool-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 26px;
+  width: 24px;
+  height: 22px;
   border: 1px solid transparent;
-  border-radius: 3px;
+  border-radius: 2px;
   color: #33475c;
-  transition: all 0.12s ease;
+  transition: all 0.1s ease;
   cursor: pointer;
 }
 .sap-tool-btn:hover:not(:disabled) {
-  background: #dce9f8;
+  background: #d7e6f7;
   border-color: #8fb0d4;
-  color: #0a6ed1;
+  color: #0a2f57;
 }
-.sap-tool-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.sap-tool-btn:disabled { opacity: 0.35; cursor: default; }
 
-/* Tab strip (editor tabs) */
+/* tab strip (kept: multi-session object tabs) */
 .sap-tabstrip {
-  background: linear-gradient(to bottom, #d5dfee 0%, #c9d8ea 100%);
-  border-bottom: 1px solid #a3b8d0;
+  background: linear-gradient(to bottom, #dbe4f0 0%, #cfdbeb 100%);
+  border-bottom: 1px solid #9db2cc;
 }
 .sap-tab {
   border: 1px solid #a3b8d0;
   border-bottom: none;
-  border-radius: 4px 4px 0 0;
-  background: linear-gradient(to bottom, #e6edf6 0%, #d5dfee 100%);
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(to bottom, #ecf1f8 0%, #dbe4f0 100%);
   color: #33475c;
   font-size: 12px;
-  padding: 4px 10px;
+  padding: 3px 9px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
   max-width: 260px;
-  transition: background 0.12s ease;
 }
 .sap-tab:hover { background: #e9f0f9; }
 .sap-tab[data-active='true'] {
   background: #ffffff;
-  color: #0a6ed1;
+  color: #123a66;
   font-weight: 600;
   border-color: #8fb0d4;
 }
 
-/* Menu bar */
-.sap-menu-item {
-  padding: 2px 10px;
-  font-size: 13px;
-  color: #22364b;
-  border-radius: 3px;
-  cursor: pointer;
-}
-.sap-menu-item:hover, .sap-menu-item[data-state='open'] {
-  background: #c7dcf5;
-  color: #0a3d73;
-}
-
-/* Tree navigator */
+/* tree navigator rows */
 .sap-tree-row {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 12.5px;
-  color: #22364b;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 12.2px;
+  color: #1c2b3a;
   cursor: pointer;
   white-space: nowrap;
+  min-height: 18px;
 }
 .sap-tree-row:hover { background: #dbe8f8; }
 .sap-tree-row[data-active='true'] {
-  background: #bcd8f6;
-  color: #06355f;
-  font-weight: 600;
+  background: var(--sap-sel-bg);
+  box-shadow: inset 0 0 0 1px var(--sap-sel-border);
+  color: #0a2f57;
 }
 
-/* Thin scrollbars for the workbench */
+/* ── SAP popups / dialogs ───────────────────────────────────────────── */
+.sap-popup {
+  background: #f0f0f0;
+  border: 1px solid #7b8ea1;
+  border-radius: 0;
+  box-shadow: 0 8px 30px rgba(9, 30, 60, 0.45);
+  padding: 0;
+  overflow: hidden;
+}
+.sap-popup-title {
+  background: linear-gradient(to bottom, #3d7abf 0%, #205a9b 60%, #1b4f8a 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  gap: 6px;
+  user-select: none;
+}
+.sap-popup-body {
+  background: #f0f0f0;
+  padding: 12px 14px;
+  color: #1c2b3a;
+}
+.sap-popup-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 8px 12px 10px;
+  background: #f0f0f0;
+  border-top: 1px solid #d0d0d0;
+}
+
+/* thin scrollbars */
 .wb-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
 .wb-scroll::-webkit-scrollbar-track { background: #eef2f7; }
 .wb-scroll::-webkit-scrollbar-thumb {
@@ -302,17 +440,41 @@
 }
 .wb-scroll::-webkit-scrollbar-thumb:hover { background: #93a9c2; }
 
-/* Selection screen (SAP gray form area) */
-.sap-selscreen {
-  background: #dfe5ee;
-}
+/* selection screen (SAP gray form area) */
+.sap-selscreen { background: #f0f0f0; }
 
-/* ALV grid */
+/* ── ABAP editor look (SE38 source editor) ──────────────────────────── */
+.sap-editor {
+  font-family: var(--sap-ui-mono);
+  font-size: 13px;
+}
+.sap-editor-gutter {
+  background: #eef1f5;
+  border-right: 1px solid #c3cfdc;
+  color: #3d4b59;
+}
+.editor-cur-line { background: rgba(10, 90, 180, 0.05); }
+.gutter-cur { color: #0a4f9c; font-weight: 700; }
+
+/* ABAP syntax colors (SAP source-editor scheme) */
+.tok-plain { color: #111827; }
+.tok-keyword { color: #1643be; font-weight: 600; }
+.tok-comment { color: #808080; font-style: italic; }
+.tok-string { color: #0b7a0b; }
+.tok-template { color: #9a5b00; }
+.tok-template-expr { color: #b0600b; font-weight: 600; }
+.tok-number { color: #b0600b; }
+.tok-operator { color: #444c56; }
+.tok-sysfield { color: #6c3d99; }
+.tok-type { color: #0a6e6e; font-weight: 500; }
+.tok-customer { color: #111827; }
+
+/* ── ALV grid (classic grid control) ────────────────────────────────── */
 .alv-grid th {
-  background: linear-gradient(to bottom, #eef2f8 0%, #dbe4ef 100%);
-  border-right: 1px solid #c5d2e2;
-  border-bottom: 1px solid #a9bbd0;
-  color: #22364b;
+  background: linear-gradient(to bottom, #f6f8fb 0%, #e2e8f0 100%);
+  border-right: 1px solid #c5d0dd;
+  border-bottom: 1px solid #9fb1c5;
+  color: #1c2b3a;
   font-weight: 600;
   position: sticky;
   top: 0;
@@ -323,43 +485,62 @@
   border-right: 1px solid #e3eaf2;
   border-bottom: 1px solid #e3eaf2;
 }
-.alv-grid tbody tr:nth-child(even) td { background: #f5f8fc; }
+.alv-grid tbody tr:nth-child(even) td { background: #f6f9fc; }
 .alv-grid tbody tr:hover td { background: #e7f0fb; }
+.alv-grid tbody tr[data-selected='true'] td { background: #cfe3f8; }
+.alv-title {
+  background: linear-gradient(to bottom, #9dbedd 0%, #7095bd 100%);
+  color: #ffffff;
+  font-weight: 700;
+  border-bottom: 1px solid #5d80a8;
+}
 
-/* Markdown in syllabus */
-.wb-markdown h1 { font-size: 1.35rem; font-weight: 700; margin: 1rem 0 0.5rem; color: #0a3d73; }
-.wb-markdown h2 { font-size: 1.15rem; font-weight: 700; margin: 1rem 0 0.4rem; color: #0a3d73; }
-.wb-markdown h3 { font-size: 1rem; font-weight: 600; margin: 0.8rem 0 0.3rem; color: #1a4e8a; }
-.wb-markdown p { margin: 0.4rem 0; font-size: 0.875rem; line-height: 1.55; }
-.wb-markdown ul { list-style: disc; padding-left: 1.4rem; margin: 0.4rem 0; }
-.wb-markdown ol { list-style: decimal; padding-left: 1.4rem; margin: 0.4rem 0; }
-.wb-markdown li { font-size: 0.875rem; line-height: 1.5; margin: 0.15rem 0; }
+/* ── classical list output ──────────────────────────────────────────── */
+.sap-list {
+  background: #ffffff;
+  font-family: var(--sap-ui-mono);
+  font-size: 13px;
+  line-height: 19px;
+  color: #000;
+}
+
+/* markdown in syllabus */
+.wb-markdown h1 { font-size: 1.3rem; font-weight: 700; margin: 0.9rem 0 0.4rem; color: #123a66; }
+.wb-markdown h2 { font-size: 1.12rem; font-weight: 700; margin: 0.9rem 0 0.35rem; color: #123a66; }
+.wb-markdown h3 { font-size: 1rem; font-weight: 600; margin: 0.7rem 0 0.25rem; color: #1a4e8a; }
+.wb-markdown p { margin: 0.35rem 0; font-size: 0.875rem; line-height: 1.55; }
+.wb-markdown ul { list-style: disc; padding-left: 1.4rem; margin: 0.35rem 0; }
+.wb-markdown ol { list-style: decimal; padding-left: 1.4rem; margin: 0.35rem 0; }
+.wb-markdown li { font-size: 0.875rem; line-height: 1.5; margin: 0.1rem 0; }
 .wb-markdown code {
-  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--sap-ui-mono);
   font-size: 0.8rem;
   background: #eef2f7;
   border: 1px solid #d5deea;
-  border-radius: 3px;
+  border-radius: 2px;
   padding: 0 4px;
   color: #0a3d73;
 }
 .wb-markdown pre {
   background: #f4f7fa;
   border: 1px solid #d5deea;
-  border-radius: 4px;
+  border-radius: 2px;
   padding: 10px 12px;
   overflow-x: auto;
-  margin: 0.5rem 0;
+  margin: 0.45rem 0;
 }
 .wb-markdown pre code { background: transparent; border: none; padding: 0; }
 .wb-markdown strong { font-weight: 600; }
-.wb-markdown a { color: #0a6ed1; text-decoration: underline; }
-.wb-markdown table { border-collapse: collapse; margin: 0.5rem 0; font-size: 0.8rem; }
+.wb-markdown a { color: var(--sap-link); text-decoration: underline; }
+.wb-markdown table { border-collapse: collapse; margin: 0.45rem 0; font-size: 0.8rem; }
 .wb-markdown th, .wb-markdown td { border: 1px solid #c5d2e2; padding: 3px 8px; text-align: left; }
 .wb-markdown th { background: #e7edf5; font-weight: 600; }
-.wb-markdown blockquote { border-left: 3px solid #0a6ed1; padding-left: 10px; color: #44586c; margin: 0.5rem 0; }
+.wb-markdown blockquote { border-left: 3px solid #0a6ed1; padding-left: 10px; color: #44586c; margin: 0.45rem 0; }
 
-/* Current line in the ABAP editor */
-.editor-cur-line { background: rgba(10, 110, 209, 0.07); }
-.gutter-cur { color: #0a6ed1; font-weight: 700; }
-
+/* ── printing (Print button / Ctrl+P) ───────────────────────────────── */
+@media print {
+  .sap-titlebar, .sap-menubar, .sap-toolbar, .sap-apptoolbar, .sap-statusbar,
+  .sap-tabstrip, .sap-sidebar, aside, .no-print { display: none !important; }
+  main { border: none !important; overflow: visible !important; }
+  body { background: #fff !important; }
+}

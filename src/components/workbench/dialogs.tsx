@@ -1,13 +1,12 @@
 'use client'
 
-// ── Dialogs: New Object, Confirm Create, About, T-code Registry ───────
+// ── Dialogs: New Object, Confirm Create, About, T-code Registry, ──────
+//    Confirm Delete, Log Off, System Status (classic SAP GUI popups) ──
 import { useEffect, useState } from 'react'
 import { CircleHelp, FilePlus2, Info, TerminalSquare } from 'lucide-react'
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -46,6 +45,37 @@ DATA: gv_value TYPE i VALUE 42.
 
 WRITE: / 'Hello from ${name}'.
 `
+}
+
+// ── classic SAP GUI title bar: bold white caption, [?] and [✕] ────────
+function SapPopupTitle({ title, description, onClose }: {
+  title: string
+  description: string
+  onClose: () => void
+}) {
+  return (
+    <div className="sap-popup-title">
+      <DialogTitle className="truncate text-[12px] font-bold text-white">{title}</DialogTitle>
+      <DialogDescription className="sr-only">{description}</DialogDescription>
+      <div className="ml-auto flex items-center gap-1">
+        <span
+          aria-hidden
+          className="flex h-[16px] w-[16px] items-center justify-center text-[11px] font-bold text-[#d6e6f8]"
+        >
+          ?
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          title="Close"
+          className="sap-titlebar-close flex h-[16px] w-[16px] items-center justify-center text-[10px] leading-none text-white"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ── New Object ─────────────────────────────────────────────────────────
@@ -100,74 +130,71 @@ export function NewObjectDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && closeNewDialog()}>
-      <DialogContent className="max-w-[480px] border-[#7f9db9] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="sap-titlebar px-4 py-2 text-left">
-          <DialogTitle className="flex items-center gap-2 text-[14px] font-semibold text-white">
-            <FilePlus2 className="h-4 w-4" />
-            {isSaveAs ? 'Save As — new repository object' : 'Create Repository Object'}
-          </DialogTitle>
-          <DialogDescription className="text-[11.5px] text-[#cfe2f5]">
-            {isSaveAs
-              ? `Copy of ${dialog.saveAsFrom} — customer objects should start with Z or Y`
-              : 'New program, class, include or function group (names starting with Z/Y are customer namespace)'}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent showCloseButton={false} className="sap-popup max-w-[480px] gap-0 p-0 sm:max-w-[480px]">
+        <SapPopupTitle
+          title={isSaveAs ? 'Save As — Create Object' : 'Create Object'}
+          description={isSaveAs
+            ? `Copy of ${dialog.saveAsFrom} — customer objects should start with Z or Y`
+            : 'New program, class, include or function group (names starting with Z/Y are customer namespace)'}
+          onClose={closeNewDialog}
+        />
 
-        <div className="sap-selscreen space-y-3 p-4">
-          <div className="flex items-center justify-end gap-3">
-            <Label htmlFor="new-name" className="w-[110px] text-right text-[12.5px] font-medium text-[#1c2f43]">
+        <div className="sap-popup-body space-y-[7px] text-[12.5px] text-[#1c2b3a]">
+          <div className="flex items-center justify-end gap-2">
+            <label htmlFor="new-name" className="w-[110px] text-right text-[12.5px] text-[#1c2b3a]">
               Object name
-            </Label>
-            <Input
+            </label>
+            <input
               id="new-name"
               value={name}
               onChange={(e) => setName(e.target.value.toUpperCase())}
               placeholder="Z_MY_PROGRAM"
-              className="h-[28px] w-[260px] rounded-[2px] border-[#aab8c8] bg-white font-mono text-[12.5px]"
+              spellCheck={false}
+              className="sap-field w-[250px] font-mono uppercase"
               onKeyDown={(e) => e.key === 'Enter' && void submit()}
             />
           </div>
-          <div className="flex items-center justify-end gap-3">
-            <Label htmlFor="new-title" className="w-[110px] text-right text-[12.5px] font-medium text-[#1c2f43]">
+          <div className="flex items-center justify-end gap-2">
+            <label htmlFor="new-title" className="w-[110px] text-right text-[12.5px] text-[#1c2b3a]">
               Title
-            </Label>
-            <Input
+            </label>
+            <input
               id="new-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Short description"
-              className="h-[28px] w-[260px] rounded-[2px] border-[#aab8c8] bg-white text-[12.5px]"
+              className="sap-field w-[250px]"
               onKeyDown={(e) => e.key === 'Enter' && void submit()}
             />
           </div>
-          <div className="flex items-center justify-end gap-3">
-            <Label className="w-[110px] text-right text-[12.5px] font-medium text-[#1c2f43]">
+          <div className="flex items-center justify-end gap-2">
+            <label className="w-[110px] text-right text-[12.5px] text-[#1c2b3a]">
               Object type
-            </Label>
+            </label>
             <Select value={type} onValueChange={(v) => setType(v as ProgramType)}>
-              <SelectTrigger className="h-[28px] w-[260px] rounded-[2px] border-[#aab8c8] bg-white font-mono text-[12.5px]">
+              <SelectTrigger className="sap-field w-[250px] font-mono">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="REPORT">REPORT — executable program</SelectItem>
-                <SelectItem value="CLASS">CLASS — ABAP Objects class</SelectItem>
-                <SelectItem value="INCLUDE">INCLUDE — include program</SelectItem>
-                <SelectItem value="FUNCTION_GROUP">FUNCTION_GROUP — function group</SelectItem>
+              <SelectContent className="rounded-none border-[#7f9db9] bg-white shadow-md">
+                <SelectItem className="rounded-none text-[12.5px]" value="REPORT">REPORT — executable program</SelectItem>
+                <SelectItem className="rounded-none text-[12.5px]" value="CLASS">CLASS — ABAP Objects class</SelectItem>
+                <SelectItem className="rounded-none text-[12.5px]" value="INCLUDE">INCLUDE — include program</SelectItem>
+                <SelectItem className="rounded-none text-[12.5px]" value="FUNCTION_GROUP">FUNCTION_GROUP — function group</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center justify-end gap-3">
-            <Label className="w-[110px] text-right text-[12.5px] font-medium text-[#1c2f43]">
+          <div className="flex items-center justify-end gap-2">
+            <label className="w-[110px] text-right text-[12.5px] text-[#1c2b3a]">
               Topic
-            </Label>
+            </label>
             <Select value={topicId} onValueChange={setTopicId}>
-              <SelectTrigger className="h-[28px] w-[260px] rounded-[2px] border-[#aab8c8] bg-white text-[12.5px]">
+              <SelectTrigger className="sap-field w-[250px]">
                 <SelectValue placeholder="Assign to syllabus topic (optional)" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">— none —</SelectItem>
+              <SelectContent className="rounded-none border-[#7f9db9] bg-white shadow-md">
+                <SelectItem className="rounded-none text-[12.5px]" value="none">— none —</SelectItem>
                 {topics.map((t) => (
-                  <SelectItem key={t.id} value={String(t.id)}>
+                  <SelectItem key={t.id} className="rounded-none text-[12.5px]" value={String(t.id)}>
                     {t.srNo}. {t.title}
                   </SelectItem>
                 ))}
@@ -175,25 +202,21 @@ export function NewObjectDialog() {
             </Select>
           </div>
           {!isSaveAs && (
-            <p className="text-right text-[11px] italic text-[#5b6d80]">
-              A starter template with {type === 'REPORT' ? 'REPORT' : type} skeleton will be created.
-            </p>
+            <div className="flex items-center justify-end gap-1.5 pt-1 text-right text-[11.5px] italic text-[#5b6d80]">
+              <FilePlus2 className="h-3.5 w-3.5 shrink-0 text-[#33475c]" aria-hidden />
+              <span>A starter template with {type} skeleton will be created.</span>
+            </div>
           )}
         </div>
 
-        <DialogFooter className="flex-row items-center justify-end gap-2 border-t border-[#b8c7da] bg-[#e8eef6] px-4 py-2.5">
+        <div className="sap-popup-buttons">
           <button type="button" className="sap-btn sap-btn-primary" onClick={() => void submit()} disabled={busy || !name.trim()}>
-            {busy ? (
-              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : (
-              <FilePlus2 className="h-3.5 w-3.5" />
-            )}
-            {isSaveAs ? 'Create Copy' : 'Create'}
+            {busy ? 'Creating…' : isSaveAs ? 'Create Copy' : 'Create'}
           </button>
           <button type="button" className="sap-btn" onClick={closeNewDialog} disabled={busy}>
             Cancel
           </button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -209,21 +232,20 @@ export function ConfirmCreateDialog() {
 
   return (
     <Dialog open onOpenChange={(o) => !o && setConfirmCreate(null)}>
-      <DialogContent className="max-w-[420px] border-[#7f9db9] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="sap-titlebar px-4 py-2 text-left">
-          <DialogTitle className="flex items-center gap-2 text-[14px] font-semibold text-white">
-            <CircleHelp className="h-4 w-4" />
-            Object does not exist
-          </DialogTitle>
-          <DialogDescription className="text-[11.5px] text-[#cfe2f5]">
-            Repository object not found
-          </DialogDescription>
-        </DialogHeader>
-        <div className="bg-white p-4 text-[13px] text-[#22364b]">
-          Program <span className="font-mono font-bold">{confirmCreate.name}</span> does not exist in
-          the repository. Do you want to create it?
+      <DialogContent showCloseButton={false} className="sap-popup max-w-[420px] gap-0 p-0 sm:max-w-[420px]">
+        <SapPopupTitle
+          title="Confirm"
+          description="Repository object not found"
+          onClose={() => setConfirmCreate(null)}
+        />
+        <div className="sap-popup-body flex items-start gap-2.5 text-[12.5px] leading-[1.45] text-[#1c2b3a]">
+          <CircleHelp className="mt-[2px] h-4 w-4 shrink-0 text-[#33475c]" aria-hidden />
+          <p>
+            Program <span className="font-mono font-bold">{confirmCreate.name}</span> does not exist in
+            the repository. Do you want to create it?
+          </p>
         </div>
-        <DialogFooter className="flex-row items-center justify-end gap-2 border-t border-[#b8c7da] bg-[#e8eef6] px-4 py-2.5">
+        <div className="sap-popup-buttons">
           <button
             type="button"
             className="sap-btn sap-btn-primary"
@@ -233,13 +255,12 @@ export function ConfirmCreateDialog() {
               openNewDialog({ prefillName: name })
             }}
           >
-            <FilePlus2 className="h-3.5 w-3.5" />
             Create object…
           </button>
           <button type="button" className="sap-btn" onClick={() => setConfirmCreate(null)}>
             Cancel
           </button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -252,37 +273,173 @@ export function AboutDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-[460px] border-[#7f9db9] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="sap-titlebar px-4 py-2 text-left">
-          <DialogTitle className="flex items-center gap-2 text-[14px] font-semibold text-white">
-            <Info className="h-4 w-4" />
-            About ABAPForge
-          </DialogTitle>
-          <DialogDescription className="text-[11.5px] text-[#cfe2f5]">
-            The Modern ABAP Studio
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2.5 bg-white p-4 text-[12.5px] text-[#22364b]">
-          <p>
-            <strong>ABAPForge</strong> — the modern ABAP studio: a free, browser-based SAP-style IDE
-            for learning ABAP development, modeled on SE38/SE80/SE11/SE16/SE24/SE37.
-          </p>
-          <ul className="list-disc space-y-1 pl-5 text-[12px] text-[#44586c]">
+      <DialogContent showCloseButton={false} className="sap-popup max-w-[460px] gap-0 p-0 sm:max-w-[460px]">
+        <SapPopupTitle
+          title="About"
+          description="ABAPForge — The Modern ABAP Studio"
+          onClose={() => setOpen(false)}
+        />
+        <div className="sap-popup-body space-y-2.5 text-[12.5px] text-[#1c2b3a]">
+          <div className="flex items-start gap-2.5">
+            <Info className="mt-[2px] h-4 w-4 shrink-0 text-[#33475c]" aria-hidden />
+            <p>
+              <strong>ABAPForge</strong> — the modern ABAP studio: a free, browser-based SAP-style IDE
+              for learning ABAP development, modeled on SE38/SE80/SE11/SE16/SE24/SE37.
+            </p>
+          </div>
+          <ul className="list-disc space-y-1 pl-8 text-[11.5px] text-[#44586c]">
             <li>Custom ABAP interpreter (procedural, ABAP Objects, Open SQL on a simulated SFLIGHT database)</li>
             <li>Classical list output with SAP color semantics and interactive ALV grids</li>
             <li>10-topic training syllabus with runnable examples, from basics to CDS &amp; RAP concepts</li>
             <li>Modern 7.40+ syntax support: VALUE, COND, REDUCE, string templates</li>
             <li>100% free and self-hostable — deploy anywhere at no cost</li>
           </ul>
-          <p className="border-t border-[#e2e9f2] pt-2 text-[11.5px] text-[#7b8a9c]">
+          <p className="border-t border-[#cfd6dd] pt-2 text-[11.5px] text-[#5b6d80]">
             System ABF · Client 100 · User DEVELOPER · Training content: HCLTech SAP ABAP syllabus
           </p>
         </div>
-        <DialogFooter className="border-t border-[#b8c7da] bg-[#e8eef6] px-4 py-2.5">
+        <div className="sap-popup-buttons">
           <button type="button" className="sap-btn sap-btn-primary" onClick={() => setOpen(false)}>
             Close
           </button>
-        </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Confirm Delete (SAP "Delete Object" popup) ────────────────────────
+export function ConfirmDeleteDialog() {
+  const confirmDelete = useWorkbench((s) => s.confirmDelete)
+  const setConfirmDelete = useWorkbench((s) => s.setConfirmDelete)
+  const deleteProgram = useWorkbench((s) => s.deleteProgram)
+
+  if (!confirmDelete) return null
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && setConfirmDelete(null)}>
+      <DialogContent showCloseButton={false} className="sap-popup max-w-[440px] gap-0 p-0 sm:max-w-[440px]">
+        <SapPopupTitle
+          title="Delete Object"
+          description="Confirm deletion"
+          onClose={() => setConfirmDelete(null)}
+        />
+        <div className="sap-popup-body text-[12.5px] leading-[1.45] text-[#1c2b3a]">
+          Object <span className="font-mono font-bold">{confirmDelete.name}</span> will be deleted from the
+          repository. This cannot be undone. Delete the object?
+        </div>
+        <div className="sap-popup-buttons">
+          <button
+            type="button"
+            className="sap-btn sap-btn-danger"
+            onClick={() => {
+              const name = confirmDelete.name
+              setConfirmDelete(null)
+              void deleteProgram(name)
+            }}
+          >
+            Delete
+          </button>
+          <button type="button" className="sap-btn" onClick={() => setConfirmDelete(null)}>
+            Cancel
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── Log Off confirmation ──────────────────────────────────────────────
+export function LogoffConfirmDialog() {
+  const open = useWorkbench((s) => s.logoffConfirm)
+  const setOpen = useWorkbench((s) => s.setLogoffConfirm)
+  const logoff = useWorkbench((s) => s.logoff)
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent showCloseButton={false} className="sap-popup max-w-[430px] gap-0 p-0 sm:max-w-[430px]">
+        <SapPopupTitle
+          title="Log Off"
+          description="System NPL (1) (750)"
+          onClose={() => setOpen(false)}
+        />
+        <div className="sap-popup-body space-y-2 text-[12.5px] text-[#1c2b3a]">
+          <div className="text-[11.5px] text-[#5b6d80]">System NPL (1) (750)</div>
+          <p>Data that was not saved will be lost. Do you want to log off from the system?</p>
+        </div>
+        <div className="sap-popup-buttons">
+          <button
+            type="button"
+            className="sap-btn sap-btn-primary"
+            onClick={() => {
+              setOpen(false)
+              logoff()
+            }}
+          >
+            Log Off
+          </button>
+          <button type="button" className="sap-btn" onClick={() => setOpen(false)}>
+            Cancel
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── System Status (System ▸ Status…) ──────────────────────────────────
+export function SystemStatusDialog() {
+  const open = useWorkbench((s) => s.systemStatusOpen)
+  const setOpen = useWorkbench((s) => s.setSystemStatusOpen)
+  const session = useWorkbench((s) => s.session)
+  const lastTcode = useWorkbench((s) => s.lastTcode)
+  const view = useWorkbench((s) => s.view)
+  const tabs = useWorkbench((s) => s.tabs)
+  const activeTabKey = useWorkbench((s) => s.activeTabKey)
+
+  const active = tabs.find((t) => t.key === activeTabKey) ?? null
+  const program = view === 'tab' && active ? active.programName : '—'
+
+  const rows: [string, string][] = [
+    ['SAP GUI', 'SAP GUI 7.70 (64-bit) — web edition'],
+    ['System', 'NPL'],
+    ['Client', session.client],
+    ['User', session.user],
+    ['Language', session.language],
+    ['Transaction', lastTcode],
+    ['Program', program],
+    ['Release', '750'],
+    ['Kernel', '754 (in-browser ABAP interpreter)'],
+    ['Host', 'NPLAPP01'],
+    ['Database', 'HDB (simulated SFLIGHT model)'],
+    ['Server', 'Node.js / Next.js runtime'],
+  ]
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent showCloseButton={false} className="sap-popup max-w-[520px] gap-0 p-0 sm:max-w-[520px]">
+        <SapPopupTitle
+          title="System Status"
+          description="NPL — SAP NetWeaver AS ABAP (training edition)"
+          onClose={() => setOpen(false)}
+        />
+        <div className="sap-popup-body">
+          <table className="w-full border border-[#c3cfdc] bg-white text-[11.5px]">
+            <tbody>
+              {rows.map(([k, v]) => (
+                <tr key={k}>
+                  <td className="w-[130px] border-r border-b border-[#e3eaf2] bg-[#f4f7fa] px-2 py-[3px] font-medium text-[#3f5468]">{k}</td>
+                  <td className="border-b border-[#e3eaf2] px-2 py-[3px] font-mono text-[#1c2b3a]">{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="sap-popup-buttons">
+          <button type="button" className="sap-btn sap-btn-primary" onClick={() => setOpen(false)}>
+            OK
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -307,37 +464,39 @@ export function TcodeRegistryDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-[520px] border-[#7f9db9] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="sap-titlebar px-4 py-2 text-left">
-          <DialogTitle className="flex items-center gap-2 text-[14px] font-semibold text-white">
-            <TerminalSquare className="h-4 w-4" />
-            Transaction Registry (SE93)
-          </DialogTitle>
-          <DialogDescription className="text-[11.5px] text-[#cfe2f5]">
+      <DialogContent showCloseButton={false} className="sap-popup max-w-[520px] gap-0 p-0 sm:max-w-[520px]">
+        <SapPopupTitle
+          title="Transaction Codes (SE93)"
+          description="Available transaction codes — enter them in the command field"
+          onClose={() => setOpen(false)}
+        />
+        <div className="sap-popup-body space-y-2">
+          <div className="flex items-center gap-2 text-[12px] text-[#44586c]">
+            <TerminalSquare className="h-4 w-4 shrink-0 text-[#33475c]" aria-hidden />
             Available transaction codes — enter them in the command field
-          </DialogDescription>
-        </DialogHeader>
-        <table className="w-full bg-white text-[12.5px]">
-          <thead>
-            <tr className="alv-grid">
-              <th className="px-3 py-1.5 text-left text-[11.5px]">Transaction</th>
-              <th className="px-3 py-1.5 text-left text-[11.5px]">Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            {TCODE_TABLE.map((t) => (
-              <tr key={t.code} className="border-b border-[#eef2f7] hover:bg-[#e7f0fb]">
-                <td className="px-3 py-1.5 font-mono font-bold text-[#0a3d73]">{t.code}</td>
-                <td className="px-3 py-1.5 text-[#44586c]">{t.desc}</td>
+          </div>
+          <table className="w-full border border-[#c3cfdc] bg-white text-[12px]">
+            <thead>
+              <tr className="alv-grid">
+                <th className="px-2 py-[3px] text-left text-[11.5px]">Transaction</th>
+                <th className="px-2 py-[3px] text-left text-[11.5px]">Description</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <DialogFooter className="border-t border-[#b8c7da] bg-[#e8eef6] px-4 py-2.5">
+            </thead>
+            <tbody>
+              {TCODE_TABLE.map((t) => (
+                <tr key={t.code} className="hover:bg-[#e7f0fb]">
+                  <td className="border-b border-[#e3eaf2] px-2 py-[3px] font-mono font-bold text-[#0a3d73]">{t.code}</td>
+                  <td className="border-b border-[#e3eaf2] px-2 py-[3px] text-[#44586c]">{t.desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="sap-popup-buttons">
           <button type="button" className="sap-btn sap-btn-primary" onClick={() => setOpen(false)}>
             Close
           </button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ABAPForge — The Modern ABAP Studio (Free)",
+  title: "SAP Easy Access",
   description:
     "ABAPForge is a free, browser-based SAP-style ABAP studio: procedural + object-oriented ABAP, ALV reports, simulated SFLIGHT database with Open SQL, and modern 7.40+ syntax. SE38 editor, SE11 dictionary, SE16 data browser, SE24 class builder, SE37 function builder — no setup, no cost.",
   keywords: [

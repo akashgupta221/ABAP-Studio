@@ -13,7 +13,7 @@ export const programsPart1 = [
 
 * Your first ABAP program!
 WRITE 'Hello ABAP World!'.
-WRITE / 'Welcome to the ABAPForge training system.'.
+WRITE / 'Welcome to the SAP NetWeaver AS ABAP training system.'.
 WRITE / |Today is { sy-datum DATE = ISO } — program: { sy-repid }|.
 `,
   },
@@ -231,6 +231,82 @@ WRITE: / 'Reading a table sets sy-subrc: (see internal table examples)' COLOR 5.
   },
 
   // ══════════ TOPIC 3: Control structures ══════════
+  {
+    name: 'Z_SELECTION_DEMO',
+    title: 'Selection Screens — PARAMETERS & SELECT-OPTIONS',
+    description: 'Programs that ask for input before they run: single fields (PARAMETERS), checkboxes, radio button groups and value ranges (SELECT-OPTIONS) — executed with F8.',
+    type: 'REPORT', paradigm: 'BOTH', topicCode: 'TOPIC_03', isExample: true,
+    tags: 'selection screen,parameters,select-options,input,checkbox,radiobutton,f8',
+    source: `REPORT Z_SELECTION_DEMO LINE-SIZE 90.
+
+* ── Selection screen: the program asks for input before it runs ───────
+*    PARAMETERS     = one input field
+*    SELECT-OPTIONS = a range of values (low .. high)
+*    Press F8 (Execute) to run the program with your entries.
+
+PARAMETERS: p_carr TYPE c LENGTH 3 DEFAULT 'AA' LOWER CASE,
+            p_min  TYPE i DEFAULT 4000,
+            p_det  AS CHECKBOX DEFAULT 'X'.
+
+PARAMETERS p_conn RADIOBUTTON GROUP grp DEFAULT 'X'.
+PARAMETERS p_city RADIOBUTTON GROUP grp.
+
+SELECT-OPTIONS s_dist FOR spfli-distance.
+
+DATA: gt_fli TYPE TABLE OF spfli,
+      gv_cnt TYPE i,
+      gv_rng TYPE i.
+
+gv_rng = lines( s_dist ).
+
+* ── read the connections that match the selection screen ──────────────
+*    An empty SELECT-OPTIONS means "no range restrictions" in this demo.
+IF gv_rng = 0.
+  SELECT * FROM spfli INTO TABLE gt_fli
+    WHERE carrid = @p_carr.
+ELSE.
+  SELECT * FROM spfli INTO TABLE gt_fli
+    WHERE carrid = @p_carr AND distance IN @s_dist.
+ENDIF.
+
+gv_cnt = lines( gt_fli ).
+
+WRITE: / '══════ SELECTION SCREEN DEMONSTRATION ══════' COLOR 1.
+SKIP.
+WRITE: / 'Airline (P_CARR)      :' COLOR 4, p_carr.
+WRITE: / 'Min. distance (P_MIN) :' COLOR 4, p_min.
+WRITE: / 'Details (P_DET)       :' COLOR 4, p_det.
+WRITE: / 'S_DIST range(s)       :' COLOR 4, gv_rng.
+WRITE: / 'Connections found     :' COLOR 4, gv_cnt.
+
+IF p_conn = 'X'.
+  WRITE: / 'Mode                  : Connection list' COLOR 5.
+ELSE.
+  WRITE: / 'Mode                  : City summary' COLOR 5.
+ENDIF.
+SKIP.
+
+IF p_det <> 'X'.
+  WRITE: / 'Details are switched off — check P_DET and run again.' COLOR 3.
+ELSEIF gv_cnt = 0.
+  WRITE: / 'No connections found — try airline AA or LH.' COLOR 3.
+ELSEIF p_conn = 'X'.
+  LOOP AT gt_fli INTO DATA(ls_f).
+    IF ls_f-distance >= p_min.
+      WRITE: / |{ ls_f-carrid } { ls_f-connid } { ls_f-cityfrom } → { ls_f-cityto } { ls_f-distance } km|.
+    ENDIF.
+  ENDLOOP.
+ELSE.
+  LOOP AT gt_fli INTO DATA(ls_c).
+    IF ls_c-distance >= p_min.
+      WRITE: / |{ ls_c-cityfrom } → { ls_c-cityto } ({ ls_c-distance } km)| COLOR 4.
+    ENDIF.
+  ENDLOOP.
+ENDIF.
+SKIP.
+WRITE: / 'Tip: F8 executes · F12 cancels · the ranges of S_DIST filter DISTANCE.' COLOR 5.
+`,
+  },
   {
     name: 'Z_CONDITIONS',
     title: 'Conditional Logic — IF / ELSEIF / CASE',

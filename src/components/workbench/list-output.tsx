@@ -14,7 +14,8 @@ const LINE_COLORS: Record<string, { bg: string; bgInt: string }> = {
   background: { bg: '#eeeeee', bgInt: '#d6d6d6' },
 }
 
-const LINE_H = 20
+// classic SAP list line grid: 19px rows (matches .sap-list line-height)
+const LINE_H = 19
 
 function lineWidth(line: ListLine): number {
   let max = 0
@@ -30,7 +31,7 @@ export function ListOutput({ list }: { list: ListLine[] }) {
 
   if (list.length === 0) {
     return (
-      <div className="flex h-full min-h-32 items-center justify-center p-6 text-sm text-[#7b8a9c]">
+      <div className="flex h-full min-h-32 items-center justify-center bg-white p-6 text-[12.5px] text-[#5b6d80]">
         No classical list output was written by this program.
       </div>
     )
@@ -38,7 +39,7 @@ export function ListOutput({ list }: { list: ListLine[] }) {
 
   return (
     <div
-      className="wb-scroll h-full overflow-auto bg-white font-mono text-[13px] text-[#111]"
+      className="sap-list wb-scroll h-full overflow-auto"
       style={{ lineHeight: `${LINE_H}px` }}
       role="region"
       aria-label="Classical list output"
@@ -59,6 +60,11 @@ export function ListOutput({ list }: { list: ListLine[] }) {
               height: LINE_H,
               whiteSpace: 'pre',
               fontWeight: seg.color === 'heading' || seg.color === 'total' ? 600 : 400,
+            }
+            if (seg.hotspot) {
+              // WRITE ... HOTSPOT → underlined, clickable-looking text (classic SAP list)
+              style.textDecoration = 'underline'
+              style.cursor = 'pointer'
             }
             if (seg.inverse) {
               // SAP INVERSE: color becomes the foreground on normal background

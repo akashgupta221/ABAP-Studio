@@ -7,10 +7,12 @@ import { highlightAbap } from './abap-highlight'
 interface AbapEditorProps {
   value: string
   onChange: (value: string) => void
-  onCursorLine?: (line: number) => void
+  onCursor?: (line: number, col: number) => void
   readOnly?: boolean
   /** monospace font size px */
   fontSize?: number
+  /** request to select the next occurrence (bumped nonce triggers a search) */
+  findRequest?: { query: string; nonce: number }
 }
 
 const LINE_HEIGHT = 20
@@ -18,11 +20,12 @@ const LINE_HEIGHT = 20
 const BLOCK_OPENERS =
   /^(IF|ELSE|ELSEIF|WHEN|DO|WHILE|LOOP|TRY|FORM|METHOD|CLASS|INTERFACE|MODULE|AT|CATCH|BEGIN|DATA|TYPES|CONSTANTS|STATICS|SELECT)\b/
 
-export function AbapEditor({ value, onChange, onCursorLine, readOnly = false, fontSize = 13 }: AbapEditorProps) {
+export function AbapEditor({ value, onChange, onCursor, readOnly = false, fontSize = 13, findRequest }: AbapEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null)
   const preRef = useRef<HTMLDivElement>(null)
   const gutterRef = useRef<HTMLDivElement>(null)
   const [curLine, setCurLine] = useState(1)
+  const lastFindNonce = useRef(0)
 
   const lines = useMemo(() => value.split('\n'), [value])
   const tokenLines = useMemo(() => highlightAbap(value), [value])
@@ -46,13 +49,41 @@ export function AbapEditor({ value, onChange, onCursorLine, readOnly = false, fo
     if (!ta) return
     const before = ta.value.slice(0, ta.selectionStart)
     const line = before.split('\n').length
+    const lineStart = before.lastIndexOf('\n') + 1
+    const col = ta.selectionStart - lineStart + 1
     setCurLine(line)
-    onCursorLine?.(line)
+    onCursor?.(line, col)
   }
 
   useEffect(() => {
     syncScroll()
   }, [value])
+
+  // ── find next (Ctrl+F bar / Find Next toolbar) ─────────────────────
+  const findQ = findRequest?.query ?? ''
+  const findNonce = findRequest?.nonce ?? 0
+  useEffect(() => {
+    if (findNonce === 0 || findNonce === lastFindNonce.current) return
+    lastFindNonce.current = findNonce
+    const q = findQ
+    if (!q) return
+    const ta = taRef.current
+    if (!ta) return
+    const from = ta.selectionEnd
+    let at = ta.value.indexOf(q, from)
+    if (at < 0) at = ta.value.indexOf(q)
+    if (at < 0) return
+    ta.focus()
+    ta.setSelectionRange(at, at + q.length)
+    // scroll the found line into view
+    const lineIdx = ta.value.slice(0, at).split('\n').length - 1
+    const target = lineIdx * LINE_HEIGHT + 6
+    if (target < ta.scrollTop || target > ta.scrollTop + ta.clientHeight - LINE_HEIGHT * 2) {
+      ta.scrollTop = Math.max(0, target - Math.floor(ta.clientHeight / 2))
+    }
+    syncScroll()
+    updateCursor()
+  }, [findNonce, findQ])
 
   const insertText = (text: string, selectOffset?: number) => {
     const ta = taRef.current
@@ -114,7 +145,7 @@ export function AbapEditor({ value, onChange, onCursorLine, readOnly = false, fo
       {/* gutter */}
       <div
         ref={gutterRef}
-        className="sticky left-0 z-10 h-full shrink-0 select-none overflow-hidden border-r border-[#d3dde8] bg-[#f4f7fa] text-right text-[#8291a3]"
+        className="sticky left-0 z-10 h-full shrink-0 select-none overflow-hidden border-r border-[#c3cfdc] bg-[#eef1f5] text-right text-[#55606b]"
         style={{ ...lineHeightStyle, width: gutterWidth }}
         aria-hidden
       >

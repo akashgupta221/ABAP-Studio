@@ -13,6 +13,8 @@ import type {
   ProgramTabData,
   ProgramType,
   RunResult,
+  SearchGroup,
+  SearchHit,
   SelectionScreenItem,
   SystemMessage,
   TabItem,
@@ -53,6 +55,20 @@ interface NewDialogState {
   saveAsFrom?: string // program name this is a copy of
 }
 
+export interface SapSession {
+  user: string
+  client: string
+  language: string
+  loggedIn: boolean
+}
+
+export interface WhereUsedState {
+  program: string
+  open: boolean
+  loading: boolean
+  hits: SearchHit[]
+}
+
 interface WorkbenchState {
   view: ViewKind
   tabs: TabItem[]
@@ -78,6 +94,39 @@ interface WorkbenchState {
   aboutOpen: boolean
   tcodeDialogOpen: boolean
   favorites: Favorite[]
+
+  // ── SAP session / logon pad ─────────────────────────────────────────
+  session: SapSession
+  logon: (p: { user: string; client: string; language: string }) => void
+  restoreSession: (s: SapSession) => void
+  logoff: () => void
+  insertMode: 'INS' | 'OVR'
+  toggleInsertMode: () => void
+  systemInfoVisible: boolean
+  toggleSystemInfo: () => void
+  editorFontSize: number
+  setEditorFontSize: (n: number) => void
+
+  // ── SAP popups ──────────────────────────────────────────────────────
+  systemStatusOpen: boolean
+  setSystemStatusOpen: (v: boolean) => void
+  logoffConfirm: boolean
+  setLogoffConfirm: (v: boolean) => void
+  confirmDelete: { name: string } | null
+  setConfirmDelete: (v: { name: string } | null) => void
+
+  // ── where-used list ─────────────────────────────────────────────────
+  whereUsed: WhereUsedState
+  showWhereUsed: (name: string) => Promise<void>
+  closeWhereUsed: () => void
+
+  // ── find in editor ──────────────────────────────────────────────────
+  findOpen: boolean
+  setFindOpen: (v: boolean) => void
+  findQuery: string
+  setFindQuery: (v: string) => void
+  findNonce: number
+  runFindNext: () => void
 
   // actions
   navigate: (view: ViewKind) => void
@@ -131,6 +180,10 @@ function tabOf(kind: 'program' | 'output', name: string): TabItem {
   return { key: `${kind}:${name}`, kind, programName: name }
 }
 
+// stale-run guard: bump on every new run / cancel / submit so late
+// execute responses (e.g. REQUIRES_INPUT) can never resurface old screens
+let runSeq = 0
+
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
   view: 'home',
   tabs: [],
@@ -154,6 +207,18 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   aboutOpen: false,
   tcodeDialogOpen: false,
   favorites: [],
+
+  session: { user: 'DEVELOPER', client: '100', language: 'EN', loggedIn: false },
+  insertMode: 'INS',
+  systemInfoVisible: true,
+  editorFontSize: 13,
+  systemStatusOpen: false,
+  logoffConfirm: false,
+  confirmDelete: null,
+  whereUsed: { program: '', open: false, loading: false, hits: [] },
+  findOpen: false,
+  findQuery: '',
+  findNonce: 0,
 
   navigate: (view) => {
     if (view !== 'tab') set({ view })
@@ -262,12 +327,14 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   runProgram: async (name) => {
     const prog = get().programs[name]
     if (!prog || prog.running) return
+    const seq = ++runSeq
     set((s) => ({ programs: { ...s.programs, [name]: { ...prog, running: true } } }))
     try {
       const result = await api<RunResult>('/api/execute', {
         method: 'POST',
         body: JSON.stringify({ name, source: prog.source }),
       })
+      if (seq !== runSeq) return // a newer run / cancel superseded this response
       if (result.status === 'REQUIRES_INPUT' && result.selectionScreen?.length) {
         set({ pendingSelection: { programName: name, items: result.selectionScreen } })
         return // running stays true while dialog is open? reset below
@@ -296,6 +363,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   submitSelection: async (parameters) => {
     const pending = get().pendingSelection
     if (!pending) return
+    runSeq++ // supersede any in-flight run response
     const { programName: name } = pending
     const prog = get().programs[name]
     if (prog) set((s) => ({ programs: { ...s.programs, [name]: { ...prog, running: true } } }))
@@ -330,6 +398,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
 
   cancelSelection: () => {
     const pending = get().pendingSelection
+    runSeq++ // ignore late REQUIRES_INPUT responses from the cancelled run
     set({ pendingSelection: null })
     if (pending) {
       const p = get().programs[pending.programName]
@@ -515,6 +584,77 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     get().favorites.some(
       (f) => f.objectType === objectType.toUpperCase() && f.objectName === objectName.toUpperCase(),
     ),
+
+  // ── SAP session ─────────────────────────────────────────────────────
+  logon: ({ user, client, language }) => {
+    const session: SapSession = {
+      user: user.trim().toUpperCase() || 'DEVELOPER',
+      client: client.trim() || '100',
+      language: (language.trim() || 'EN').toUpperCase(),
+      loggedIn: true,
+    }
+    set({ session })
+    try {
+      window.localStorage.setItem('sap.session', JSON.stringify(session))
+    } catch {
+      /* private mode */
+    }
+    get().addMessage('S', `Logon to system NPL (client ${session.client}) successful`)
+  },
+
+  restoreSession: (session) => set({ session: { ...session, loggedIn: true } }),
+
+  logoff: () => {
+    // forget the remembered session so the logon pad stays visible
+    try {
+      window.localStorage.removeItem('sap.session')
+    } catch {
+      /* private mode */
+    }
+    set({
+      session: { ...get().session, loggedIn: false },
+      tabs: [],
+      activeTabKey: null,
+      programs: {},
+      outputs: {},
+      checkResults: {},
+      messages: [],
+      view: 'home',
+      pendingSelection: null,
+      findOpen: false,
+      systemStatusOpen: false,
+      confirmDelete: null,
+      whereUsed: { program: '', open: false, loading: false, hits: [] },
+    })
+  },
+
+  toggleInsertMode: () => set((s) => ({ insertMode: s.insertMode === 'INS' ? 'OVR' : 'INS' })),
+  toggleSystemInfo: () => set((s) => ({ systemInfoVisible: !s.systemInfoVisible })),
+  setEditorFontSize: (n) => set({ editorFontSize: n }),
+  setSystemStatusOpen: (v) => set({ systemStatusOpen: v }),
+  setLogoffConfirm: (v) => set({ logoffConfirm: v }),
+  setConfirmDelete: (v) => set({ confirmDelete: v }),
+  setFindOpen: (v) => set({ findOpen: v }),
+  setFindQuery: (v) => set({ findQuery: v }),
+  runFindNext: () => set((s) => ({ findNonce: s.findNonce + 1 })),
+
+  showWhereUsed: async (name) => {
+    set({ whereUsed: { program: name, open: true, loading: true, hits: [] } })
+    try {
+      const { groups } = await api<{ groups: SearchGroup[] }>(`/api/search?q=${encodeURIComponent(name)}`)
+      const hits = (groups ?? [])
+        .flatMap((g) => g.hits)
+        .filter((h) => !(h.objectType === 'PROGRAM' && h.name === name))
+        .slice(0, 200)
+      set((s) => ({ whereUsed: { ...s.whereUsed, loading: false, hits } }))
+      get().addMessage('S', `Where-used list for ${name}: ${hits.length} hit(s)`)
+    } catch (e) {
+      set((s) => ({ whereUsed: { ...s.whereUsed, loading: false } }))
+      get().addMessage('E', `Where-used list failed: ${(e as Error).message}`)
+    }
+  },
+
+  closeWhereUsed: () => set((s) => ({ whereUsed: { ...s.whereUsed, open: false } })),
 
   bumpRepo: () => set((s) => ({ repoVersion: s.repoVersion + 1 })),
 }))
