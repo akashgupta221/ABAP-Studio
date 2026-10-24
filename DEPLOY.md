@@ -99,6 +99,7 @@ must not see them.
 1. In the GitHub repository, open **Settings → Secrets and variables → Actions** and add:
    - `TURSO_DATABASE_URL` — the `libsql://` URL.
    - `TURSO_AUTH_TOKEN` — a Turso token.
+   - `OWNER_EMAIL` — the verified owner email (recommended; authoritative when set).
    - `OWNER_PASSWORD` — optional but recommended: a fresh owner password you have not
      used anywhere else. GitHub masks it in logs; delete the secret after the run.
    You can add them from a terminal instead (the values are prompted, not written to
@@ -107,13 +108,16 @@ must not see them.
    ```bash
    gh secret set TURSO_DATABASE_URL --repo akashgupta221/ABAP-Studio
    gh secret set TURSO_AUTH_TOKEN --repo akashgupta221/ABAP-Studio
+   gh secret set OWNER_EMAIL --repo akashgupta221/ABAP-Studio
    gh secret set OWNER_PASSWORD --repo akashgupta221/ABAP-Studio
    ```
 
 2. Open **Actions → Provision owner → Run workflow** and enter:
    - `confirm`: `PROVISION`
    - `owner_username`: `AKASH`
-   - `owner_email`: the verified owner email (recommended; it is stored on the owner row)
+
+   The owner email comes from the `OWNER_EMAIL` secret so it is not echoed in the
+   workflow-dispatch input or logs.
 
 3. The workflow runs `owner:provision` and the read-only `owner:verify`. It fails unless
    exactly one owner exists and every legacy program is claimed. It never prints tokens

@@ -272,9 +272,10 @@ printing tokens or the password.
    (recommended; authoritative) or `OWNER_USERNAME=AKASH` as the interim fallback. Rotate
    `AUTH_SECRET` at the same time if desired; rotation logs everyone out again.
 3. Add repository secrets (never in chat or Git): `TURSO_DATABASE_URL`,
-   `TURSO_AUTH_TOKEN`, and optionally `OWNER_PASSWORD` with a fresh strong password.
-   Trigger **Actions → Provision owner → Run workflow** with `confirm=PROVISION`,
-   `owner_username=AKASH`, and the same `owner_email`. The local equivalent is:
+   `TURSO_AUTH_TOKEN`, `OWNER_EMAIL`, and optionally `OWNER_PASSWORD` with a fresh strong
+   password. Trigger **Actions → Provision owner → Run workflow** with
+   `confirm=PROVISION` and `owner_username=AKASH`; the email is read from the secret so it
+   is not echoed in dispatch inputs. The local equivalent is:
    ```bash
    CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH OWNER_EMAIL="owner@example.com" \
    TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:provision

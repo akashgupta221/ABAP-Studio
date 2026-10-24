@@ -178,11 +178,11 @@ users, private programs, favorites or execution history**.
 
 5. **Provision the owner and claim legacy programs** (after a verified backup). The
    recommended path uses the manual **Provision owner** GitHub Actions workflow: store
-   `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` as repository secrets, optionally set
-   `OWNER_PASSWORD` to a fresh strong value, then run the workflow with
-   `confirm=PROVISION`, `owner_username=AKASH`, and the verified owner email. It runs
-   `owner:provision` and the read-only `owner:verify` without printing secrets. Delete the
-   temporary `OWNER_PASSWORD` secret after the run.
+   `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and the verified `OWNER_EMAIL` as repository
+   secrets, optionally set `OWNER_PASSWORD` to a fresh strong value, then run the workflow
+   with `confirm=PROVISION` and `owner_username=AKASH`. It runs `owner:provision` and the
+   read-only `owner:verify` without printing secrets. Delete the temporary
+   `OWNER_PASSWORD` secret after the run.
 
    The local equivalent (set `TURSO_*` in your shell, never in Git) is:
 
