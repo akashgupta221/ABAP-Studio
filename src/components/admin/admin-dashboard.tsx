@@ -6,6 +6,7 @@
 // trusted for authorization.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import {
   Activity,
   AlertTriangle,
@@ -302,8 +303,18 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
             </Link>
             <button
               type="button"
-              onClick={() => {
-                void fetch('/api/auth/logout', { method: 'POST' }).finally(() => window.location.assign('/'))
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/auth/logout', { method: 'POST' })
+                  if (!res.ok) {
+                    const data = (await res.json().catch(() => ({}))) as { error?: string }
+                    toast.error(data.error ?? 'Logoff could not be completed')
+                    return
+                  }
+                  window.location.assign('/')
+                } catch {
+                  toast.error('Cannot reach the system — logoff was not confirmed')
+                }
               }}
               className="flex items-center gap-1 rounded border border-white/25 bg-white/10 px-2.5 py-1 hover:bg-white/20"
             >

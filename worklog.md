@@ -420,3 +420,40 @@ Stage Summary:
 - P0: accepted and closed at the owner-interface level; production owner access, isolation and admin review are verified.
 - Next: P1 Clerk migration using the owner-selected application; migration plan and explicit approval required before auth code changes.
 - Final acceptance remains open (UI/accessibility automation, type-check debt, Clerk, Modern ABAP).
+
+---
+Task ID: 21
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Implement the P1 Clerk identity migration, verify local gates, and record the production blocker
+
+Work Log:
+- Owner selected the existing “ABAP Studio” Clerk application `app_3Ks7MMboysX2gIBJhfURlf16Pwq`; no replacement application was created.
+- Added the Clerk dependency, `ClerkProvider`, SAP-framed `/sign-in` and `/sign-up` pages, `proxy.ts` middleware, and client session/sign-out controls.
+- Added `User.clerkId` and an additive `ensureSchema()` column/index bootstrap for existing SQLite/Turso databases.
+- Implemented Clerk-first session resolution in `src/lib/session.ts`; the legacy scrypt/HMAC cookie is used only while `LEGACY_AUTH_MODE` permits it. A Clerk session that fails mapping or is suspended fails closed and does not fall through to legacy.
+- Implemented verified-email linking in `src/lib/clerk-user.ts`: existing SAP username/role/programs/history are preserved; new accounts become `USER` with generated SAP usernames; linking increments `sessionVersion`; mixed-case legacy emails map case-insensitively; ambiguous/conflicting links are rejected.
+- Kept `OWNER_EMAIL` + database `role = OWNER` as the owner gate; Clerk metadata never grants roles.
+- Added `off` / `fallback` / `full` cutover modes. Production defaults to `fallback` even if Clerk keys are missing, blocking new password registrations.
+- Added signed `POST /api/webhooks/clerk` for `user.created`, `user.updated` and `user.deleted`, including Clerk’s snake_case webhook shape. Deletion clears the link and suspends the DB row.
+- Extended admin suspend/reactivate/force-logout/delete to ban/unban/revoke/delete linked Clerk identities; Clerk 404s no longer block DB cleanup.
+- Logout revokes the Clerk session and refuses to report success if revocation fails. Clerk middleware clears the legacy cookie whenever a Clerk session exists, preventing old sessions from resurfacing after Clerk sign-out.
+- Added `ClerkSessionNotice` for active-but-unmapped sessions and `scripts/set-user-email.ts` (`bun run user:email`) for owner-verified mapping of legacy accounts without an email. The script audits the mapping and rejects collisions.
+- Disabled Clerk password auth plus Facebook/GitHub in the development instance; Email OTP and Google remain enabled. The local `<SignIn />` then rendered only Google + Email, with no password field. An initial empty render after the config change was a hydration timing issue and rendered after reload.
+
+Verification:
+- `bun run lint` → pass
+- `bun run test` → 26 pass, 0 fail (69 assertions), including Clerk identity/webhook mapping tests
+- `bun run test:api` → 52 checks passed
+- `bun run build` → pass
+- Disposable SQLite integration check: owner verified email preserved `AKASH` + `OWNER`; new Clerk account became `USER`; mixed-case legacy email mapped to the existing row; repeat sign-in was idempotent; linking invalidated old legacy sessions
+- `user:email` disposable check: normalized/stored the address, wrote `USER_EMAIL_MAP`, and rejected a collision
+- Local `/sign-in` reached the Clerk form with Email OTP + Google only
+- `clerk deploy status` → production `not_started`, no production instance/domain
+- Local `.env` has development keys only; production Vercel keys and `CLERK_WEBHOOK_SECRET` remain unset
+- No real Clerk-authenticated session, Google OAuth flow, owner `/admin` mapping, webhook delivery or production P1 isolation has been verified
+- No key, password, OTP, session token or user email was printed or committed
+
+Stage Summary:
+- P1 identity code, local gates, admin integration, webhook route and migration tooling are complete on `clerk-migration`; P1 is **not** accepted.
+- Blocking owner actions: run interactive `npx clerk deploy` on a DNS-controlled production domain, add production Clerk keys + webhook secret in Vercel, run the browser sign-in/owner/isolation checks, and provide verified-email mappings for the remaining non-owner accounts.
+- P0 remains deployed, accepted and unchanged. Modern ABAP remains paused.

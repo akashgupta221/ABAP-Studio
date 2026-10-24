@@ -3,6 +3,12 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { writeAudit } from '@/lib/admin'
+import {
+  banClerkUser,
+  deleteClerkUser,
+  revokeClerkUserSessions,
+  unbanClerkUser,
+} from '@/lib/clerk-user'
 import { requireOwner, sameOrigin, serverError } from '@/lib/session'
 
 // PATCH /api/admin/users/[id] — suspend, reactivate, or revoke sessions
@@ -27,6 +33,41 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     }
     if (target.role === 'OWNER') {
       return NextResponse.json({ error: 'The designated owner account cannot be modified here' }, { status: 403 })
+    }
+
+    // Clerk actions are applied before the database state change. Suspension is
+    // still enforced by the DB even if the Clerk API is temporarily unavailable;
+    // reactivation and force-logout must not claim success if Clerk did not obey.
+    let clerkSessionsRevoked = 0
+    if (target.clerkId) {
+      if (action === 'suspend') {
+        try {
+          await banClerkUser(target.clerkId)
+          clerkSessionsRevoked = await revokeClerkUserSessions(target.clerkId)
+        } catch (error) {
+          console.error('[admin/users] Clerk suspend failed:', error instanceof Error ? error.message : error)
+        }
+      } else if (action === 'reactivate') {
+        try {
+          await unbanClerkUser(target.clerkId)
+        } catch (error) {
+          console.error('[admin/users] Clerk reactivate failed:', error instanceof Error ? error.message : error)
+          return NextResponse.json(
+            { error: 'The Clerk account could not be reactivated; the database record was left suspended' },
+            { status: 502 },
+          )
+        }
+      } else {
+        try {
+          clerkSessionsRevoked = await revokeClerkUserSessions(target.clerkId)
+        } catch (error) {
+          console.error('[admin/users] Clerk session revoke failed:', error instanceof Error ? error.message : error)
+          return NextResponse.json(
+            { error: 'Clerk sessions could not be revoked; no change was made' },
+            { status: 502 },
+          )
+        }
+      }
     }
 
     const data =
@@ -54,7 +95,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       target.username,
     )
 
-    return NextResponse.json({ user: updated })
+    return NextResponse.json({ user: updated, clerkSessionsRevoked })
   } catch (error) {
     return serverError('admin/users/patch', error)
   }
@@ -84,6 +125,20 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
         { error: 'Type the exact user name to confirm permanent deletion' },
         { status: 400 },
       )
+    }
+
+    // Delete the Clerk identity first so a deleted app user cannot simply sign
+    // in again and be recreated with the same verified email.
+    if (target.clerkId) {
+      try {
+        await deleteClerkUser(target.clerkId)
+      } catch (error) {
+        console.error('[admin/users] Clerk delete failed:', error instanceof Error ? error.message : error)
+        return NextResponse.json(
+          { error: 'The Clerk identity could not be deleted; no application data was removed' },
+          { status: 502 },
+        )
+      }
     }
 
     await writeAudit(auth.user, 'USER_DELETE', 'USER', target.id, target.username)

@@ -3,6 +3,7 @@
 // ── SAP GUI shell — NetWeaver ABAP Workbench look & feel ──────────────
 import { useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { UserButton } from '@clerk/nextjs'
 import { Redo2, Undo2 } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem,
@@ -920,6 +921,11 @@ export function SapShell() {
         </span>
         <span className="truncate text-[12px] font-semibold">{title}</span>
         <span className="ml-auto flex select-none items-center gap-1 text-[12px] leading-none">
+          {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? (
+            <span className="mr-1 flex items-center" title="Secure account">
+              <UserButton appearance={{ elements: { avatarBox: 'h-5 w-5' } }} />
+            </span>
+          ) : null}
           <button
             type="button"
             className="cursor-default px-1.5 opacity-80 hover:opacity-100"

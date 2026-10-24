@@ -1,9 +1,13 @@
 // ── Server-side session and authorization helpers ──────────────────────
 // A valid signature is not enough: every request also checks that the user
 // still exists, is not suspended, and has not had their session version bumped.
+import { auth } from '@clerk/nextjs/server'
+import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { db, ensureSchema } from '@/lib/db'
 import { parseSessionToken, SESSION_COOKIE } from '@/lib/auth'
+import { clerkServerConfigured, legacyLoginEnabled } from '@/lib/auth-mode'
+import { resolveClerkUser } from '@/lib/clerk-user'
 
 export interface AuthUser {
   id: string
@@ -18,13 +22,48 @@ export type AuthResult =
   | { user: AuthUser; response?: never }
   | { user?: never; response: NextResponse }
 
-/** Resolve the signed-in user, or null when the cookie is missing/invalid/revoked. */
-export async function getSessionUser(req: NextRequest): Promise<AuthUser | null> {
-  const token = req.cookies.get(SESSION_COOKIE)?.value
+/**
+ * Resolve the signed-in user. Clerk is tried first; the legacy signed cookie is
+ * accepted only while the cutover mode allows it. A Clerk session that cannot
+ * be mapped fails closed rather than falling through to another identity.
+ */
+export async function getSessionUser(req?: NextRequest): Promise<AuthUser | null> {
+  if (clerkServerConfigured()) {
+    let clerkUserId: string | null = null
+    try {
+      const session = await auth()
+      clerkUserId = session.userId ?? null
+    } catch (error) {
+      // `auth()` can throw when middleware is absent in local tooling. Log only
+      // the message and let the legacy fallback handle a legacy session.
+      console.error('[clerk] session lookup failed:', error instanceof Error ? error.message : error)
+    }
+
+    if (clerkUserId) {
+      try {
+        const user = await resolveClerkUser(clerkUserId)
+        return user && !user.suspended ? user : null
+      } catch (error) {
+        console.error('[clerk] user linking failed:', error instanceof Error ? error.message : error)
+        return null
+      }
+    }
+  }
+
+  if (!legacyLoginEnabled()) return null
+
+  let token = req?.cookies.get(SESSION_COOKIE)?.value
+  if (!token) {
+    try {
+      token = (await cookies()).get(SESSION_COOKIE)?.value
+    } catch {
+      // Outside a request context there is no cookie to inspect.
+    }
+  }
   return getSessionUserFromToken(token)
 }
 
-/** Cookie-independent variant used by server components. */
+/** Cookie-independent legacy variant, retained for scripts and the cutover. */
 export async function getSessionUserFromToken(token: string | undefined): Promise<AuthUser | null> {
   const session = token ? parseSessionToken(token) : null
   if (!session) return null
@@ -48,7 +87,7 @@ export async function getSessionUserFromToken(token: string | undefined): Promis
 }
 
 /** Require any signed-in user. Usage: `const auth = await requireUser(req); if (!auth.user) return auth.response`. */
-export async function requireUser(req: NextRequest): Promise<AuthResult> {
+export async function requireUser(req?: NextRequest): Promise<AuthResult> {
   const user = await getSessionUser(req)
   if (!user) {
     return {

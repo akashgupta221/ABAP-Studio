@@ -66,8 +66,10 @@ practice sandbox**; training examples are shared and read-only.
 - The designated owner can inspect all users and non-example programs
 - **Owner-only admin dashboard** (`/admin`): metrics, activity, users, programs, audit
   log, suspend/reactivate, revoke sessions and confirmed deletion
-- Built-in logon is **interim**; Clerk Email OTP + Google sign-in is planned but not yet
-  implemented. The owner setup/cutover guide is [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md).
+- **Clerk Email OTP + Google** is implemented on `clerk-migration`, with verified-email
+  account linking and database-authoritative roles. Production Clerk is not configured
+  yet; the built-in scrypt logon remains a temporary fallback during cutover. Guide:
+  [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md).
 
 ## Tech stack
 
@@ -105,16 +107,24 @@ bun run dev                   # → http://localhost:3000
 
 The database file is **not committed** (it contains password hashes and personal
 programs). On the first request the app auto-seeds the shared syllabus, examples, demo
-tables and function modules. Click **Register** on the logon pad to create a user.
+tables and function modules. In local development without Clerk keys
+(`LEGACY_AUTH_MODE=full` is the default outside production), open the **Legacy SAP user
+master** section and click **Create local test user**. With Clerk keys present, use
+**Create User** for Clerk sign-up. Production defaults to `fallback` and blocks new
+password registrations.
 
 To make a local account the owner:
 
 ```bash
 # Register the account in the UI first, then:
 OWNER_USERNAME=AKASH OWNER_EMAIL="owner@example.com" bun run owner:provision
-OWNER_USERNAME=AKASH bun run owner:password   # hidden input; no shell history
+OWNER_USERNAME=AKASH bun run owner:password   # optional legacy fallback; hidden input
 bun run owner:verify                          # read-only: role, email match, legacy claim
 ```
+
+After Clerk is configured, the owner signs in through Clerk; no owner password is
+required. For a non-owner legacy account without an email on file, the owner can attach
+the verified address with `bun run user:email` (see the Clerk guide).
 
 Add `OWNER_USERNAME="AKASH"` **or** `OWNER_EMAIL="owner@example.com"` to `.env` so the
 admin gate recognizes the account. `OWNER_EMAIL` is authoritative when both are set and
@@ -134,9 +144,14 @@ bun run build && bun run start
 | `DATABASE_URL` | local | SQLite file path — `file:./db/app.db` (relative to `prisma/`) |
 | `TURSO_DATABASE_URL` | Vercel + shell | libSQL URL of the Turso database (`libsql://…`) |
 | `TURSO_AUTH_TOKEN` | Vercel + shell | Turso access token |
-| `AUTH_SECRET` | Vercel | Long random session-signing secret — **required in production**; generate with `openssl rand -base64 32` |
+| `AUTH_SECRET` | Vercel | Legacy fallback session-signing secret — keep until the fallback is removed; generate with `openssl rand -base64 32` |
 | `OWNER_USERNAME` | Vercel + local | Interim single-owner account name; fallback when `OWNER_EMAIL` is unset |
-| `OWNER_EMAIL` | Vercel + provisioning | Authoritative owner identity when set; must match the verified email on the `OWNER` row |
+| `OWNER_EMAIL` | Vercel + provisioning | Authoritative owner identity; must match the verified email on the `OWNER` row |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Vercel + local | Clerk browser key (`pk_live_…` in production) |
+| `CLERK_SECRET_KEY` | Vercel + local | Clerk server key (`sk_live_…`); never expose |
+| `CLERK_WEBHOOK_SECRET` | Vercel | Clerk webhook signing secret for `/api/webhooks/clerk` |
+| `LEGACY_AUTH_MODE` | Vercel + local | `fallback` during cutover; `off` after every account is linked |
+| `NEXT_PUBLIC_LEGACY_AUTH_MODE` | Vercel + local | Hides the legacy form when set to `off` |
 
 Never commit real values; `.env` is git-ignored. Do not paste secrets into chat or issues.
 
@@ -155,19 +170,22 @@ or production. Stop any dev server sharing `.next` before running it.
 
 ## Deploy for free (Vercel + Turso)
 
-Every `git push` rebuilds and redeploys the live app. The v0.3 build is live;
-**database provisioning and the Vercel owner gate are verified**, and a controlled
-production isolation run passed, and the owner has reviewed `/admin`. **P0 is accepted**;
-the next phase is Clerk Email OTP + Google sign-in. Read
-[`docs/MASTER-PROJECT-SPEC.md`](docs/MASTER-PROJECT-SPEC.md) §4.2 for the P1 cutover.
-The ownership migration changes who can see legacy programs and invalidates old sessions;
-the production legacy-favorites table is verified empty.
+Every `git push` rebuilds and redeploys the live app. The v0.3 security build is live;
+**database provisioning and the Vercel owner gate are verified**, a controlled production
+isolation run passed, and the owner reviewed `/admin` (**P0 accepted**). P1 Clerk code is
+implemented on `clerk-migration` and passes the local gates, but production Clerk is not
+configured yet, so P1 is **not deployed or accepted**. Read
+[`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) before the cutover. The ownership migration
+changes who can see legacy programs and invalidates old sessions; the production
+legacy-favorites table is verified empty.
 
 1. **GitHub** — push this repository.
 2. **Turso** — create a free database, copy its `libsql://` URL and create a token.
 3. **Vercel** — import the repo and set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`,
    `AUTH_SECRET`, and the owner identity (`OWNER_EMAIL`, or `OWNER_USERNAME` as the
-   interim fallback). If both are set, `OWNER_EMAIL` is authoritative.
+   interim fallback). If both are set, `OWNER_EMAIL` is authoritative. For the P1
+   cutover, also follow [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) to add the
+   production Clerk keys, webhook secret and `LEGACY_AUTH_MODE=fallback`.
 4. **Seed the cloud database** — from your machine:
 
 ```bash
@@ -270,7 +288,9 @@ tests/                   Unit tests + disposable API/security suite
 
 | Endpoint | Purpose |
 | --- | --- |
-| `POST /api/auth/register` · `login` · `logout`, `GET /api/auth/me` | User master and sessions |
+| `POST /api/auth/register` · `login` · `logout`, `GET /api/auth/me` | Legacy fallback user master and session bridge |
+| `POST /api/webhooks/clerk` | Signed Clerk user sync (created/updated/deleted) |
+| `/sign-in`, `/sign-up` | Clerk Email OTP + Google authentication pages |
 | `POST /api/check` | ABAP syntax check |
 | `POST /api/execute` | Run an ABAP program (authenticated) |
 | `GET /api/topics` · `programs` · `tables` · `functions` · `search` | Repository and DDIC content |
@@ -281,7 +301,8 @@ tests/                   Unit tests + disposable API/security suite
 
 ## Roadmap
 
-- Clerk Email OTP + Google sign-in and legacy account migration (blocked on owner keys)
+- P1 Clerk cutover: code and local gates pass; production instance/domain, production keys,
+  webhook and interactive owner/non-owner verification remain
 - Separate Modern ABAP environment with an honest executable / simulated / unsupported matrix
 - Distributed rate limiting for multi-instance deployments
 - Broader ABAP OO coverage, RAP/AMDP constructs and UI acceptance automation

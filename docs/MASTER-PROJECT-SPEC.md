@@ -1,10 +1,10 @@
 # ABAP-Studio — Master Project Specification & Audit
 
-**Version:** 0.3 (implementation status)
+**Version:** 0.4 (P1 implementation status; owner specification remains v0.3)
 **Date:** 24.10.2026
 **Owner specification:** v0.3 (restated 24.10.2026)
 **Repository:** https://github.com/akashgupta221/ABAP-Studio
-**Live site:** https://abap-studio-rd9d.vercel.app (v0.3 security; owner gate and production isolation verified 24.10.2026)
+**Live site:** https://abap-studio-rd9d.vercel.app (P0 v0.3 security deployed; P1 Clerk code is **not** deployed)
 **Document status:** implementation audit — **not a final acceptance certificate**
 
 This document records **verified facts** and explicitly separates completed work,
@@ -22,7 +22,7 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 | Styling | Tailwind CSS 4 + SAP GUI-inspired CSS |
 | Database | Prisma 6.19; SQLite locally; Turso/libSQL when `TURSO_DATABASE_URL` is set |
 | ABAP engine | Custom tokenizer, parser and interpreter in `src/lib/abap/` |
-| Authentication | Interim built-in user master: scrypt hashes + HMAC-signed, HTTP-only session cookie, **validated against the database on every protected request** |
+| Authentication | **P1 Clerk code** (Email OTP + Google) with verified-email account linking and database-authoritative roles; production Clerk is **not configured**. Legacy scrypt/HMAC fallback remains during cutover. |
 | Authorization | Server-side `OWNER` / `USER` roles, per-program ownership, per-user favorites/sandbox |
 | Administration | Owner-only `/admin` dashboard and `/api/admin/*` |
 | Deployment | Vercel Hobby + Turso free; `git push` deploys; additive schema migration at runtime |
@@ -72,12 +72,18 @@ remaining blockers and unverified claims. Planned work is labelled as such.
   The old destructive “wipe + reseed” behaviour was removed.
 - **Local databases are no longer committed** because they contain password hashes and
   personal programs. A fresh clone creates its schema and auto-seeds shared content.
+- **P1 Clerk identity layer (branch code, not production):** Clerk is tried before the
+  legacy cookie; a verified Clerk email maps to the existing `User` row (preserving SAP
+  username, role, programs and history), while a new verified account gets an ordinary
+  `USER` row. A Clerk session that cannot be mapped fails closed. Role and suspension are
+  always read from the database, never from Clerk metadata. The legacy cookie is cleared
+  as soon as a Clerk session exists, and linking invalidates old legacy sessions.
 
 ### 1.4 Verified gaps and blockers (must not be marked complete)
 
 | Gap | Evidence | Impact / next action |
 |---|---|---|
-| **Clerk not integrated** | No Clerk dependency or keys; interim built-in logon is active | Email OTP, Google sign-in, Clerk webhooks and Clerk account migration remain blocked on owner-created keys. |
+| **Clerk production cutover not complete** | P1 code is implemented on `clerk-migration`; local lint/26 unit/52 API/build gates pass. The selected “ABAP Studio” app has Email OTP + Google enabled (password/Facebook/GitHub disabled) and a development instance. `clerk deploy status` reports `not_started`; there is no production instance/domain, production keys are not in Vercel, `CLERK_WEBHOOK_SECRET` is absent, and no real Clerk session, Google OAuth flow or webhook delivery has been exercised. | Owner must run the interactive `clerk deploy` with a DNS-controlled domain, set production keys and webhook secret, map the non-owner accounts, and complete the browser checks in `docs/CLERK-SETUP.md`. P1 is **not accepted**. |
 | **Modern ABAP environment not implemented** | No environment switch, CDS/RAP/AMDP runtime or capability matrix | Specification §10 is not started. Scope needs owner approval. |
 | **Legacy production favorites: verified empty** | Dry-run run `40111257243` found the old global `Favorite` table empty. | No migration is needed. The guarded workflow is retained for future databases; no data was copied or deleted. |
 | **`AUTH_SECRET` rotation optional** | Production health reports `hasAuthSecret: true`; the signer fails closed if it is missing | The existing secret is working. Rotation is optional and invalidates all sessions (expected). |
@@ -90,11 +96,14 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 
 ```
 Browser (React workbench)
-  │  fetch /api/*  +  HTTP-only signed session cookie
+  │  Clerk session (primary)  +  temporary legacy HMAC cookie
   ▼
-Next.js route handlers
+proxy.ts → Clerk middleware (session + legacy-cookie hygiene)
+  ▼
+Next.js route handlers / admin page
   │  requireUser / requireOwner
-  │  → parse token → DB sessionVersion check → suspension check
+  │  → Clerk auth() first → DB link by clerkId or verified email
+  │  → DB role/suspension check; legacy fallback only while the cutover allows
   │  → same-origin CSRF check on mutations → rate limit
   ▼
 src/lib/access.ts (example / private / legacy / owner rules)
@@ -110,10 +119,12 @@ Prisma client ── TURSO_DATABASE_URL set ──► Turso/libSQL (production)
 ```
 
 Schema models: `Topic`, `Program`, `DbTable`, `DbRow`, `FunctionModule`,
-`ExecutionLog`, `User`, `UserFavorite`, `AdminAuditLog`. The obsolete global
-`Favorite` model is no longer used.
+`ExecutionLog`, `User` (including `clerkId`), `UserFavorite`, `AdminAuditLog`. The
+obsolete global `Favorite` model is no longer used.
 
 ### 1.6 Verification performed on 24.10.2026
+
+**P0 verification (before the P1 Clerk code):**
 
 - `bun run lint` — passed.
 - `bun test tests` — **19 tests passed** across auth, access rules, sandbox, interpreter
@@ -160,6 +171,29 @@ Schema models: `Topic`, `Program`, `DbTable`, `DbRow`, `FunctionModule`,
 - The test user and its sandbox were deleted after verification; the local database
   backup was removed and the database was untracked.
 
+**P1 Clerk local verification (24.10.2026; production not verified):**
+
+- `bun run lint` — passed.
+- `bun test tests` — **26 tests passed** (69 assertions), including verified-email
+  selection, webhook snake_case normalization, username generation and legacy access.
+- `bash tests/run-api-tests.sh` — **52 API checks passed** against a disposable
+  database/server.
+- `bun run build` — passed.
+- A disposable SQLite integration check exercised `syncClerkIdentity` directly:
+  owner email → preserved `AKASH`/`OWNER`, new account → `USER`, mixed-case legacy email →
+  existing row, repeat sign-in idempotent, linking increments `sessionVersion`, and a
+  second Clerk account cannot take over an already linked row.
+- The first `user:email` mapping was applied to the disposable database, audited as
+  `USER_EMAIL_MAP`, normalized the address, and rejected a collision with another user.
+- Local `/sign-in` renders **Continue with Google** and **Email address** only; the
+  password field is absent. The Clerk component briefly appeared empty during hydration
+  and rendered after reload; this was not treated as a successful sign-in.
+- Clerk config reports Email OTP enabled and Google enabled/authenticatable; password,
+  Facebook and GitHub were disabled. The Google `client_id`/`client_secret` fields are
+  empty (shared-credential setup), so real Google sign-in remains untested.
+- No authenticated Clerk session, owner mapping in the browser, webhook delivery or
+  production deployment has been verified. `clerk deploy status` remains `not_started`.
+
 ---
 
 ## 2. Requirement-by-requirement status
@@ -169,33 +203,34 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 
 | Owner spec § | Requirement | Status | Evidence / remaining work |
 |---|---|---|---|
-| 6 | Owner questions and decisions | Ongoing | Clerk keys/migration, Modern ABAP scope, production timing and legacy-favorite policy are listed in §4. |
-| 7 | Clerk: email OTP, Google, protected routes, provisioning, webhooks, migration | **Blocked** | Interim built-in logon is secure and server-validated. No Clerk keys exist. |
+| 6 | Owner questions and decisions | Ongoing | Clerk production domain/keys, Modern ABAP scope, production timing and legacy-favorite policy are listed in §4. |
+| 7 | Clerk: email OTP, Google, protected routes, provisioning, webhooks, migration | **Partial (code/local; production blocked)** | Clerk pages, provider, session resolution, verified-email linking, owner gate integration, admin ban/unban/revoke/delete, signed webhook and legacy cutover modes are implemented on `clerk-migration`. Local lint/26 unit/52 API/build gates pass. Production instance/domain/keys/webhook and interactive sign-in are still missing; legacy fallback remains active. **P1 not accepted.** |
 | 8 | Owner-only admin dashboard: metrics, search, suspend/reactivate, sessions, deletion, audit | **Done (deployed and live gate verified)** | `/admin` and `/api/admin/*` pass in production (`owner=true`, admin API/page `200`); controlled suspend, session revocation, reactivation and deletion checks passed. |
 | 9 | Preserve and test the Standard ABAP environment | **Done (current scope)** | Screenshot fidelity preserved; automated tests execute all seeded examples. |
 | 10 | Separate Modern ABAP environment + honest capability matrix | **Missing** | Needs approved executable / validated-or-simulated / unsupported scope. |
 | 11 | Professional developer GUI | **Partial** | Standard SAP GUI is complete. Modern environment GUI and a formal accessibility audit are pending. |
 | 12 | Data ownership and isolation | **Done (deployed and production-verified)** | Server-side ownership rules + private sandbox verified. Production legacy claim applied (12 programs, 0 unclaimed); controlled regular-user isolation, owner access, session revocation, suspension and deletion passed. |
 | 13 | Security and reliability | **Done (application layer, deployed)** | Sessions, CSRF, rate limiting, per-user execution authorization and audit trail; production anonymous APIs verified closed. Shared/distributed limiter remains future hardening. |
-| 14 | Continuous testing and completion verification | **Partial** | Lint clean, 19 unit tests, 52 API checks and production build pass; production owner/isolation workflows pass. UI automation, accessibility audit and final acceptance report pending. |
+| 14 | Continuous testing and completion verification | **Partial** | Lint clean, 26 unit tests, 52 API checks and production build pass; P0 production owner/isolation workflows pass. P1 interaction/production, UI automation, accessibility audit and final acceptance report pending. |
 | 15 | Phase 0 audit | **Done** | This document. |
-| 15 | Phase 1 architecture/migration design | **Partial** | Architecture and legacy ownership plan documented; Clerk migration choice pending. |
-| 15 | Phases 2–8 | **In progress / blocked** | Security/admin/ownership complete in code. Clerk and Modern ABAP not started. |
+| 15 | Phase 1 architecture/migration design | **Done** | Owner approved verified-email mapping and phased cutover; the code and owner guide implement it. |
+| 15 | Phases 2–8 | **In progress / blocked** | P0 security/admin/ownership is deployed and accepted. P1 Clerk code is complete locally but production cutover is blocked on the Clerk domain/production instance. Modern ABAP has not started. |
 
 ### Deliverables checklist
 
 - [x] Repository audit report — this document.
 - [x] Architecture and data-flow documentation — §1.5.
-- [ ] Clerk account-migration plan — blocked on owner choice.
-- [ ] Clerk authentication implementation — blocked.
-- [x] Owner-only administration dashboard — deployed; production owner gate and controlled isolation checks pass; browser sign-off pending.
-- [x] Standard ABAP automated regression tests — 19 unit tests pass.
+- [x] Clerk account-migration plan — owner approved verified-email mapping; `user:email` and legacy fallback documented.
+- [ ] Clerk authentication implementation — code complete on `clerk-migration`; production cutover and interactive verification pending.
+- [x] Owner-only administration dashboard — deployed; production owner gate, controlled isolation checks and owner browser sign-off pass.
+- [x] Standard ABAP automated regression tests — 26 unit tests pass (including Clerk mapping).
 - [ ] Modern ABAP capability matrix and tests — pending scope approval.
 - [x] Improved Standard ABAP GUI fidelity — 24.10.2026.
 - [x] Security and authorization test coverage — 52 API checks pass.
 - [x] Environment and deployment documentation — README, DEPLOY, `.env.example`.
 - [x] Non-destructive seed/deploy path — verified locally.
-- [ ] Production migration and owner provisioning — owner role/legacy claim, live owner gate and production isolation verified; legacy favorites verified empty; final browser/UI sign-off remains.
+- [x] P0 production migration and owner provisioning — owner role/legacy claim, live owner gate, controlled isolation and owner `/admin` sign-off verified; legacy favorites verified empty.
+- [ ] P1 production migration — production Clerk instance/domain/keys/webhook, account mapping and interactive verification pending.
 - [ ] Final acceptance-test report — pending.
 
 ---
@@ -249,25 +284,79 @@ The owner supplied seven screenshots of a real SAP system (`MER`, client `105`, 
   and deleted a temporary user; its sandbox was removed and the counts returned to
   `users=4`, `programs=49`.
 
+### 3.4 P1 Clerk implementation (branch; production cutover pending)
+
+- Added `@clerk/nextjs`, `ClerkProvider` in the root layout, SAP-styled `/sign-in` and
+  `/sign-up` pages, and `proxy.ts` Clerk middleware with server-side admin checks.
+- Added `User.clerkId` plus an additive `ensureSchema()` column/index migration that is
+  safe for existing SQLite and Turso data.
+- `src/lib/session.ts` resolves Clerk first, then the legacy signed cookie only while
+  `LEGACY_AUTH_MODE` allows it. A Clerk session that cannot be mapped or is suspended
+  fails closed and never falls through to the legacy identity.
+- `src/lib/clerk-user.ts` links by verified email (case-insensitive, ambiguous matches
+  fail closed), preserves the existing SAP username/role/programs/history, creates new
+  accounts as `USER`, and invalidates old legacy sessions when linking.
+- The owner gate still requires database `role = OWNER` plus matching `OWNER_EMAIL`;
+  Clerk metadata never grants administration.
+- `src/lib/auth-mode.ts` implements `off` / `fallback` / `full` cutover modes. Production
+  defaults to `fallback` even if Clerk keys are missing, so public password registration
+  cannot silently reopen.
+- Added signed `POST /api/webhooks/clerk` handling for `user.created`, `user.updated` and
+  `user.deleted`, including Clerk’s snake_case JSON shape and idempotent sync.
+- Admin suspend/reactivate/force-logout/delete now also bans/unbans/revokes/deletes the
+  Clerk identity where linked. Clerk 404s do not block database cleanup.
+- Logging out revokes the Clerk session, clears/bumps the legacy session, and refuses to
+  claim success if Clerk revocation fails.
+- Added `ClerkSessionNotice` for an active-but-unmapped Clerk session and `scripts/set-user-email.ts`
+  (`bun run user:email`) for owner-verified legacy-account mapping.
+- The middleware deletes the legacy cookie whenever a Clerk session exists, preventing an
+  older legacy session from resurfacing after a Clerk sign-out.
+
+**Not yet verified:** real Clerk sign-in (Email OTP or Google), browser owner mapping,
+webhook delivery, production Clerk instance/domain/keys, and P1 production isolation.
+
 ---
 
 ## 4. Owner actions required
 
-### 4.1 Clerk integration (blocking spec §7)
+### 4.1 Clerk integration (P1; production cutover blocking)
 
 Full owner walkthrough: [`docs/CLERK-SETUP.md`](CLERK-SETUP.md).
 
-1. Create a Clerk application and enable **Email OTP** and **Google**.
-2. Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` and
-   `CLERK_WEBHOOK_SECRET` in Vercel. Never paste secrets into chat.
-3. Choose the migration policy:
-   - recommended: map verified Clerk email to the existing `User` row and retain the
-     SAP username; or
-   - replace the built-in logon and require re-registration.
-4. Approve adding Clerk middleware and protected-route matchers so server-side route
-   protection is consistent with Clerk sessions.
+The owner selected the **ABAP Studio** Clerk application
+(`app_3Ks7MMboysX2gIBJhfURlf16Pwq`) and approved verified-email mapping with a phased
+cutover. The development instance has Email OTP and Google enabled; password, Facebook
+and GitHub are disabled. P1 code is on `clerk-migration` and passes the local gates, but
+none of the following production steps is complete:
 
-### 4.2 Production owner provisioning (blocking release)
+1. **Production domain + Clerk instance.** Production Clerk requires a domain whose DNS
+   records the owner controls; the current `*.vercel.app` address is not sufficient.
+   Run `npx clerk@latest deploy` in a normal interactive terminal, add the displayed DNS
+   records, configure production Google OAuth credentials, and resume until
+   `clerk deploy status` reports the production instance/domain ready. This step cannot be
+   completed by the agent because it needs a human terminal and DNS access.
+2. **Vercel production environment.** Add the production
+   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`,
+   `OWNER_EMAIL`, and the existing `AUTH_SECRET`; set `LEGACY_AUTH_MODE=fallback` and
+   `NEXT_PUBLIC_LEGACY_AUTH_MODE=fallback` for the first cutover. Never use development
+   keys in production.
+3. **Webhook.** Create `https://<production-domain>/api/webhooks/clerk` for
+   `user.created`, `user.updated` and `user.deleted`, then copy the signing secret into
+   Vercel and redeploy. Until then `/api/webhooks/clerk` returns `503`.
+4. **Account mapping.** The owner row already matches `OWNER_EMAIL`. For each non-owner
+   account without a verified email on file, attach the owner-verified address with
+   `bun run user:email` (see the guide). Do not import scrypt hashes or send passwords.
+   Unmapped accounts remain on legacy fallback.
+5. **Interactive verification.** Complete Email OTP and Google sign-in in a browser;
+   verify owner `/admin`, a mapped non-owner, a new `USER`, suspension/ban, force logout,
+   deletion and webhook sync. None of these signed-in checks has been exercised yet.
+6. **Retire the fallback.** After every account is mapped and production passes, set
+   `LEGACY_AUTH_MODE=off` and `NEXT_PUBLIC_LEGACY_AUTH_MODE=off`; remove the scrypt/HMAC
+   code and `AUTH_SECRET` dependency in a later cleanup.
+
+P1 is **not accepted** until steps 1–5 pass against production.
+
+### 4.2 P0 production owner provisioning (accepted)
 
 The v0.3 build with the owner-email gate and secret-safe provisioning workflow is
 **deployed**. The additive schema migration ran against Turso and the anonymous API is
@@ -323,13 +412,15 @@ Explicit owner approval is required before implementation.
 
 ## 5. Next implementation order
 
-1. Complete Clerk Email OTP + Google and migrate/retire the built-in accounts per owner
-   decision.
-2. Re-run the full test suite and production-build verification after the Clerk cutover.
+1. Complete the P1 Clerk production cutover: interactive `clerk deploy` on a
+   DNS-controlled domain, production keys, webhook, account mapping and signed-in
+   verification.
+2. Re-run the full test suite and production-build verification after the Clerk cutover;
+   then set `LEGACY_AUTH_MODE=off` and remove the fallback code.
 3. Implement the approved Modern ABAP environment and capability matrix.
-5. Add UI-level automated acceptance tests and a formal accessibility review.
-6. Replace in-memory rate limiting with a shared limiter if the hosting tier requires it.
-7. Publish the final acceptance report — only after every production check passes.
+4. Add UI-level automated acceptance tests and a formal accessibility review.
+5. Replace in-memory rate limiting with a shared limiter if the hosting tier requires it.
+6. Publish the final acceptance report — only after every production check passes.
 
 ## 6. Commands
 
@@ -338,7 +429,7 @@ bun install
 bun run db:push              # create/update the local schema
 bun run dev                  # http://localhost:3000 (auto-seeds shared content)
 bun run lint
-bun test tests               # unit tests
+bun test tests               # 26 unit tests
 bun run test:api             # disposable end-to-end API suite (port 3100)
 bun run test:all             # lint + unit + API
 bun run build
@@ -347,12 +438,15 @@ bun run deploy:db            # remote schema/content upsert (requires TURSO_*)
 bun run owner:provision      # assign owner + claim legacy programs
 bun run owner:password       # hidden-input password reset
 bun run owner:verify         # read-only owner/legacy/email consistency check
+bun run user:email           # owner-verified legacy account → verified email mapping
 bun run owner:favorites      # dry-run legacy favorite migration (APPLY=YES to copy)
 ```
 
 ## 7. Explicit non-claims
 
-- Clerk authentication is **not** implemented.
+- Clerk authentication **code is implemented** on `clerk-migration`, but production
+  Clerk is **not configured** and no real Clerk sign-in, Google OAuth, webhook delivery
+  or P1 production isolation has been verified. P1 is **not accepted**.
 - The Modern ABAP environment is **not** implemented.
 - The v0.3 security code **is** deployed, and production owner provisioning and the live
   Vercel owner gate **are verified**: `AKASH` has `role = OWNER`, the owner email is
@@ -363,7 +457,7 @@ bun run owner:favorites      # dry-run legacy favorite migration (APPLY=YES to c
 - The password previously supplied in chat was **not** reused, stored or verified, and
   must be considered exposed. The temporary GitHub `OWNER_PASSWORD` secret was deleted
   after the owner's admin review; the database password remains owner-held.
-- Final acceptance is **not complete**: UI/accessibility automation and the remaining
-  type-check debt are still open. The legacy-favorites dry-run found the old table empty.
-  Clerk and Modern ABAP are not implemented.
+- Final acceptance is **not complete**: P1 production Clerk verification, UI/accessibility
+  automation and the remaining type-check debt are still open. The legacy-favorites
+  dry-run found the old table empty. Modern ABAP is not implemented.
 - The live site is the v0.3 build, not the earlier `11d2b1c` build.

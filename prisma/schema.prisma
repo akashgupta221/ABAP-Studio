@@ -119,8 +119,9 @@ model ExecutionLog {
 model User {
   id             String         @id @default(cuid())
   username       String         @unique // stored uppercase, like SAP user names
-  passwordHash   String // scrypt: "<salt-hex>:<hash-hex>"
-  email          String?        @unique // reserved for Clerk linking; never trusted until verified
+  passwordHash   String // scrypt: "<salt-hex>:<hash-hex>" (legacy); "clerk-only" for Clerk accounts
+  email          String?        @unique // verified Clerk email or owner-verified migration mapping
+  clerkId        String?        @unique // Clerk user id; links the Clerk identity to this SAP user
   displayName    String         @default("")
   role           String         @default("USER") // USER | OWNER (server-managed only)
   suspended      Boolean        @default(false)

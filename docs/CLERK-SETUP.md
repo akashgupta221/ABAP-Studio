@@ -1,112 +1,233 @@
 # Clerk setup and cutover guide
 
-This is the owner-action guide for the P1 Clerk migration. It does **not** claim that
-Clerk is implemented yet. Do not paste publishable/secret keys into chat, screenshots,
-issues or Git. Set them directly in Vercel (and optionally your local `.env`).
+This is the owner-action guide for the P1 Clerk migration. The P1 code is implemented
+on the `clerk-migration` branch and passes the local gates, but **production Clerk is not
+configured and P1 is not accepted yet**. Do not paste publishable/secret keys into chat,
+screenshots, issues or Git. Set them directly in Vercel (and locally in the git-ignored
+`.env`).
 
-## What Clerk will provide
+## Current status
+
+| Item | Status |
+|---|---|
+| Clerk application | Owner-selected **ABAP Studio** app, id `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
+| Development instance | Configured; local `.env` has development keys |
+| Production instance | **Not configured** — `clerk deploy status` reports `not_started`; there is no production domain |
+| Sign-in methods | Email OTP + Google enabled; password, Facebook and GitHub disabled |
+| P1 code | Implemented on `clerk-migration`; not merged or deployed |
+| Local gates | `lint`, 26 unit tests, 52 API checks and `build` pass |
+| Interactive Clerk sign-in | **Not verified** — no authenticated Clerk session has been exercised |
+| Google OAuth | Enabled in config, but a real Google sign-in has **not** been exercised |
+| Webhook | Route and signature verification are implemented; no Clerk endpoint/signing secret is configured |
+| Production keys | **Not set** in Vercel; only development keys exist locally |
+
+The selected Clerk application must not be replaced. Production setup resumes the same
+application.
+
+## What Clerk provides
 
 - Email one-time passcode (passwordless) sign-in.
 - Google sign-in.
-- Clerk-managed sessions, with the ABAP-Studio database remaining the authorization
-  source of truth for roles, suspension, ownership and audit history.
+- Clerk-managed sessions.
 
-The existing built-in scrypt logon is interim and will be retired after the cutover.
-Owner authorization will continue to require **both** the database `role = OWNER` and the
-configured `OWNER_EMAIL`.
+Clerk proves **identity only**. The ABAP-Studio database remains authoritative for:
 
-## 1. Create the Clerk application
+- `role` (`OWNER` / `USER`) and suspension;
+- ownership of private programs and sandboxes;
+- favorites and execution history;
+- the admin audit log.
 
-1. Sign in at <https://dashboard.clerk.com> with the owner's account.
-2. **Create application** → name it `ABAP-Studio`.
-3. Choose the sign-in methods:
-   - **Email** with **verification code** (Email OTP).
-   - **Google** (social connection).
-4. In the Google connection settings, follow Clerk's current instructions to create or
-   connect a Google OAuth client. Add the exact authorized redirect URI Clerk displays.
-   If Clerk offers shared Google credentials, using them is acceptable for this learning
-   project; an owner-owned Google Cloud client is also fine.
-5. Disable any sign-in method you do not want public. Do not enable password sign-in if
-   the goal is passwordless-only.
+Clerk metadata, client-supplied roles and public metadata are never used for
+authorization. Owner access still requires **both** the database `role = OWNER` and the
+configured `OWNER_EMAIL`; it fails closed if `OWNER_EMAIL` is missing or mismatched.
 
-## 2. Configure URLs and origins
+## How the migration works
 
-Use the production URL `https://abap-studio-rd9d.vercel.app` and, for local testing,
-`http://localhost:3000`.
+1. The browser signs in through Clerk (`/sign-in` or `/sign-up`).
+2. `getSessionUser()` resolves the Clerk session first and calls
+   `resolveClerkUser()`.
+3. The server looks up the `User` row by `clerkId`. If none exists, it reads the
+   **primary verified email** from Clerk and looks for an existing `User` row with that
+   email (case-insensitive, with ambiguous matches failing closed).
+4. A matching row keeps its SAP username, role, private programs, favorites and history;
+   the server records the Clerk id and invalidates old legacy sessions.
+5. A new verified Clerk account creates an ordinary `USER` row with a generated SAP
+   username and `passwordHash = 'clerk-only'`. It can never choose `OWNER`.
+6. A Clerk session that cannot be mapped, or maps to a suspended row, fails closed. It
+   does **not** fall through to the legacy cookie.
 
-In Clerk's application settings, set the paths the app will expose after the code
-cutover:
+The signed webhook at `POST /api/webhooks/clerk` is a consistency path for
+`user.created`, `user.updated` and `user.deleted`. Session resolution also links on first
+sign-in, so the webhook is not the only path. Deletion in Clerk clears the link and
+suspends the database row; application data is retained for the owner’s review.
+
+## Cutover modes
+
+`LEGACY_AUTH_MODE` controls the temporary built-in scrypt/HMAC path:
+
+| Mode | Behaviour | Use |
+|---|---|---|
+| `full` | Legacy logon **and** registration | Disposable local/API tests only |
+| `fallback` | Legacy logon for existing accounts; registration is blocked | Default in production during the migration |
+| `off` | Legacy endpoints are retired | Only after every account is linked and production is verified |
+
+`NEXT_PUBLIC_LEGACY_AUTH_MODE=off` hides the legacy form in the UI. Set both server and
+public values consistently. Production defaults to `fallback` even if Clerk keys are
+temporarily missing, so a missing key cannot silently reopen public password
+registration.
+
+## 1. Configure the production Clerk instance (owner, interactive)
+
+Production Clerk needs a domain whose DNS records you control. A bare
+`*.vercel.app` address cannot be used for the production Clerk domain. The repository
+does not currently have a custom domain, so this is the main blocker.
+
+In a normal terminal (not through the agent), run:
+
+```bash
+npx clerk@latest deploy
+```
+
+The command is interactive. It will:
+
+1. create the production instance for the selected ABAP Studio application;
+2. print the DNS records to add at your domain registrar;
+3. collect production OAuth credentials (including Google);
+4. verify the domain, SSL and email DNS.
+
+Add the displayed DNS records, then re-run the command to resume until
+`clerk deploy status` reports the production instance and domain as ready. If Google
+asks for an OAuth client, follow Clerk’s current redirect URI instructions; do not reuse
+development credentials in production.
+
+## 2. Set production environment variables
+
+In the Clerk application settings, set the paths for the instance you are testing:
 
 - Sign-in URL: `/sign-in`
 - Sign-up URL: `/sign-up`
 - After sign-in: `/`
 - After sign-up: `/`
+- After sign-out: `/`
 
-Add both origins to the allowed origins/redirect URLs. If Vercel preview URLs are used,
-add the exact preview origin for that test deployment; do not use a wildcard for
-production secrets.
+Add the production origin and `http://localhost:3000` to the allowed origins/redirect
+URLs. Do not use wildcard production origins.
 
-## 3. Set environment variables in Vercel
+After the production instance exists, pull the production keys locally (do not print
+them):
 
-Vercel → Project → Settings → Environment Variables. Add these for **Production** (and
-Preview/Development if you want to test there):
+```bash
+npx clerk@latest env pull --instance prod
+```
 
-| Name | Value | Notes |
-| --- | --- | --- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_test_…` or `pk_live_…` | Safe to expose to the browser by design |
-| `CLERK_SECRET_KEY` | `sk_test_…` or `sk_live_…` | Server-only; never expose |
-| `CLERK_WEBHOOK_SECRET` | `whsec_…` | Only needed if webhooks are enabled |
-| `OWNER_EMAIL` | the verified owner email | Must match the email stored on the `OWNER` row |
-| `AUTH_SECRET` | existing long random value | Keep it until the built-in auth is fully retired |
+Add these in **Vercel → Project → Settings → Environment Variables → Production**:
 
-Do not replace or rotate `AUTH_SECRET` during the Clerk cutover unless you deliberately
-want to invalidate all legacy sessions. Clerk sessions are separate from the interim
-cookie.
+| Name | Notes |
+|---|---|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Production publishable key (`pk_live_…`) |
+| `CLERK_SECRET_KEY` | Production secret key (`sk_live_…`); server-only |
+| `CLERK_WEBHOOK_SECRET` | Signing secret created in step 3 |
+| `OWNER_EMAIL` | Must match the verified email stored on the `AKASH` owner row |
+| `AUTH_SECRET` | Keep the existing value until the legacy path is removed |
+| `LEGACY_AUTH_MODE` | `fallback` for the first production cutover |
+| `NEXT_PUBLIC_LEGACY_AUTH_MODE` | `fallback` for the first production cutover |
 
-For local development, put the same keys in `.env` (git-ignored). Never commit `.env`.
+Do not use development keys in production. Do not rotate `AUTH_SECRET` during the
+cutover unless you deliberately want to invalidate every legacy session.
 
-## 4. Choose the account-migration policy
+## 3. Create the webhook
 
-Existing production accounts were created before verified email was available. Their
-password hashes cannot be mapped to Clerk automatically. Choose one policy before the
-cutover:
+In the Clerk dashboard for the production instance, create an endpoint:
 
-### Recommended: map by verified email
+- URL: `https://<your-production-domain>/api/webhooks/clerk`
+- Events: `user.created`, `user.updated`, `user.deleted`
 
-For each existing account, map its SAP username to the email the person will verify in
-Clerk. Keep the existing `User` row, SAP username, private programs, favorites and
-execution history. On first Clerk sign-in, the server matches the verified email to the
-existing row and records the Clerk user id.
+Copy the signing secret into Vercel as `CLERK_WEBHOOK_SECRET` and redeploy. The endpoint
+returns `503` when the secret is missing and `400` when a signature is invalid. It never
+accepts a role or ownership from the payload.
 
-- The owner must supply the mapping privately (for example, a temporary owner-only list
-  of `username → email`). Do not send passwords.
-- The owner's row must use `OWNER_EMAIL` and have `role = OWNER`.
-- Accounts without a verified email mapping cannot be linked; use the fallback below.
+## 4. Map the existing accounts
 
-### Fallback: re-register and reassign
+The owner row already matches `OWNER_EMAIL`. For each non-owner account that does not yet
+have a verified email on file, attach the address the owner has verified out-of-band:
 
-New Clerk users receive fresh `User` rows with `USER` role. The owner can reassign
-private programs through the admin dashboard. The old built-in accounts are then
-disabled/retired. This is simpler but loses the username/program continuity unless the
-owner reassigns everything manually.
+```bash
+CONFIRM_SET_USER_EMAIL=YES \
+OWNER_USERNAME=AKASH \
+TARGET_USERNAME=USER1 \
+TARGET_EMAIL="user1@example.com" \
+TURSO_DATABASE_URL="libsql://…" \
+TURSO_AUTH_TOKEN="…" \
+bun run user:email
+```
 
-**Recommendation:** map by verified email. There are only three production users, so the
-mapping is small and preserves their work.
+The command refuses an email already attached to another account, normalizes the address,
+writes an audit entry and does not set a Clerk id or password. The next Clerk sign-in with
+that verified address links the existing SAP username and its private work.
 
-## 5. Cutover checklist (after the code is implemented)
+Accounts without an owner-verified mapping remain on legacy fallback. Do not import scrypt
+hashes into Clerk and do not send passwords through chat.
 
-1. Keys are set in Vercel; `OWNER_EMAIL` matches the provisioned owner row.
-2. `bun run lint`, `bun test tests`, `bun run test:api` and `bun run build` pass locally
-   with Clerk test keys.
-3. Email OTP sign-in works locally.
-4. Google sign-in works locally.
-5. Owner sign-in opens `/admin`; a non-owner gets `403` from `/api/admin/*` and no admin
-   link.
-6. A new account receives `role = USER`, a private `Z_MY_PRACTICE_<USERNAME>` sandbox, and
-   cannot see another user's programs or favorites.
-7. Anonymous `/api/programs`, `/api/execute` and `/api/admin/overview` remain `401`/`403`.
-8. Deploy, repeat the checks against production, and verify old sessions are invalid.
-9. Only then retire the built-in scrypt logon routes and document the date.
+## 5. Verify interactively
+
+Before switching production traffic, complete these checks in a browser:
+
+1. Email OTP sign-in delivers a code and creates a Clerk session.
+2. Google sign-in completes.
+3. The owner lands on `/` with `role=OWNER`; `/api/auth/me` reports `owner=true`; `/admin`
+   loads and the owner’s private programs are visible.
+4. A non-owner is mapped to their existing username and programs, gets `403` from
+   `/api/admin/*`, sees shared examples and their own sandbox only.
+5. New sign-up receives `USER`, a private sandbox and no admin link.
+6. Suspend, reactivate and force-logout operate on both the Clerk identity and the
+   database row.
+7. Confirm deletion removes the Clerk identity and the database row after the typed
+   username check.
+8. Sign out through Clerk and confirm the old legacy cookie cannot resurface.
+
+The local browser has only reached the sign-in screen (Email OTP + Google, no password);
+the signed-in checks above are still **unverified**.
+
+## 6. Retire the fallback
+
+Only after every account is linked and the signed-in production checks pass:
+
+1. Set `LEGACY_AUTH_MODE=off` and `NEXT_PUBLIC_LEGACY_AUTH_MODE=off` in Vercel.
+2. Redeploy and confirm `/api/auth/login` and `/api/auth/register` are closed and the
+   legacy form is hidden.
+3. In a later cleanup, remove the scrypt/HMAC fallback code and the `AUTH_SECRET`
+   requirement.
+
+Until then, the legacy path remains a deliberately temporary fallback.
+
+## Local testing
+
+Local `.env` currently has development Clerk keys. The local gates are:
+
+```bash
+bun run lint
+bun test tests
+bun run test:api
+bun run build
+```
+
+The API suite intentionally runs with `LEGACY_AUTH_MODE=full` and a disposable database.
+It does not exercise real Clerk sessions, webhooks or Google.
+
+The local `/sign-in` page shows only **Continue with Google** and **Email address**; the
+password field is absent. If the form appears blank immediately after a config change,
+wait for Clerk hydration and reload before diagnosing a code fault.
+
+## Security notes
+
+- Never commit `.env` or print secret values.
+- Clerk’s `role`/metadata is not authorization; only the database role is.
+- The owner gate requires a matching `OWNER_EMAIL`; it fails closed.
+- A Clerk identity can link only by its **verified** email, and a conflicting or
+  ambiguous mapping is rejected.
+- Once a Clerk session exists, the middleware clears the legacy cookie so signing out of
+  Clerk cannot expose an older legacy session.
+- The webhook signature is verified before any database write.
 
 ## If a key is exposed
 
