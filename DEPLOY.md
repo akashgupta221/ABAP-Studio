@@ -10,10 +10,11 @@ What this gives you:
 
 Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 
-> **Before deploying the v0.3 ownership release, read §4 of
-> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md).** It invalidates old session
-> cookies and makes pre-ownership legacy programs visible only to the designated owner.
-> Do not deploy until you are ready to run the owner migration in Part 5.
+> **Current production status:** v0.3 is deployed as commit `eb4e018`. The anonymous API
+> is closed, old cookies are invalid, and the 12 legacy programs are hidden. The only
+> remaining release step is **owner provisioning** in Part 5, which needs your Turso
+> token and `OWNER_USERNAME` in Vercel. See §4.2 of
+> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md).
 
 ---
 
@@ -27,9 +28,9 @@ git remote add origin https://github.com/<you>/ABAP-Studio.git
 git push -u origin main
 ```
 
-Pushing to the production branch triggers a Vercel deployment. To preserve the current
-live app while preparing the migration, push to a feature branch first, verify locally,
-then merge/deploy during an announced maintenance window.
+Pushing to the production branch triggers a Vercel deployment. For future changes, push
+to a feature branch first, verify locally, then merge/deploy during an announced
+maintenance window.
 
 ## Part 2 — Create the free Turso database
 

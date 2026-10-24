@@ -4,7 +4,7 @@
 **Date:** 24.10.2026
 **Owner specification:** v0.3 (restated 24.10.2026)
 **Repository:** https://github.com/akashgupta221/ABAP-Studio
-**Live site:** https://abap-studio-rd9d.vercel.app (still serving commit `11d2b1c`)
+**Live site:** https://abap-studio-rd9d.vercel.app (serving commit `eb4e018`; owner provisioning pending)
 **Document status:** implementation audit — **not a final acceptance certificate**
 
 This document records **verified facts** and explicitly separates completed work,
@@ -78,14 +78,14 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 |---|---|---|
 | **Clerk not integrated** | No Clerk dependency or keys; interim built-in logon is active | Email OTP, Google sign-in, Clerk webhooks and Clerk account migration remain blocked on owner-created keys. |
 | **Modern ABAP environment not implemented** | No environment switch, CDS/RAP/AMDP runtime or capability matrix | Specification §10 is not started. Scope needs owner approval. |
-| **Production ownership migration not applied** | New code is **not deployed**; live site remains `11d2b1c`. Turso/Vercel credentials are not available locally. | The 12 production legacy programs must be claimed by the owner before or during deployment. |
+| **Production owner provisioning not applied** | v0.3 code is live (`eb4e018`), but the owner role/legacy claim has not run and `OWNER_USERNAME` is not confirmed in Vercel. Turso credentials are not available locally. | Set `OWNER_USERNAME` in Vercel and redeploy, then run `owner:provision` against Turso. Until then the 12 legacy programs are hidden and `/admin` is inaccessible. |
 | **Production owner password not set** | No production provisioning has run; the password supplied in chat must be treated as exposed | Set a fresh password securely with `owner:password` after provisioning. Never paste it in chat. |
 | **Legacy production favorites not migrated** | Old global `Favorite` table has no user link; new code uses `UserFavorite` | Run the supplied `owner:favorites` script (dry-run then apply) after a backup; it copies entries to the owner without deleting the old table. |
-| **`AUTH_SECRET` must be present in production** | Production signer now throws if it is missing rather than using the public development fallback | Set a long random value in Vercel **before** deploying. |
+| **`AUTH_SECRET` rotation pending** | Production health reports `hasAuthSecret: true`; the signer fails closed if it is missing | The existing secret is working. Rotate it during owner provisioning; rotation invalidates all sessions (expected). |
 | **Rate limits are per process** | In-memory limiter | Serverless instances do not share counters; interpreter limits remain authoritative. A shared limiter is future hardening. |
 | **Type-check debt remains** | `bunx tsc --noEmit` reports pre-existing interpreter/example typing errors; `next build` passes | Clean up without changing verified behaviour before final acceptance. |
 | **Historical local database was committed** | Earlier commits tracked `prisma/db/app.db`, which contains scrypt hashes for local demo accounts (not the production Turso database) | The file is now untracked/ignored, but it remains in Git history. Treat any password reused from those local accounts as compromised. Rewriting public history requires owner approval. |
-| **Admin UI browser verification is local only** | `/admin`, owner access, regular-user denial, sandbox and isolation tested on localhost | Re-verify against the deployed production build after migration. |
+| **Admin UI production verification pending** | `/admin`, owner access, regular-user denial, sandbox and isolation tested on localhost; the production owner cannot sign in until provisioning | Re-verify against the deployed production build after owner provisioning. |
 
 ### 1.5 Architecture and data flow
 
@@ -132,9 +132,16 @@ Schema models: `Topic`, `Program`, `DbTable`, `DbRow`, `FunctionModule`,
   - a newly registered user receives `Z_MY_PRACTICE_UIVERIFY`, cannot see the owner's
     legacy programs and receives `403` from `/api/admin/overview`;
   - no admin link is rendered for an ordinary user.
-- Production read-only check: live site still serves `11d2b1c` with 3 users and 49
-  programs; anonymous `/api/programs` returns `200`, confirming the old unauthenticated
-  build remains live.
+- Production deployment check after pushing `eb4e018`:
+  - `/api/programs`, `/api/topics`, `/api/tables`, `/api/functions`, `/api/favorites`,
+    `/api/recents`, `/api/search`, `/api/admin/overview`, `/api/execute` and `/api/seed`
+    all return `401` anonymously (previously `/api/programs` returned `200`);
+  - cross-origin logon is rejected with `403`, invalid credentials with `401`, and
+    `/api/auth/me` remains public (`200`);
+  - `/api/health` remains public and reports 3 users and 49 programs;
+  - the v0.3 schema migration ran successfully against Turso; existing sessions are
+    intentionally invalid and users must log on once;
+  - owner provisioning is still pending, so the 12 legacy programs remain hidden.
 - The test user and its sandbox were deleted after verification; the local database
   backup was removed and the database was untracked.
 
@@ -149,12 +156,12 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 |---|---|---|---|
 | 6 | Owner questions and decisions | Ongoing | Clerk keys/migration, Modern ABAP scope, production timing and legacy-favorite policy are listed in §4. |
 | 7 | Clerk: email OTP, Google, protected routes, provisioning, webhooks, migration | **Blocked** | Interim built-in logon is secure and server-validated. No Clerk keys exist. |
-| 8 | Owner-only admin dashboard: metrics, search, suspend/reactivate, sessions, deletion, audit | **Done (code, local)** | `/admin` and `/api/admin/*` implemented and verified; production provisioning pending. |
+| 8 | Owner-only admin dashboard: metrics, search, suspend/reactivate, sessions, deletion, audit | **Done (code deployed)** | `/admin` and `/api/admin/*` implemented and verified locally; production owner provisioning pending. |
 | 9 | Preserve and test the Standard ABAP environment | **Done (current scope)** | Screenshot fidelity preserved; automated tests execute all seeded examples. |
 | 10 | Separate Modern ABAP environment + honest capability matrix | **Missing** | Needs approved executable / validated-or-simulated / unsupported scope. |
 | 11 | Professional developer GUI | **Partial** | Standard SAP GUI is complete. Modern environment GUI and a formal accessibility audit are pending. |
-| 12 | Data ownership and isolation | **Done (code, local)** | Server-side ownership rules + private sandbox verified. Production legacy claim pending. |
-| 13 | Security and reliability | **Done (application layer)** | Sessions, CSRF, rate limiting, per-user execution authorization and audit trail. Shared/distributed limiter remains future hardening. |
+| 12 | Data ownership and isolation | **Done (code deployed)** | Server-side ownership rules + private sandbox verified; production APIs secured. Production legacy claim pending. |
+| 13 | Security and reliability | **Done (application layer, deployed)** | Sessions, CSRF, rate limiting, per-user execution authorization and audit trail; production anonymous APIs verified closed. Shared/distributed limiter remains future hardening. |
 | 14 | Continuous testing and completion verification | **Partial** | 19 unit tests + 51 API checks + build/lint. UI automation and final acceptance report pending. |
 | 15 | Phase 0 audit | **Done** | This document. |
 | 15 | Phase 1 architecture/migration design | **Partial** | Architecture and legacy ownership plan documented; Clerk migration choice pending. |
@@ -166,14 +173,14 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 - [x] Architecture and data-flow documentation — §1.5.
 - [ ] Clerk account-migration plan — blocked on owner choice.
 - [ ] Clerk authentication implementation — blocked.
-- [x] Owner-only administration dashboard — code + local verification; production pending.
+- [x] Owner-only administration dashboard — code deployed + local verification; production owner provisioning pending.
 - [x] Standard ABAP automated regression tests — 19 unit tests pass.
 - [ ] Modern ABAP capability matrix and tests — pending scope approval.
 - [x] Improved Standard ABAP GUI fidelity — 24.10.2026.
 - [x] Security and authorization test coverage — 51 API checks pass.
 - [x] Environment and deployment documentation — README, DEPLOY, `.env.example`.
 - [x] Non-destructive seed/deploy path — verified locally.
-- [ ] Production migration and owner provisioning — needs credentials/authorization.
+- [ ] Production migration and owner provisioning — v0.3 deployed; owner role/legacy claim needs Turso credentials.
 - [ ] Final acceptance-test report — pending.
 
 ---
@@ -214,12 +221,13 @@ The owner supplied seven screenshots of a real SAP system (`MER`, client `105`, 
 - Removed destructive reseeding; deployment now preserves users and their work.
 - Removed the local database from version control and ignored backups/test databases.
 
-### 3.3 Local data state
+### 3.3 Data state
 
 - Local database: 2 users (`AKASH` owner, `DEVELOPER`), 37 shared learning programs
   (36 examples + 1 INCLUDE) and 7 owner-claimed legacy programs.
-- Production database: 49 programs (37 shared examples + 12 legacy non-example) and no
-  owner assignment yet. It is unchanged until the migration is authorized.
+- Production database: 3 users and 49 programs (37 shared examples + 12 legacy
+  non-example). The v0.3 schema migration is applied, but no owner assignment or legacy
+  claim has run; the 12 legacy programs are hidden until provisioning.
 
 ---
 
@@ -237,40 +245,37 @@ The owner supplied seven screenshots of a real SAP system (`MER`, client `105`, 
 4. Approve adding Clerk middleware and protected-route matchers so server-side route
    protection is consistent with Clerk sessions.
 
-### 4.2 Production migration and deployment (blocking release)
+### 4.2 Production owner provisioning (blocking release)
 
-The new code is **not deployed** because deployment changes ownership visibility and
-invalidates old cookies. The live app must remain available until the migration is ready.
-Verified on 24.10.2026: the live site still serves `11d2b1c`, has 3 users and 49 programs,
-and its anonymous `/api/programs` still returns `200` because it predates server-side API
-authorization. This is the strongest reason to complete the migration promptly.
+The v0.3 build is **deployed** as commit `eb4e018`. The additive schema migration ran
+against Turso and the anonymous API is closed: protected endpoints return `401`,
+cross-origin mutations return `403`, and `/api/health` reports 3 users and 49 programs.
+Old session cookies are intentionally invalid.
 
-Recommended order: run the backup, schema/content upsert and owner provisioning against
-Turso **first**, then deploy the new code and verify. The old build ignores the added
-ownership columns, so it keeps working during the short migration window.
+What remains is owner provisioning. Until it runs, no production account has
+`role = OWNER`, `OWNER_USERNAME` is not confirmed in Vercel, the 12 legacy non-example
+programs are hidden, and `/admin` is inaccessible.
 
 1. Take a verified Turso backup.
-2. Set `OWNER_USERNAME=AKASH` and a fresh long `AUTH_SECRET` in Vercel. `AUTH_SECRET` is
-   already present on the live deployment but rotate it during this migration.
-3. Run `deploy:db` against Turso to apply additive schema/content changes.
-4. Run:
+2. Set `OWNER_USERNAME=AKASH` in Vercel and redeploy so the server picks it up. Rotate
+   `AUTH_SECRET` at the same time if desired; rotation logs everyone out again.
+3. Run against Turso (this also runs additive schema safety checks):
    ```bash
    CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH \
    TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:provision
    ```
-   This assigns the owner role and claims all ownerless non-example programs.
-5. Set the owner password securely, without shell history or chat:
+   This assigns the owner role, creates the owner account if needed, and claims all
+   ownerless non-example programs.
+4. Set the owner password securely, without shell history or chat:
    ```bash
    CONFIRM_OWNER_PASSWORD=YES OWNER_USERNAME=AKASH \
    TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:password
    ```
-6. Migrate legacy global favorites with `owner:favorites` (dry-run first), or explicitly
+5. Migrate legacy global favorites with `owner:favorites` (dry-run first), or explicitly
    decide to discard them.
-7. Deploy the committed v0.3 branch to production.
-8. Re-verify: all users must log on once (old cookies intentionally invalid), then see
-   only shared examples, their own programs and their own sandbox. The owner must see all
-   users/programs and the audit dashboard.
-9. Do not announce completion until these checks pass against production.
+6. Re-verify: all users log on once, see only shared examples, their own programs and
+   their own sandbox. The owner must see all users/programs and the audit dashboard.
+7. Do not announce full acceptance until these checks pass against production.
 
 ### 4.3 Modern ABAP scope (blocking spec §10)
 
@@ -324,8 +329,9 @@ bun run owner:favorites      # dry-run legacy favorite migration (APPLY=YES to c
 
 - Clerk authentication is **not** implemented.
 - The Modern ABAP environment is **not** implemented.
-- The new security/ownership/admin code is **not** deployed to production.
+- The v0.3 security code **is** deployed (`eb4e018`), but the production owner is **not**
+  provisioned, so `/admin` and the 12 legacy programs are not yet available.
 - The 12 production legacy programs are **not** yet assigned to the owner.
 - The password previously supplied in chat was **not** reused, stored or verified, and
   must be considered exposed.
-- The live site is still the earlier `11d2b1c` build.
+- The live site is the v0.3 build, not the earlier `11d2b1c` build.

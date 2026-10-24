@@ -30,8 +30,9 @@ INCLUDE, 11 demo tables with 113 rows and function modules). Every user gets a *
 practice sandbox**; training examples are shared and read-only.
 
 > **Live demo:** https://abap-studio-rd9d.vercel.app — open it, click **Register**, and
-> you are inside the system. The live site is still the pre-v0.3 build until the owner
-> migration in `docs/MASTER-PROJECT-SPEC.md` is completed.
+> you are inside the secure v0.3 build. The production owner role and legacy-program
+> claim are still pending, so `/admin` and the older legacy programs remain unavailable
+> until the owner runs the provisioning steps in `docs/MASTER-PROJECT-SPEC.md` §4.2.
 
 ## Features
 
@@ -150,9 +151,10 @@ or production. Stop any dev server sharing `.next` before running it.
 
 ## Deploy for free (Vercel + Turso)
 
-Every `git push` rebuilds and redeploys the live app. **Read
-[`docs/MASTER-PROJECT-SPEC.md`](docs/MASTER-PROJECT-SPEC.md) §4 before deploying v0.3**:
-the ownership migration changes who can see legacy programs and invalidates old sessions.
+Every `git push` rebuilds and redeploys the live app. The v0.3 build is already live as
+`eb4e018`; **owner provisioning is still pending**. Read
+[`docs/MASTER-PROJECT-SPEC.md`](docs/MASTER-PROJECT-SPEC.md) §4.2 for the required steps.
+The ownership migration changes who can see legacy programs and invalidates old sessions.
 
 1. **GitHub** — push this repository.
 2. **Turso** — create a free database, copy its `libsql://` URL and create a token.

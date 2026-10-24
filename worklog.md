@@ -263,7 +263,26 @@ Verification:
 
 Stage Summary:
 - v0.3 security, ownership, sandbox and owner-administration work is complete and verified locally; seed/deploy preserves user data
-- Committed locally as `988132c` on branch `v0.3-security-ownership` (not pushed and not deployed)
-- NOT deployed: live production remains commit 11d2b1c. A read-only production check on 24.10.2026 confirmed 3 users, 49 programs, and anonymous `/api/programs` returning 200 — the old unauthenticated build is still public
+- Committed locally as `988132c` on branch `v0.3-security-ownership` (at this stage not pushed or deployed; superseded by Task 14)
+- At this stage the live production remained commit 11d2b1c. A read-only production check on 24.10.2026 confirmed 3 users, 49 programs, and anonymous `/api/programs` returning 200 — the old unauthenticated build was still public
 - Production still needs a Turso backup, OWNER_USERNAME + fresh AUTH_SECRET in Vercel, owner provisioning/legacy claim, legacy-favorite decision and post-deploy verification
 - Clerk (keys/migration) and Modern ABAP (scope approval) remain blocked; they are not claimed complete
+
+---
+Task ID: 14
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Deploy the v0.3 security build after owner authorization and verify the live API lockdown
+
+Work Log:
+- Owner explicitly authorized deploying the secure build immediately, accepting that old sessions reset and legacy programs stay hidden until owner provisioning
+- Fast-forwarded local main from 11d2b1c to eb4e018 and pushed to origin/main; Vercel deployed automatically
+- Confirmed the new build by polling the live site: `/api/programs` changed from anonymous 200 to 401
+- Production verification (read-only): `/api/programs`, `/api/topics`, `/api/tables`, `/api/functions`, `/api/favorites`, `/api/recents`, `/api/search`, `/api/admin/overview`, `/api/execute` and `/api/seed` all return 401 anonymously; cross-origin logon returns 403; invalid credentials return 401; `/api/auth/me` and `/api/health` remain public; `/admin` redirects (307); `/` loads (200)
+- `/api/health` reports `ok: true`, `dbTarget: turso`, `hasAuthSecret: true`, 3 users, 49 programs; the additive Turso schema migration applied successfully
+- No test user was created on production; owner login/role/program isolation remain unverified until provisioning
+
+Stage Summary:
+- v0.3 is LIVE at https://abap-studio-rd9d.vercel.app as commit eb4e018; the pre-v0.3 anonymous API exposure is closed
+- Remaining blocker: set OWNER_USERNAME in Vercel and run owner provisioning with the Turso token; until then `/admin` is inaccessible and the 12 legacy programs are hidden
+- Owner password was not set or reused; the chat-supplied password remains exposed and must not be reused
+- Clerk and Modern ABAP remain blocked/not started; full acceptance is not claimed
