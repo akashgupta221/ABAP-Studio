@@ -227,7 +227,8 @@ jobs:
           CODE=$(req GET /api/admin/overview "$OWNER_COOKIE")
           expect "$CODE" 200 "owner admin refresh after deletion"
           [ "$(jq --arg u "$TEST_USER" '[.users[] | select(.username == $u)] | length' "$OUT")" = "0" ] || fail "temporary user still exists after deletion"
+          FINAL_METRICS=$(jq -r '"users=\(.metrics.totalUsers) programs=\(.metrics.totalPrograms) examples=\(.metrics.examplePrograms) private=\(.metrics.privatePrograms) unclaimed_legacy=\(.metrics.legacyPrograms)"' "$OUT")
           DELETED_LOGIN=$(login_form "$TEST_USER" "$TEST_PASS" "$TEST_COOKIE")
           expect "$DELETED_LOGIN" 401 "deleted user cannot log in"
-          echo "final_metrics: users=$(jq -r '.metrics.totalUsers' "$OUT") programs=$(jq -r '.metrics.totalPrograms' "$OUT") examples=$(jq -r '.metrics.examplePrograms' "$OUT") private=$(jq -r '.metrics.privatePrograms' "$OUT") unclaimed_legacy=$(jq -r '.metrics.legacyPrograms' "$OUT")"
+          echo "final_metrics: $FINAL_METRICS"
           echo "ISOLATION_OK"
