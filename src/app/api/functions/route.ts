@@ -1,11 +1,14 @@
 export const dynamic = "force-dynamic" // always server-rendered (serverless-safe)
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/ensure-seed'
+import { requireUser, serverError } from '@/lib/session'
 
 // GET /api/functions — Function Builder (SE37) list
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireUser(req)
+  if (!auth.user) return auth.response
   try {
     await ensureSeeded()
     const fms = await db.functionModule.findMany({ orderBy: { name: 'asc' } })
@@ -23,7 +26,7 @@ export async function GET() {
         source: fm.source,
       })),
     })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (error) {
+    return serverError('functions', error)
   }
 }

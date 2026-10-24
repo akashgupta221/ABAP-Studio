@@ -54,5 +54,13 @@ server.log
 # Skills directory
 /skills/
 
+# local SQLite databases contain user accounts/password hashes and personal
+# programs — never publish them. A fresh clone creates the schema and auto-seeds
+# shared learning content on first request.
+/prisma/db/*.db
+/prisma/db/*.db-*
+/prisma/db/*.db.backup-*
+/prisma/db/api-test.db*
+
 # private user uploads — never publish (personal training syllabus)
 /upload/

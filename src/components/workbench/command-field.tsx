@@ -131,6 +131,13 @@ export function CommandField() {
             useWorkbench.setState({ view: 'home' })
             addMessage('S', 'Recent executions are shown on the SAP Easy Access screen')
             return
+          case 'ADMIN':
+            if (!useWorkbench.getState().session.owner) {
+              addMessage('E', 'Administration is restricted to the designated owner account')
+              return
+            }
+            window.location.assign('/admin')
+            return
           case 'SEARCH': {
             if (!arg) {
               addMessage('W', 'SEARCH: enter a search term (SEARCH <text>)')
@@ -209,7 +216,7 @@ export function CommandField() {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
           aria-label="Command field"
-          title="Command field (Ctrl+L) — t-codes: SE38, SE80, SE11, SE16, SE24, SE37, SE93 · /n, /o, /i, /nend · or object name · or SEARCH <text>"
+          title="Command field (Ctrl+L) — t-codes: SE38, SE80, SE11, SE16, SE24, SE37, SE93, ADMIN · /n, /o, /i, /nend · or object name · or SEARCH <text>"
           className="h-[20px] w-[170px] bg-transparent px-1.5 font-mono text-[12px] uppercase text-[#111827] outline-none md:w-[190px]"
           spellCheck={false}
           autoComplete="off"

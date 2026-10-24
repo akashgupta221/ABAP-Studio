@@ -1,31 +1,45 @@
-export const dynamic = "force-dynamic" // always server-rendered (serverless-safe)
+export const dynamic = 'force-dynamic' // always server-rendered (serverless-safe)
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/ensure-seed'
+import { programListWhere } from '@/lib/access'
+import { isOwner, requireUser, sameOrigin, serverError, clientKey, rateLimit } from '@/lib/session'
 
-// GET /api/programs?type=&topic=&q= — list programs (repository browser)
+const ALLOWED_TYPES = ['REPORT', 'CLASS', 'INCLUDE', 'FUNCTION_GROUP']
+const ALLOWED_PARADIGMS = ['POP', 'OOP', 'BOTH']
+const MAX_SOURCE_BYTES = 200_000
+
+// GET /api/programs?type=&topic=&q= — list programs visible to the signed-in user
 export async function GET(req: NextRequest) {
+  const auth = await requireUser(req)
+  if (!auth.user) return auth.response
+
   try {
     await ensureSeeded()
+    const owner = isOwner(auth.user)
     const sp = req.nextUrl.searchParams
     const type = sp.get('type')
     const topicId = sp.get('topicId')
     const q = sp.get('q')
-    const where: any = {}
-    if (type) where.type = type
-    if (topicId) where.topicId = parseInt(topicId)
+
+    const filters: Record<string, unknown>[] = [programListWhere(auth.user, owner)]
+    if (type) filters.push({ type })
+    if (topicId) filters.push({ topicId: parseInt(topicId) })
     if (q) {
-      where.OR = [
-        { name: { contains: q } },
-        { title: { contains: q } },
-        { description: { contains: q } },
-        { tags: { contains: q } },
-      ]
+      filters.push({
+        OR: [
+          { name: { contains: q } },
+          { title: { contains: q } },
+          { description: { contains: q } },
+          { tags: { contains: q } },
+        ],
+      })
     }
+
     const programs = await db.program.findMany({
-      where,
-      include: { topic: true },
+      where: { AND: filters },
+      include: { topic: true, owner: { select: { username: true } } },
       orderBy: [{ isExample: 'desc' }, { name: 'asc' }],
     })
     return NextResponse.json({
@@ -41,46 +55,79 @@ export async function GET(req: NextRequest) {
         executions: p.executions,
         topicId: p.topicId,
         topicTitle: p.topic?.title ?? null,
+        ownerId: p.ownerId,
+        ownerUsername: p.owner?.username ?? null,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
       })),
     })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (error) {
+    return serverError('programs/list', error)
   }
 }
 
-// POST /api/programs — create a new repository object
+// POST /api/programs — create a new repository object owned by the caller
 export async function POST(req: NextRequest) {
+  const auth = await requireUser(req)
+  if (!auth.user) return auth.response
+  const csrf = sameOrigin(req)
+  if (csrf) return csrf
+
+  const limited = rateLimit(clientKey(req, `create:${auth.user.id}`), 30, 60_000)
+  if (limited) return limited
+
   try {
-    const body = await req.json()
-    const { name, title, description, type = 'REPORT', paradigm = 'BOTH', topicId, source = '', tags = '' } = body
-    if (!name || !/^[A-Za-z_\/][A-Za-z0-9_\/%$#]*$/.test(name)) {
+    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
+    const { name, type = 'REPORT', paradigm = 'BOTH', topicId } = body
+    const title = typeof body.title === 'string' ? body.title : ''
+    const description = typeof body.description === 'string' ? body.description : ''
+    const source = typeof body.source === 'string' ? body.source : ''
+    const tags = typeof body.tags === 'string' ? body.tags : ''
+    if (typeof name !== 'string' || !/^[A-Za-z_/][A-Za-z0-9_/%$#]*$/.test(name)) {
       return NextResponse.json({ error: 'Invalid object name (use Z-name, letters/digits/underscore)' }, { status: 400 })
     }
     const upperName = name.toUpperCase()
+    if (upperName.length > 40) {
+      return NextResponse.json({ error: 'Object name is too long (maximum 40 characters)' }, { status: 400 })
+    }
+    if (upperName.startsWith('Z_MY_PRACTICE')) {
+      return NextResponse.json(
+        { error: 'Z_MY_PRACTICE is reserved for your private practice sandbox' },
+        { status: 409 },
+      )
+    }
     const existing = await db.program.findUnique({ where: { name: upperName } })
     if (existing) {
       return NextResponse.json({ error: `Object ${upperName} already exists` }, { status: 409 })
     }
-    const allowedTypes = ['REPORT', 'CLASS', 'INCLUDE', 'FUNCTION_GROUP']
-    if (!allowedTypes.includes(type)) {
+    if (typeof type !== 'string' || !ALLOWED_TYPES.includes(type)) {
       return NextResponse.json({ error: 'type must be REPORT | CLASS | INCLUDE | FUNCTION_GROUP' }, { status: 400 })
     }
+    if (typeof paradigm !== 'string' || !ALLOWED_PARADIGMS.includes(paradigm)) {
+      return NextResponse.json({ error: 'paradigm must be POP | OOP | BOTH' }, { status: 400 })
+    }
+    if (Buffer.byteLength(source, 'utf8') > MAX_SOURCE_BYTES) {
+      return NextResponse.json({ error: 'Program source is too large' }, { status: 413 })
+    }
+    if (title.length > 300 || description.length > 2_000 || tags.length > 500) {
+      return NextResponse.json({ error: 'Program metadata is too long' }, { status: 400 })
+    }
+
     const program = await db.program.create({
       data: {
         name: upperName,
-        title: title ?? '',
-        description: description ?? '',
+        title,
+        description,
         type,
         paradigm,
-        topicId: topicId ?? null,
+        topicId: typeof topicId === 'number' && Number.isInteger(topicId) ? topicId : null,
         source,
         tags,
+        ownerId: auth.user.id,
       },
     })
     return NextResponse.json({ program }, { status: 201 })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (error) {
+    return serverError('programs/create', error)
   }
 }

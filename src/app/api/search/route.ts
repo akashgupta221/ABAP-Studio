@@ -3,11 +3,18 @@ export const dynamic = "force-dynamic" // always server-rendered (serverless-saf
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/ensure-seed'
+import { programListWhere } from '@/lib/access'
+import { isOwner, requireUser, serverError } from '@/lib/session'
 
 // GET /api/search?q=&types=PROGRAM,CLASS,TABLE,FM,TOPIC — SAP-like global search
 // Searches across: program names, titles, descriptions, source code, tags,
-// table names & field texts, function modules, syllabus topics
+// table names & field texts, function modules, syllabus topics.
+// Program results are limited to shared examples plus the caller's own objects
+// (the owner may search the whole repository).
 export async function GET(req: NextRequest) {
+  const auth = await requireUser(req)
+  if (!auth.user) return auth.response
+
   try {
     await ensureSeeded()
     const sp = req.nextUrl.searchParams
@@ -24,6 +31,7 @@ export async function GET(req: NextRequest) {
     // ── programs / classes / includes / function groups ──
     if (types.some((t) => ['PROGRAM', 'CLASS', 'INCLUDE', 'FUNCTION_GROUP'].includes(t))) {
       const programs = await db.program.findMany({
+        where: programListWhere(auth.user, isOwner(auth.user)),
         include: { topic: true },
       })
       const programTypes = types.filter((t) => ['PROGRAM', 'REPORT', 'CLASS', 'INCLUDE', 'FUNCTION_GROUP'].includes(t))
@@ -131,7 +139,7 @@ export async function GET(req: NextRequest) {
       groups: ordered.map(([type, list]) => ({ type, count: list.length, hits: list.slice(0, 50) })),
       total: hits.length,
     })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (error) {
+    return serverError('search', error)
   }
 }

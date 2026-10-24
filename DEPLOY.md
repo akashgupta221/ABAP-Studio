@@ -1,66 +1,147 @@
-# Publish ABAPForge for free (Vercel + Turso)
+# Publish ABAP-Studio for free (Vercel + Turso)
 
 What this gives you:
 
-- a public URL like `https://abapforge.vercel.app`
-- **automatic updates**: every `git push` rebuilds and redeploys the live app
-- a free cloud database (Turso) shared by all visitors — programs you save, favorites
-  and execution logs persist there
+- a public URL such as `https://abap-studio-rd9d.vercel.app`
+- **automatic updates** on every `git push`
+- a free Turso database with **per-user accounts, private programs, favorites and
+  execution history**
+- an owner-only administration dashboard
 
-Everything is free: Vercel **Hobby** plan + Turso **free** plan. No credit card needed.
+Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
+
+> **Before deploying the v0.3 ownership release, read §4 of
+> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md).** It invalidates old session
+> cookies and makes pre-ownership legacy programs visible only to the designated owner.
+> Do not deploy until you are ready to run the owner migration in Part 5.
 
 ---
 
 ## Part 1 — Put the code on GitHub
 
-1. Create an empty repository on github.com (name: `abapforge`, private is fine).
-2. In this folder, run:
+1. Create an empty repository on github.com.
+2. In this folder:
 
 ```bash
-git remote add origin https://github.com/<you>/abapforge.git
+git remote add origin https://github.com/<you>/ABAP-Studio.git
 git push -u origin main
 ```
+
+Pushing to the production branch triggers a Vercel deployment. To preserve the current
+live app while preparing the migration, push to a feature branch first, verify locally,
+then merge/deploy during an announced maintenance window.
 
 ## Part 2 — Create the free Turso database
 
 1. Go to turso.tech → **Sign in with GitHub**.
-2. **Create Database** → name `abapforge` → pick the region closest to you.
-3. Open the database → **Connect** tab shows the URL (`libsql://...`).
-4. Click **Create Token** and copy it.
+2. **Create Database** → pick the region closest to you.
+3. Open the database → **Connect** shows the `libsql://` URL.
+4. **Create Token** and copy it. Store it in a password manager, never in Git.
 
-Keep the URL and the token — you need both in Parts 3 and 4.
+```bash
+# CLI alternative
+turso db create abap-studio
+turso db show abap-studio --url
+turso db tokens create abap-studio
+```
 
-<!-- CLI alternative:
-turso db create abapforge
-turso db show abapforge --url
-turso db tokens create abapforge
--->
+**Take a backup before any migration:**
+
+```bash
+turso db shell abap-studio ".dump" > abap-studio-backup-$(date +%Y%m%d).sql
+```
 
 ## Part 3 — Deploy on Vercel
 
-1. Go to vercel.com → **Sign up with GitHub**.
-2. **Add New → Project → Import** the `abapforge` repository.
-3. Framework preset is detected automatically (**Next.js**) — leave build settings alone.
-4. Under **Environment Variables**, add all three:
+1. vercel.com → **Add New → Project → Import** the repository.
+2. Framework preset is detected as **Next.js**; leave build settings alone.
+3. Add environment variables:
 
-   | Name                 | Value                |
-   | -------------------- | -------------------- |
-   | `TURSO_DATABASE_URL` | `libsql://...` (Part 2) |
-   | `TURSO_AUTH_TOKEN`   | the token (Part 2)   |
-   | `AUTH_SECRET`        | any long random string — generate with `openssl rand -base64 32`. Used to sign logon sessions (user master). |
+   | Name | Value |
+   | --- | --- |
+   | `TURSO_DATABASE_URL` | `libsql://…` (Part 2) |
+   | `TURSO_AUTH_TOKEN` | token from Part 2 |
+   | `AUTH_SECRET` | long random value — `openssl rand -base64 32` |
+   | `OWNER_USERNAME` | the single owner account name (e.g. `AKASH`) |
 
-5. Click **Deploy**. The site opens — but the database is still empty. Part 4 fixes that.
+   `AUTH_SECRET` is required in production: the app refuses to sign sessions with a
+   public development fallback. Owner recognition also fails closed if
+   `OWNER_USERNAME` is missing.
 
-## Part 4 — Create tables + seed content in Turso (one command)
+4. Click **Deploy**. The database is still empty; Part 4 fixes that.
+
+## Part 4 — Create tables + seed shared content in Turso
 
 From this folder (not the browser):
 
 ```bash
-TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="eyJ..." bun run deploy:db
+TURSO_DATABASE_URL="libsql://..." \
+TURSO_AUTH_TOKEN="eyJ..." \
+bun run deploy:db
 ```
 
-This creates the schema, seeds all programs / topics / demo tables, and verifies every
-example program against the engine. Reload the deployed site — done.
+This applies the additive schema and **upserts** shared topics, examples, demo tables and
+function modules. It does **not** delete users, private programs, favorites or execution
+history. It then verifies every seeded example against the engine.
+
+## Part 5 — Provision the owner and claim legacy data
+
+The owner is the account named by `OWNER_USERNAME` with server-managed `role = OWNER`.
+Legacy non-example programs (created before ownership existed) are assigned to the owner;
+ordinary users must not see them.
+
+After a verified backup, run against Turso:
+
+```bash
+CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH \
+TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="eyJ..." \
+bun run owner:provision
+```
+
+The script is idempotent: it creates or updates the owner, claims ownerless non-example
+programs, preserves examples as shared/read-only, and invalidates old owner sessions.
+If no password is supplied it generates a random one that is never displayed.
+
+Set the real owner password with hidden input (no shell history, no chat):
+
+```bash
+CONFIRM_OWNER_PASSWORD=YES OWNER_USERNAME=AKASH \
+TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="eyJ..." \
+bun run owner:password
+```
+
+### Legacy favorites
+
+The old global `Favorite` table was not tied to a user. The new code uses per-user
+`UserFavorite` rows and ignores the old table. Inspect/copy those entries to the owner
+after a backup:
+
+```bash
+# dry run
+OWNER_USERNAME=AKASH TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="eyJ..." \
+bun run owner:favorites
+
+# apply
+CONFIRM_LEGACY_FAVORITES=YES APPLY=YES OWNER_USERNAME=AKASH \
+TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="eyJ..." \
+bun run owner:favorites
+```
+
+The old table is left intact and the copy is idempotent. Do not assign legacy favorites
+to every user — they were never tied to an identity.
+
+## Part 6 — Verify production
+
+1. Sign out, then sign in once. Old cookies are intentionally invalid.
+2. A regular user must see only shared examples, their own programs and their own
+   `Z_MY_PRACTICE_<USERNAME>` sandbox.
+3. The owner must see all users and all non-example programs in `/admin`.
+4. Check `/api/health`: `dbTarget: turso`, `hasAuthSecret: true`, expected counts.
+5. Run a syntax check, an execution, a save, a favorite and a logout/login cycle.
+6. Confirm anonymous `/api/programs`, `/api/execute` and `/api/admin/overview` return `401`
+   or `403`.
+
+Do not announce completion until every check passes against the deployed build.
 
 ---
 
@@ -68,26 +149,36 @@ example program against the engine. Reload the deployed site — done.
 
 | What changed | What to run |
 | --- | --- |
-| UI / code (`src/**`, `scripts/**`) | `git add -A && git commit -m "..." && git push` → Vercel redeploys automatically (1–2 min) |
-| Seed content (programs, topics, tables in `scripts/seed-*.ts`) | `bun run deploy:db` again (with the env vars) → refresh the site |
-| Anything users do in the app (saved programs, favorites, logs) | nothing — stored in Turso automatically |
+| UI / code (`src/**`, `scripts/**`) | commit + push → Vercel redeploys |
+| Seed content (programs/topics/tables in `scripts/seed-*.ts`) | `bun run deploy:db` again |
+| Anything users do in the app | nothing — stored in Turso automatically |
+| New schema columns/tables | app's additive `ensureSchema()` runs on first request; `deploy:db` also applies missing tables |
+
+`deploy:db` intentionally never drops or rewrites user-owned data. If a future change
+requires a destructive schema operation, add a reviewed migration script and a backup
+step instead of changing this guarantee.
 
 ## Notes
 
-- Free limits: Turso free = 5 GB storage, 500M row reads + 10M writes per month, no cold
-  starts. Vercel Hobby is for personal / non-commercial projects — a learning project
-  qualifies.
-- Custom domain: Vercel → Project → Settings → Domains (subdomains are free on
-  `*.vercel.app`; a custom domain costs ~$10/year unless you have GitHub Student Pack).
-- Local development is unchanged: without `TURSO_*` variables the app uses
-  `prisma/db/app.db`.
+- Turso free tier: 5 GB storage, 500M row reads + 10M writes/month. Vercel Hobby is for
+  personal/non-commercial projects; a learning project qualifies.
+- Local development uses `prisma/db/app.db` when `TURSO_*` is unset. The file is ignored
+  by Git and created with `bun run db:push`.
+- Custom domain: Vercel → Project → Settings → Domains.
+- Clerk Email OTP + Google is **not** integrated yet; the built-in user master is the
+  interim authentication method.
 
 ## Troubleshooting
 
-- `Set TURSO_DATABASE_URL...` → the variables were not set in that terminal; paste them
-  in the same command line as in Part 4.
-- Site loads but lists are empty → `deploy:db` was not run yet, or ran against a
-  different database than the one configured in Vercel.
-- Schema changes later: edit `prisma/schema.prisma`, re-run `deploy:db` (new tables are
-  created). New **columns** on existing tables need a manual `ALTER TABLE` via Turso's
-  dashboard / shell — the script never drops or alters existing tables on purpose.
+- **`Set TURSO_DATABASE_URL...`** — the variables were not set in that terminal; include
+  them on the same command line.
+- **Site loads but lists are empty** — `deploy:db` was not run, or ran against a different
+  database than Vercel is configured to use.
+- **Owner cannot open `/admin`** — check `OWNER_USERNAME` in Vercel matches the account,
+  the account has `role = OWNER`, and the session was created after provisioning.
+- **Everyone is logged out after deploy** — expected for v0.3: cookies now carry a
+  database session version and old cookies lack it. Ask users to log on once.
+- **Legacy programs disappeared for ordinary users** — intended: they are owner-only
+  until explicitly reassigned. Run the owner provisioning/claim step.
+- **`AUTH_SECRET must be set in production`** — add the Vercel environment variable and
+  redeploy.

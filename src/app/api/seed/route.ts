@@ -1,11 +1,18 @@
 export const dynamic = "force-dynamic" // always server-rendered (serverless-safe)
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireOwner, sameOrigin, serverError } from '@/lib/session'
 
-// POST /api/seed — (re)seed syllabus topics, SAP demo tables, examples, FMs
+// POST /api/seed — (re)seed syllabus topics, SAP demo tables, examples, FMs.
+// Owner-only: this endpoint can delete and reseed repository content.
 // Body: { topics?: [...], tables?: [...], programs?: [...], functions?: [...], reset?: boolean }
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const auth = await requireOwner(req)
+  if (!auth.user) return auth.response
+  const csrf = sameOrigin(req)
+  if (csrf) return csrf
+
   try {
     const body = await req.json()
     const { topics = [], tables = [], programs = [], functions = [], reset = false } = body as {
@@ -17,8 +24,19 @@ export async function POST(req: Request) {
     }
 
     if (reset) {
-      await db.executionLog.deleteMany()
-      await db.program.deleteMany()
+      // Never delete user-owned programs. Only shared examples and syllabus
+      // content are reset; execution history is retained with its program link
+      // cleared (the dashboard keeps aggregate health metrics).
+      const exampleIds = (
+        await db.program.findMany({ where: { isExample: true }, select: { id: true } })
+      ).map((p) => p.id)
+      if (exampleIds.length) {
+        await db.executionLog.updateMany({
+          where: { programId: { in: exampleIds } },
+          data: { programId: null },
+        })
+        await db.program.deleteMany({ where: { id: { in: exampleIds } } })
+      }
       await db.dbRow.deleteMany()
       await db.dbTable.deleteMany()
       await db.functionModule.deleteMany()
@@ -80,8 +98,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // programs
+    // programs (skip the reserved per-user sandbox name)
     for (const p of programs) {
+      if (String(p.name).startsWith('Z_MY_PRACTICE')) continue
       await db.program.upsert({
         where: { name: p.name },
         update: {
@@ -146,7 +165,7 @@ export async function POST(req: Request) {
       functions: await db.functionModule.count(),
     }
     return NextResponse.json({ ok: true, counts })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (error) {
+    return serverError('seed', error)
   }
 }

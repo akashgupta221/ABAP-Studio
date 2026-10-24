@@ -42,9 +42,16 @@ model Program {
   executions  Int            @default(0)
   topicId     Int?
   topic       Topic?         @relation(fields: [topicId], references: [id])
+  // null + isExample=true  → shared, read-only training example
+  // null + isExample=false → unclaimed legacy object (owner-only after migration)
+  // set                    → private program owned by that user
+  ownerId     String?
+  owner       User?          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   logs        ExecutionLog[]
+
+  @@index([ownerId])
 }
 
 // ── Data Dictionary (SE11) ─────────────────────────────────────────────
@@ -92,6 +99,10 @@ model ExecutionLog {
   programId   String?
   program     Program? @relation(fields: [programId], references: [id], onDelete: SetNull)
   programName String
+  // Kept on account deletion (SetNull) so aggregate health metrics survive
+  // without retaining a link to the deleted identity.
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   status      String // SUCCESS | ERROR | SYNTAX_ERROR
   durationMs  Int      @default(0)
   message     String   @default("")
@@ -101,25 +112,51 @@ model ExecutionLog {
   createdAt   DateTime @default(now())
 
   @@index([createdAt])
+  @@index([userId])
 }
 
 // ── User master (SAP-style logon: user + password) ─────────────────────
 model User {
-  id           String    @id @default(cuid())
-  username     String    @unique // stored uppercase, like SAP user names
-  passwordHash String // scrypt: "<salt-hex>:<hash-hex>"
-  displayName  String    @default("")
-  createdAt    DateTime  @default(now())
-  lastLoginAt  DateTime?
+  id             String         @id @default(cuid())
+  username       String         @unique // stored uppercase, like SAP user names
+  passwordHash   String // scrypt: "<salt-hex>:<hash-hex>"
+  email          String?        @unique // reserved for Clerk linking; never trusted until verified
+  displayName    String         @default("")
+  role           String         @default("USER") // USER | OWNER (server-managed only)
+  suspended      Boolean        @default(false)
+  sessionVersion Int            @default(1) // bump to revoke every existing session
+  createdAt      DateTime       @default(now())
+  lastLoginAt    DateTime?
+  programs       Program[]
+  favorites      UserFavorite[]
+  logs           ExecutionLog[]
 }
 
-// ── Favorites (Easy Access) ────────────────────────────────────────────
-model Favorite {
+// ── Per-user Easy Access favorites ─────────────────────────────────────
+model UserFavorite {
   id         Int      @id @default(autoincrement())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   objectType String // PROGRAM | CLASS | TABLE | FM | TOPIC
   objectName String
   label      String   @default("")
   createdAt  DateTime @default(now())
 
-  @@unique([objectType, objectName])
+  @@unique([userId, objectType, objectName])
+  @@index([userId])
+}
+
+// ── Immutable administrative audit trail ───────────────────────────────
+model AdminAuditLog {
+  id         Int      @id @default(autoincrement())
+  actorId    String // snapshot; intentionally not a foreign key
+  actorName  String
+  action     String // e.g. USER_SUSPEND, USER_DELETE, SESSION_REVOKE
+  targetType String   @default("")
+  targetId   String   @default("")
+  detail     String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
 }

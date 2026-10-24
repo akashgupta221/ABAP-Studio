@@ -38,9 +38,18 @@ export function LogonPad() {
     void (async () => {
       try {
         const res = await fetch('/api/auth/me')
-        const data = (await res.json()) as { user?: { username: string } | null }
+        const data = (await res.json()) as {
+          user?: { username: string; role?: string; owner?: boolean } | null
+        }
         if (!cancelled && data.user?.username) {
-          restoreSession({ user: data.user.username, client: '105', language: 'EN', loggedIn: true })
+          restoreSession({
+            user: data.user.username,
+            client: '105',
+            language: 'EN',
+            loggedIn: true,
+            role: data.user.role,
+            owner: data.user.owner,
+          })
         }
       } catch {
         /* stay on the logon pad */
@@ -51,9 +60,9 @@ export function LogonPad() {
     }
   }, [restoreSession])
 
-  const enterSystem = (username: string, lang = language) => {
+  const enterSystem = (username: string, role?: string, owner?: boolean, lang = language) => {
     const c = (client.trim() || '105').padStart(3, '0')
-    logon({ user: username, client: c, language: lang })
+    logon({ user: username, client: c, language: lang, role, owner })
   }
 
   const switchMode = (m: Mode) => {
@@ -82,12 +91,15 @@ export function LogonPad() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       })
-      const data = (await res.json().catch(() => ({}))) as { user?: { username: string }; error?: string }
+      const data = (await res.json().catch(() => ({}))) as {
+        user?: { username: string; role?: string; owner?: boolean }
+        error?: string
+      }
       if (!res.ok || !data.user) {
         setError(data.error ?? 'Logon failed')
         return
       }
-      enterSystem(data.user.username)
+      enterSystem(data.user.username, data.user.role, data.user.owner)
     } catch {
       setError('Cannot reach the system — check that the server is running')
     } finally {
@@ -102,8 +114,8 @@ export function LogonPad() {
       setError('Enter a user name')
       return
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
       return
     }
     if (password !== confirm) {
@@ -118,12 +130,15 @@ export function LogonPad() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       })
-      const data = (await res.json().catch(() => ({}))) as { user?: { username: string }; error?: string }
+      const data = (await res.json().catch(() => ({}))) as {
+        user?: { username: string; role?: string; owner?: boolean }
+        error?: string
+      }
       if (!res.ok || !data.user) {
         setError(data.error ?? 'Registration failed')
         return
       }
-      enterSystem(data.user.username)
+      enterSystem(data.user.username, data.user.role, data.user.owner)
     } catch {
       setError('Cannot reach the system — check that the server is running')
     } finally {
@@ -295,6 +310,7 @@ export function LogonPad() {
               <button type="button" className="sap-btn" onClick={() => switchMode('register')}>
                 Register
               </button>
+              <span className="ml-auto text-[10.5px] text-[#6a7a8b]">Password: 8+ characters</span>
             </div>
           ) : (
             <div className="flex items-center gap-3">

@@ -1,17 +1,25 @@
 export const dynamic = "force-dynamic" // always server-rendered (serverless-safe)
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/ensure-seed'
+import { programListWhere } from '@/lib/access'
+import { isOwner, requireUser, serverError } from '@/lib/session'
 
-// GET /api/topics — syllabus topics with example counts
-export async function GET() {
+// GET /api/topics — syllabus topics with the caller-visible example counts.
+// Private programs must never appear here, even though they may carry a topicId.
+export async function GET(req: NextRequest) {
+  const auth = await requireUser(req)
+  if (!auth.user) return auth.response
   try {
     await ensureSeeded()
     const topics = await db.topic.findMany({
       orderBy: { srNo: 'asc' },
       include: {
-        programs: { select: { id: true, name: true, title: true, type: true, paradigm: true, isExample: true } },
+        programs: {
+          where: programListWhere(auth.user, isOwner(auth.user)),
+          select: { id: true, name: true, title: true, type: true, paradigm: true, isExample: true },
+        },
       },
     })
     return NextResponse.json({
@@ -28,7 +36,7 @@ export async function GET() {
         exampleCount: t.programs.length,
       })),
     })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (error) {
+    return serverError('topics', error)
   }
 }

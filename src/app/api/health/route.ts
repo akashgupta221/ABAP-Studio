@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic' // never cached — reflects the current deployment's config
 
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, ensureSchema } from '@/lib/db'
 
 // GET /api/health — deployment diagnostics. Reports which database this deployment
 // targets, whether the credentials/tables are present, and the raw connection
@@ -18,11 +18,13 @@ export async function GET() {
   }
 
   try {
+    await ensureSchema()
     const [users, programs] = await Promise.all([db.user.count(), db.program.count()])
     return NextResponse.json({ ok: true, ...info, users, programs })
   } catch (err) {
+    console.error('[health]', err)
     return NextResponse.json(
-      { ok: false, ...info, error: err instanceof Error ? err.message : String(err) },
+      { ok: false, ...info, error: 'Database unreachable or schema upgrade failed' },
       { status: 500 },
     )
   }

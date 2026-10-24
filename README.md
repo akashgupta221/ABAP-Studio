@@ -3,7 +3,8 @@
 # ABAP-STUDIO
 
 **A browser-based SAP NetWeaver®-style ABAP training workbench.**
-Faithful SAP GUI feel, a from-scratch ABAP interpreter, and a 100% free cloud deployment.
+Faithful SAP GUI feel, a from-scratch ABAP interpreter, private user workspaces and a
+100% free cloud deployment.
 
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
@@ -12,51 +13,59 @@ Faithful SAP GUI feel, a from-scratch ABAP interpreter, and a 100% free cloud de
 ![Database](https://img.shields.io/badge/Database-SQLite%20%7C%20Turso%20%28libSQL%29-4FF8D2)
 ![Deploy](https://img.shields.io/badge/Deploy-Vercel-000?logo=vercel&logoColor=white)
 
-[**▶ Live demo**](https://abap-studio-rd9d.vercel.app) · [Deployment guide](DEPLOY.md) · [Report an issue](https://github.com/akashgupta221/ABAP-Studio/issues)
+[**▶ Live demo**](https://abap-studio-rd9d.vercel.app) · [Deployment guide](DEPLOY.md) · [Master specification](docs/MASTER-PROJECT-SPEC.md) · [Report an issue](https://github.com/akashgupta221/ABAP-Studio/issues)
 
 </div>
 
 ---
 
-## What is ABAPForge?
+## What is ABAP-Studio?
 
-ABAPForge recreates the day-to-day feel of working in an SAP NetWeaver system — the
-logon pad, the menu tree, SE38-style editors, DDIC dictionary views, ALV grids — and
-runs **actual ABAP code** through a purpose-built interpreter written in TypeScript.
+ABAP-Studio recreates the day-to-day feel of working in an SAP NetWeaver system — the
+logon pad, menu tree, SE38-style editors, DDIC dictionary views and ALV grids — and runs
+**actual ABAP code** through a purpose-built interpreter written in TypeScript.
 
-It ships with a complete self-study curriculum (10 topics, 38 programs, 11 demo tables
-with 113 rows, function modules) so you can log on and start writing, checking and
-running classical ABAP within seconds — no SAP installation, no license, no cost.
+It ships with a complete self-study curriculum (10 topics, 36 examples + a shared
+INCLUDE, 11 demo tables with 113 rows and function modules). Every user gets a **private
+practice sandbox**; training examples are shared and read-only.
 
-> **Live demo:** https://abap-studio-rd9d.vercel.app — open it, click **Register**,
-> and you are inside the system.
+> **Live demo:** https://abap-studio-rd9d.vercel.app — open it, click **Register**, and
+> you are inside the system. The live site is still the pre-v0.3 build until the owner
+> migration in `docs/MASTER-PROJECT-SPEC.md` is completed.
 
 ## Features
 
 ### 🖥️ Authentic SAP GUI experience
 - SAP-style **logon pad** with system entry, client and language fields
 - Full **workbench shell**: menu bar, standard toolbar, command field, status bar, tab strip
-- **Easy Access** menu tree and a command palette for transactions (SE38, SE11, SE16N, SE37, SE24, …)
-- Real SAP button sets, field help, dirty-state awareness on Save, and keyboard shortcuts
+- **Easy Access** tree and command palette for transactions (SE38, SE11, SE16N, SE37, SE24, …)
+- Real SAP button sets, field help, dirty-state awareness and keyboard shortcuts
 
 ### ⚙️ A real ABAP engine — from scratch
 - Hand-written **tokenizer → parser → tree-walking interpreter** (`src/lib/abap/`)
-- Classical ABAP subset: `REPORT`, `WRITE` lists, `DATA`/`TYPES`, internal tables with `READ TABLE` / `LOOP AT` / `APPEND` / `SORT` / `DELETE`, `IF`/`CASE`/`DO`/`WHILE`, `FORM`/`PERFORM`, string and date built-ins, `CALL FUNCTION`
-- **Selection screens** — `PARAMETERS` and `SELECT-OPTIONS` with defaults
-- **Classic ABAP SQL** against the demo DDIC tables (`SELECT … INTO TABLE`, aggregates, joins)
-- **ALV-style grid output** and classic list output, with runtime/duration shown per run
-- **Syntax check** (Ctrl+F2) with SAP-style error messages and line positions
+- Classical ABAP subset: `REPORT`, `WRITE`, `DATA`/`TYPES`, internal tables, control flow,
+  `FORM`/`PERFORM`, string/date built-ins and `CALL FUNCTION`
+- **Selection screens** (`PARAMETERS`, `SELECT-OPTIONS`) and classic ABAP SQL
+- **ALV-style grid** and classic list output with runtime duration
+- **Syntax check** (Ctrl+F2) with SAP-style messages and line positions
+- Interpreter statement and wall-clock limits
 
 ### 📚 A ready-made learning path
 - 10 syllabus topics following a classical ABAP course progression
-- 37 example programs + shared include — every one verified against the engine
-- Editable sandbox program **`Z_MY_PRACTICE`** for your own experiments
-- Save your own programs, keep favorites, and see recent activity
+- 36 verified example programs + 1 shared INCLUDE
+- **Private per-user sandbox** opened as “My Practice Program”
+- Save your own programs, keep favorites and see recent activity
 
-### 🔐 Built-in user master
-- SAP-style **Register / Log on / Log off** — no third parties
-- Passwords hashed with **scrypt**; sessions are **HMAC-signed, HTTP-only cookies** (7-day TTL)
-- Per-user favorites and activity, persisted in the database
+### 🔐 Secure accounts and private workspaces
+- **Server-side sessions** validated against the database on every protected request
+- Passwords hashed with **scrypt**; HTTP-only, HMAC-signed session cookies
+- **Same-origin CSRF checks**, rate limiting and session revocation
+- Training examples are shared/read-only; your programs and sandbox are private
+- The designated owner can inspect all users and non-example programs
+- **Owner-only admin dashboard** (`/admin`): metrics, activity, users, programs, audit
+  log, suspend/reactivate, revoke sessions and confirmed deletion
+- Built-in logon is **interim**; Clerk Email OTP + Google sign-in is planned but not yet
+  integrated
 
 ## Tech stack
 
@@ -68,7 +77,7 @@ running classical ABAP within seconds — no SAP installation, no license, no co
 | State / data | Zustand, TanStack Query |
 | Database | Prisma 6 + libSQL driver adapter — SQLite locally, [Turso](https://turso.tech) in the cloud |
 | ABAP engine | Custom tokenizer / parser / interpreter (`src/lib/abap/`) |
-| Deployment | Vercel **Hobby** + Turso **free** plan (no credit card) |
+| Deployment | Vercel **Hobby** + Turso **free** plan |
 
 ## Getting started (local)
 
@@ -83,20 +92,29 @@ cd ABAP-Studio
 bun install
 
 # 3) Configure the environment
-cp .env.example .env          # defaults to the bundled SQLite database
+cp .env.example .env
 
-# 4) Run
+# 4) Create the local database schema
+bun run db:push
+
+# 5) Run
 bun run dev                   # → http://localhost:3000
 ```
 
-The repository ships with a **pre-seeded local database** (`prisma/db/app.db`), so you
-can log on immediately. Click **Register** on the logon pad to create your own user,
-or rebuild the content at any time:
+The database file is **not committed** (it contains password hashes and personal
+programs). On the first request the app auto-seeds the shared syllabus, examples, demo
+tables and function modules. Click **Register** on the logon pad to create a user.
+
+To make a local account the owner:
 
 ```bash
-bun run db:push   # sync the Prisma schema to the local database
-bun run seed      # wipe + reseed all content and verify every example program
+# Register the account in the UI first, then:
+OWNER_USERNAME=AKASH bun run owner:provision
+OWNER_USERNAME=AKASH bun run owner:password   # hidden input; no shell history
 ```
+
+Add `OWNER_USERNAME="AKASH"` to `.env` so the admin gate recognizes the account. Use the
+command field `ADMIN` or the System menu to open the dashboard.
 
 Production build locally:
 
@@ -109,19 +127,37 @@ bun run build && bun run start
 | Variable | Where | Purpose |
 | --- | --- | --- |
 | `DATABASE_URL` | local | SQLite file path — `file:./db/app.db` (relative to `prisma/`) |
-| `TURSO_DATABASE_URL` | Vercel + shell | libSQL URL of your Turso database (`libsql://…`) — when set, the app talks to Turso |
-| `TURSO_AUTH_TOKEN` | Vercel + shell | Turso access token (create one per database) |
-| `AUTH_SECRET` | Vercel | Random string used to sign session cookies — generate with `openssl rand -base64 32` |
+| `TURSO_DATABASE_URL` | Vercel + shell | libSQL URL of the Turso database (`libsql://…`) |
+| `TURSO_AUTH_TOKEN` | Vercel + shell | Turso access token |
+| `AUTH_SECRET` | Vercel | Long random session-signing secret — **required in production**; generate with `openssl rand -base64 32` |
+| `OWNER_USERNAME` | Vercel + local | The single owner account name; owner access fails closed if unset |
+| `OWNER_EMAIL` | provisioning | Optional email stored on the owner account |
 
-Never commit real values; `.env` is git-ignored.
+Never commit real values; `.env` is git-ignored. Do not paste secrets into chat or issues.
+
+## Testing
+
+```bash
+bun run lint          # ESLint
+bun test tests        # auth, access, sandbox and ABAP regression tests
+bun run test:api      # disposable live API/security suite (port 3100)
+bun run test:all      # lint + unit + API
+bun run build         # production build
+```
+
+The API suite creates a throwaway database and server; it never touches local user data
+or production. Stop any dev server sharing `.next` before running it.
 
 ## Deploy for free (Vercel + Turso)
 
-Every `git push` rebuilds and redeploys the live app automatically. In short:
+Every `git push` rebuilds and redeploys the live app. **Read
+[`docs/MASTER-PROJECT-SPEC.md`](docs/MASTER-PROJECT-SPEC.md) §4 before deploying v0.3**:
+the ownership migration changes who can see legacy programs and invalidates old sessions.
 
 1. **GitHub** — push this repository.
 2. **Turso** — create a free database, copy its `libsql://` URL and create a token.
-3. **Vercel** — import the repo and set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `AUTH_SECRET`.
+3. **Vercel** — import the repo and set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`,
+   `AUTH_SECRET` and `OWNER_USERNAME`.
 4. **Seed the cloud database** — from your machine:
 
 ```bash
@@ -130,14 +166,26 @@ TURSO_AUTH_TOKEN="…" \
 bun run deploy:db
 ```
 
-`deploy:db` applies the schema (idempotent) and seeds all content to the remote
-database. See **[DEPLOY.md](DEPLOY.md)** for the complete step-by-step walkthrough.
+`deploy:db` applies additive schema changes and upserts shared content **without deleting
+users, private programs, favorites or execution history**.
 
-**Deployment diagnostics:** `GET /api/health` on any running instance returns
-database configuration and reachability — without exposing any secrets:
+5. **Provision the owner and claim legacy programs** (after a verified backup):
+
+```bash
+CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH \
+TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:provision
+
+CONFIRM_OWNER_PASSWORD=YES OWNER_USERNAME=AKASH \
+TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:password
+```
+
+See **[DEPLOY.md](DEPLOY.md)** for the full walkthrough.
+
+**Deployment diagnostics:** `GET /api/health` returns database configuration and
+reachability without exposing secrets:
 
 ```json
-{ "ok": true, "dbTarget": "turso", "hasTursoToken": true, "users": 0, "programs": 38 }
+{ "ok": true, "dbTarget": "turso", "hasTursoToken": true, "hasAuthSecret": true, "users": 0, "programs": 37 }
 ```
 
 ## npm scripts
@@ -147,8 +195,12 @@ database configuration and reachability — without exposing any secrets:
 | `bun run dev` | Start the dev server on port 3000 |
 | `bun run build` | Production build (standalone output) |
 | `bun run start` | Serve the production build |
-| `bun run seed` | Wipe + reseed content and verify all example programs |
-| `bun run deploy:db` | Push schema + seed to the remote Turso database |
+| `bun run seed` | Non-destructive content upsert + engine verification |
+| `bun run deploy:db` | Apply schema + upsert content on Turso |
+| `bun run owner:provision` | Assign the owner role and claim legacy programs |
+| `bun run owner:password` | Hidden-input owner password reset |
+| `bun run owner:favorites` | Dry-run/apply migration of legacy global favorites to the owner |
+| `bun run test` / `test:api` / `test:all` | Unit / live API / full test suites |
 | `bun run db:push` | Sync the Prisma schema to the local database |
 | `bun run db:generate` | Regenerate the Prisma client |
 | `bun run lint` | ESLint |
@@ -157,42 +209,51 @@ database configuration and reachability — without exposing any secrets:
 
 ```
 prisma/
-  schema.prisma          Prisma models (Topic, Program, DbTable, DbRow,
-                         FunctionModule, ExecutionLog, User, Favorite)
-  db/app.db              Pre-seeded local SQLite database
+  schema.prisma          Topic, Program, DbTable, DbRow, FunctionModule,
+                         ExecutionLog, User, UserFavorite, AdminAuditLog
 scripts/
   seed-content.ts        Syllabus topics + demo DDIC tables
-  seed-programs-1/2.ts   37 example programs, include, sandbox, function modules
-  run-seed.ts            Seed + engine verification for every program
-  deploy-db.ts           Remote schema + seed (used by `deploy:db`)
+  seed-programs-1/2.ts   36 examples, shared INCLUDE, function modules
+  run-seed.ts            Non-destructive content upsert + engine verification
+  deploy-db.ts           Remote schema + content upsert
+  provision-owner.ts     Owner role + legacy program claim
+  set-owner-password.ts  Hidden-input password reset
 src/
-  app/api/               REST endpoints (auth, programs, tables, execute, health, …)
-  components/workbench/  SAP GUI: logon pad, shell, SE38/SE11/SE16N/SE37 views,
-                         ALV grid, selection screens, class & function builders
-  lib/abap/              The ABAP engine: tokenizer, parser, interpreter, natives
-  lib/auth.ts            scrypt hashing + signed session cookies
-  lib/db.ts              Prisma client (SQLite locally, libSQL adapter for Turso)
+  app/admin/             Owner-only dashboard page
+  app/api/               REST endpoints (auth, programs, admin, sandbox, execute, …)
+  components/workbench/  SAP GUI: logon pad, shell, SE38/SE11/SE16N/SE37 views
+  components/admin/      Owner dashboard UI
+  lib/abap/              ABAP engine: tokenizer, parser, interpreter, natives
+  lib/auth.ts            scrypt hashing + signed session tokens
+  lib/session.ts         DB-validated sessions, owner gate, CSRF, rate limits
+  lib/access.ts          Example/private/legacy visibility and edit rules
+  lib/sandbox.ts         Per-user practice sandbox template
+  lib/db.ts              Prisma client + additive production schema migration
+tests/                   Unit tests + disposable API/security suite
 ```
 
 ### API overview
 
 | Endpoint | Purpose |
 | --- | --- |
-| `POST /api/auth/register` · `login` · `logout`, `GET /api/auth/me` | User master & sessions |
+| `POST /api/auth/register` · `login` · `logout`, `GET /api/auth/me` | User master and sessions |
 | `POST /api/check` | ABAP syntax check |
-| `POST /api/execute` | Run an ABAP program on the engine |
-| `GET /api/topics` · `programs` · `tables` · `functions` · `search` | Repository & DDIC content |
+| `POST /api/execute` | Run an ABAP program (authenticated) |
+| `GET /api/topics` · `programs` · `tables` · `functions` · `search` | Repository and DDIC content |
 | `GET/POST /api/favorites` · `GET /api/recents` | Per-user workbench state |
+| `POST /api/sandbox` | Get or create the current user's private sandbox |
+| `GET /api/admin/overview`, `PATCH/DELETE /api/admin/users/[id]` | Owner-only administration |
 | `GET /api/health` | Deployment diagnostics (no secrets) |
 
 ## Roadmap
 
-- Broader ABAP OO coverage (class builder foundations are in place)
-- RAP / AMDP constructs beyond the current classical subset
-- More syllabus topics and additional demo applications
+- Clerk Email OTP + Google sign-in and legacy account migration (blocked on owner keys)
+- Separate Modern ABAP environment with an honest executable / simulated / unsupported matrix
+- Distributed rate limiting for multi-instance deployments
+- Broader ABAP OO coverage, RAP/AMDP constructs and UI acceptance automation
 
 ## Credits
 
 Built by [@akashgupta221](https://github.com/akashgupta221). SAP, ABAP and NetWeaver
-are trademarks of SAP SE — this project is an independent educational simulation and
-is not affiliated with or endorsed by SAP.
+are trademarks of SAP SE — this project is an independent educational simulation and is
+not affiliated with or endorsed by SAP.

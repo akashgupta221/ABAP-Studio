@@ -235,3 +235,33 @@ Work Log:
 Stage Summary:
 - Standard ABAP environment now mirrors the supplied real-SAP screenshots for Easy Access, SE38 initial/attributes, object-directory creation and the include/editor toolbar
 - Phase 0 audit complete and documented; Clerk/admin/Modern ABAP/automated tests remain (Clerk is blocked on owner-created credentials)
+
+---
+Task ID: 13
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Master specification v0.3 — server-side security, per-user ownership, private sandboxes, owner-only administration, automated tests, non-destructive seeding
+
+Work Log:
+- Phase 0 re-audit against the owner's restated v0.3 specification: identified missing API authentication, global program/favorite data, no owner/admin model, no automated tests, destructive reseeding and a tracked local database containing password hashes
+- Schema: added User.role/email/suspended/sessionVersion, Program.ownerId, ExecutionLog.userId, UserFavorite and AdminAuditLog; added additive idempotent ensureSchema() for production-safe column/table/index creation; tested it against a copy of the old-schema SQLite database
+- Authentication: all content/action APIs now require a DB-validated session (sessionVersion), check suspension, enforce same-origin CSRF on mutations, apply per-process rate limits and return generic server errors; logout, suspension and admin revocation invalidate tokens server-side
+- Authorization: server-managed USER/OWNER roles; public registration always creates USER and ignores client roles; owner gate requires role + OWNER_USERNAME and fails closed if unset; examples are shared/read-only, private programs are creator-only, the designated owner may inspect/edit all non-example programs, unclaimed legacy rows are owner-only
+- Ownership migration: scripts/provision-owner.ts assigns the owner role, claims ownerless non-example legacy programs and invalidates old owner sessions; scripts/set-owner-password.ts resets the password via hidden input
+- Sandboxes: /api/sandbox creates a private physical Z_MY_PRACTICE_<USER> row per user (Program.name is globally unique); the owner keeps any legacy Z_MY_PRACTICE row; reserved names are blocked from normal create
+- Admin: owner-only /admin dashboard and /api/admin/* with counts, active users, execution health/errors, recent activity, user search, all-programs view, audit log, suspend/reactivate, session revocation and confirmed deletion; deletion explicitly removes private programs/favorites, unlinks execution logs and preserves immutable audit entries even where Turso FKs are absent
+- Seed safety: run-seed/deploy-db rewritten to upsert shared content without deleting users, private programs, favorites or histories; /api/seed reset now only removes shared examples and syllabus content; the old shared Z_MY_PRACTICE is no longer seeded
+- Tests: 19 unit tests pass (auth/session signing, owner gate, access rules, sandbox naming, all seeded ABAP examples, interpreter limits); disposable live API suite passes 51/51 checks including anonymous denial, CSRF, role-escalation attempts, private-program and syllabus-relation isolation, owner override, sandbox separation, favorites/recents isolation, suspension, session replay rejection, deletion and reserved-name protection; lint and production build pass
+- Browser verification: owner dashboard loads metrics/users/all programs/audit; owner sandbox opens legacy Z_MY_PRACTICE; new user gets Z_MY_PRACTICE_UIVERIFY, sees no owner legacy programs, gets 403 from admin API and sees no admin link; test user deleted afterwards
+- Repo hygiene: local SQLite database and backup removed from version control/ignored; local test audit/log artifacts cleaned; added an owner-scoped dry-run/apply migration for legacy global favorites
+- Documentation: rewrote docs/MASTER-PROJECT-SPEC.md for owner spec v0.3 with verified status and explicit non-claims; README and DEPLOY updated for private workspaces, owner provisioning, AUTH_SECRET requirement, tests and non-destructive deploy
+
+Verification:
+- bun run lint → pass
+- bun test tests → 19 pass, 0 fail
+- bash tests/run-api-tests.sh → 51 checks passed, 0 failed
+- bun run build → pass
+
+Stage Summary:
+- v0.3 security, ownership, sandbox and owner-administration work is complete and verified locally; seed/deploy preserves user data
+- NOT deployed: live production remains commit 11d2b1c. Production still needs a Turso backup, OWNER_USERNAME + fresh AUTH_SECRET in Vercel, owner provisioning/legacy claim, legacy-favorite decision and post-deploy verification
+- Clerk (keys/migration) and Modern ABAP (scope approval) remain blocked; they are not claimed complete

@@ -396,6 +396,12 @@ export function SapShell() {
         { label: 'End Session', disabled: true },
         { sep: true },
         { label: 'Status…', run: () => setSystemStatusOpen(true) },
+        ...(useWorkbench.getState().session.owner
+          ? ([
+              { sep: true },
+              { label: 'Administration', run: () => window.location.assign('/admin') },
+            ] as MMenu['items'])
+          : []),
         { label: 'Services', disabled: true },
         {
           label: 'Services → Object Search',
@@ -885,6 +891,9 @@ export function SapShell() {
             <MenuList
               items={[
                 { label: 'Find Object…', shortcut: 'Ctrl+K', run: () => useWorkbench.getState().setCommandPaletteOpen(true) },
+                ...(useWorkbench.getState().session.owner
+                  ? [{ label: 'Administration Dashboard', run: () => window.location.assign('/admin') }]
+                  : []),
                 { sep: true },
                 { label: 'Status…', run: () => setSystemStatusOpen(true) },
                 { label: 'Log Off', run: () => setLogoffConfirm(true) },

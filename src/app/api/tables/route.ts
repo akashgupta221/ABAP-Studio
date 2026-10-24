@@ -1,11 +1,14 @@
 export const dynamic = "force-dynamic" // always server-rendered (serverless-safe)
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/ensure-seed'
+import { requireUser, serverError } from '@/lib/session'
 
 // GET /api/tables — Data Dictionary (SE11) table list
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireUser(req)
+  if (!auth.user) return auth.response
   try {
     await ensureSeeded()
     const tables = await db.dbTable.findMany({
@@ -25,7 +28,7 @@ export async function GET() {
         }
       }),
     })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (error) {
+    return serverError('tables', error)
   }
 }

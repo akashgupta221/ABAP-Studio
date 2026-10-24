@@ -62,6 +62,8 @@ export interface SapSession {
   client: string
   language: string
   loggedIn: boolean
+  role?: string
+  owner?: boolean
 }
 
 export interface WhereUsedState {
@@ -103,7 +105,7 @@ interface WorkbenchState {
 
   // ── SAP session / logon pad ─────────────────────────────────────────
   session: SapSession
-  logon: (p: { user: string; client: string; language: string }) => void
+  logon: (p: { user: string; client: string; language: string; role?: string; owner?: boolean }) => void
   restoreSession: (s: SapSession) => void
   logoff: () => void
   insertMode: 'INS' | 'OVR'
@@ -162,6 +164,7 @@ interface WorkbenchState {
 
   openProgramByName: (name: string) => Promise<void>
   openProgramById: (id: string) => Promise<void>
+  openSandbox: () => Promise<void>
   activateTab: (key: string) => void
   closeTab: (key: string) => void
   updateSource: (name: string, source: string) => void
@@ -320,6 +323,12 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   // ── open programs ───────────────────────────────────────────────────
   openProgramByName: async (name) => {
     const upper = name.toUpperCase()
+    // Every user's practice sandbox is a distinct private row. Resolve it via
+    // the server instead of searching the shared repository by name.
+    if (upper === 'Z_MY_PRACTICE') {
+      await get().openSandbox()
+      return
+    }
     // already open?
     if (get().programs[upper]) {
       const tab = tabOf('program', upper)
@@ -378,8 +387,18 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     }
   },
 
-  activateTab: (key) => set({ activeTabKey: key, view: 'tab' }),
+  openSandbox: async () => {
+    try {
+      const { program } = await api<{ program: ProgramFull }>('/api/sandbox', { method: 'POST' })
+      await get().openProgramById(program.id)
+      get().addMessage('S', 'Private practice program ready')
+    } catch (e) {
+      toast.error((e as Error).message)
+      get().addMessage('E', (e as Error).message)
+    }
+  },
 
+  activateTab: (key) => set({ activeTabKey: key, view: 'tab' }),
   closeTab: (key) =>
     set((s) => {
       const idx = s.tabs.findIndex((t) => t.key === key)
@@ -705,12 +724,14 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     ),
 
   // ── SAP session ─────────────────────────────────────────────────────
-  logon: ({ user, client, language }) => {
+  logon: ({ user, client, language, role, owner }) => {
     const session: SapSession = {
       user: user.trim().toUpperCase() || 'DEVELOPER',
       client: client.trim() || '105',
       language: (language.trim() || 'EN').toUpperCase(),
       loggedIn: true,
+      role: role ?? 'USER',
+      owner: !!owner,
     }
     set({ session })
     get().addMessage('S', `Logon to system MER (client ${session.client}) successful`)

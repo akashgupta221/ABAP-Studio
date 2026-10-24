@@ -11,7 +11,13 @@ export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 function secret(): string {
   // Set AUTH_SECRET in the hosting environment (Vercel) — see DEPLOY.md.
-  return process.env.AUTH_SECRET || 'abapforge-development-secret'
+  // Production fails closed rather than signing sessions with a public default.
+  const value = process.env.AUTH_SECRET
+  if (value) return value
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('AUTH_SECRET must be set in production')
+  }
+  return 'abapforge-development-secret'
 }
 
 // ── passwords ──────────────────────────────────────────────────────────
@@ -30,18 +36,22 @@ export async function verifyPassword(password: string, stored: string): Promise<
 }
 
 // ── session tokens ─────────────────────────────────────────────────────
+// `sv` is the user's session version. Every authenticated request compares it
+// with the database value, so logout, suspension, and administrative revocation
+// invalidate tokens server-side instead of relying on the browser to forget them.
 export interface SessionUser {
   uid: string
   user: string
+  sv: number
 }
 
 function sign(payload: string): string {
   return createHmac('sha256', secret()).update(payload).digest('base64url')
 }
 
-export function createSessionToken(uid: string, username: string): string {
+export function createSessionToken(uid: string, username: string, sessionVersion: number): string {
   const payload = Buffer.from(
-    JSON.stringify({ uid, u: username, exp: Date.now() + SESSION_TTL_MS }),
+    JSON.stringify({ uid, u: username, sv: sessionVersion, exp: Date.now() + SESSION_TTL_MS }),
   ).toString('base64url')
   return `${payload}.${sign(payload)}`
 }
@@ -57,10 +67,12 @@ export function parseSessionToken(token: string): SessionUser | null {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString()) as {
       uid?: string
       u?: string
+      sv?: number
       exp?: number
     }
     if (!data.uid || !data.u || !data.exp || data.exp < Date.now()) return null
-    return { uid: data.uid, user: data.u }
+    if (!Number.isInteger(data.sv)) return null
+    return { uid: data.uid, user: data.u, sv: data.sv as number }
   } catch {
     return null
   }

@@ -1,6 +1,11 @@
-// Seed the database and verify every example program against the engine
-// Run: bun run scripts/run-seed.ts
-import { db } from '../src/lib/db'
+// Seed the database and verify every example program against the engine.
+// Run: bun run scripts/run-seed.ts  (or `bun run deploy:db` for Turso)
+//
+// NON-DESTRUCTIVE: examples and syllabus content are upserted, never wiped.
+// User accounts, private programs, favorites, and execution history survive
+// every run. The old shared Z_MY_PRACTICE row is no longer seeded — each user
+// gets a private sandbox through /api/sandbox.
+import { db, ensureSchema } from '../src/lib/db'
 import { topics, tables } from './seed-content'
 import { programsPart1 } from './seed-programs-1'
 import { programsPart2, functions, includeProgram } from './seed-programs-2'
@@ -8,77 +13,92 @@ import { runAbap, DbSnapshot, type FmEntry, type DbTableDef } from '../src/lib/a
 import { parseAbap } from '../src/lib/abap/parser'
 import type { AbapProgram } from '../src/lib/abap/ast-types'
 
-const programs = [...programsPart1, ...programsPart2, includeProgram]
+const programs = [...programsPart1, ...programsPart2, includeProgram].filter(
+  (p) => p.name !== 'Z_MY_PRACTICE',
+)
 
 async function seed() {
-  console.log('── Seeding database ──')
-  // wipe (FK-safe order)
-  await db.executionLog.deleteMany()
-  await db.program.deleteMany()
-  await db.dbRow.deleteMany()
-  await db.dbTable.deleteMany()
-  await db.functionModule.deleteMany()
-  await db.topic.deleteMany()
+  console.log('── Seeding database (preserving user data) ──')
+  await ensureSchema()
 
-  // topics
-  const topicIds = new Map<string, number>()
-  for (const t of topics) {
-    const created = await db.topic.create({
-      data: {
-        code: t.code, srNo: t.srNo, title: t.title,
-        summary: t.summary, details: t.details,
-        paradigm: t.paradigm, category: t.category,
-      },
-    })
-    topicIds.set(t.code, created.id)
-  }
-  console.log(`  topics: ${topics.length}`)
+  await db.$transaction(
+    async (tx) => {
+      // topics
+      const topicIds = new Map<string, number>()
+      for (const t of topics) {
+        const data = {
+          srNo: t.srNo, title: t.title, summary: t.summary, details: t.details,
+          paradigm: t.paradigm, category: t.category,
+        }
+        const saved = await tx.topic.upsert({
+          where: { code: t.code },
+          update: data,
+          create: { code: t.code, ...data },
+        })
+        topicIds.set(t.code, saved.id)
+      }
+      console.log(`  topics: ${topics.length}`)
 
-  // tables + rows
-  for (const t of tables as any[]) {
-    const created = await db.dbTable.create({
-      data: {
-        name: t.name, description: t.description, isSap: t.isSap ?? true,
-        fields: JSON.stringify(t.fields),
-        topicId: t.topicCode ? topicIds.get(t.topicCode) ?? null : null,
-      },
-    })
-    let seq = 0
-    for (const row of t.rows || []) {
-      await db.dbRow.create({ data: { tableId: created.id, data: JSON.stringify(row), seq: seq++ } })
-    }
-  }
-  console.log(`  tables: ${tables.length}, rows: ${tables.reduce((a, t) => a + (t as any).rows.length, 0)}`)
+      // tables + rows
+      for (const t of tables as any[]) {
+        const fields = JSON.stringify(t.fields)
+        const data = {
+          description: t.description,
+          isSap: t.isSap ?? true,
+          fields,
+          topicId: t.topicCode ? topicIds.get(t.topicCode) ?? null : null,
+        }
+        const saved = await tx.dbTable.upsert({
+          where: { name: t.name },
+          update: data,
+          create: { name: t.name, ...data },
+        })
+        await tx.dbRow.deleteMany({ where: { tableId: saved.id } })
+        let seq = 0
+        for (const row of t.rows || []) {
+          await tx.dbRow.create({ data: { tableId: saved.id, data: JSON.stringify(row), seq: seq++ } })
+        }
+      }
+      console.log(`  tables: ${tables.length}, rows: ${tables.reduce((a, t) => a + (t as any).rows.length, 0)}`)
 
-  // programs
-  for (const p of programs as any[]) {
-    await db.program.create({
-      data: {
-        name: p.name, title: p.title, description: p.description,
-        type: p.type, paradigm: p.paradigm, source: p.source,
-        isExample: p.isExample ?? true, tags: p.tags ?? '',
-        topicId: p.topicCode ? topicIds.get(p.topicCode) ?? null : null,
-      },
-    })
-  }
-  console.log(`  programs: ${programs.length}`)
+      // example programs (upsert by unique name; ownership/executions preserved)
+      for (const p of programs as any[]) {
+        const data = {
+          title: p.title, description: p.description,
+          type: p.type, paradigm: p.paradigm, source: p.source,
+          isExample: p.isExample ?? true, tags: p.tags ?? '',
+          topicId: p.topicCode ? topicIds.get(p.topicCode) ?? null : null,
+        }
+        await tx.program.upsert({
+          where: { name: p.name },
+          update: data,
+          create: { name: p.name, ...data },
+        })
+      }
+      console.log(`  example programs: ${programs.length}`)
 
-  // function modules
-  for (const fm of functions as any[]) {
-    await db.functionModule.create({
-      data: {
-        name: fm.name, groupName: fm.groupName, title: fm.title,
-        importParams: JSON.stringify(fm.importParams || []),
-        exportParams: JSON.stringify(fm.exportParams || []),
-        changingParams: JSON.stringify(fm.changingParams || []),
-        tablesParams: JSON.stringify(fm.tablesParams || []),
-        source: fm.source,
-        isExample: fm.isExample ?? true,
-        topicId: fm.topicCode ? topicIds.get(fm.topicCode) ?? null : null,
-      },
-    })
-  }
-  console.log(`  function modules: ${functions.length}`)
+      // function modules
+      for (const fm of functions as any[]) {
+        const data = {
+          groupName: fm.groupName, title: fm.title,
+          importParams: JSON.stringify(fm.importParams || []),
+          exportParams: JSON.stringify(fm.exportParams || []),
+          changingParams: JSON.stringify(fm.changingParams || []),
+          tablesParams: JSON.stringify(fm.tablesParams || []),
+          source: fm.source,
+          isExample: fm.isExample ?? true,
+          topicId: fm.topicCode ? topicIds.get(fm.topicCode) ?? null : null,
+        }
+        await tx.functionModule.upsert({
+          where: { name: fm.name },
+          update: data,
+          create: { name: fm.name, ...data },
+        })
+      }
+      console.log(`  function modules: ${functions.length}`)
+    },
+    { timeout: 120_000, maxWait: 30_000 },
+  )
 }
 
 async function buildContext() {

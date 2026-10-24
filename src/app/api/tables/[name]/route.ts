@@ -2,9 +2,12 @@ export const dynamic = "force-dynamic" // always server-rendered (serverless-saf
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireUser, serverError } from '@/lib/session'
 
 // GET /api/tables/[name]?page=&pageSize=&q= — Data Browser (SE16): fields + rows
 export async function GET(req: NextRequest, ctx: { params: Promise<{ name: string }> }) {
+  const auth = await requireUser(req)
+  if (!auth.user) return auth.response
   try {
     const { name } = await ctx.params
     const table = await db.dbTable.findUnique({
@@ -41,7 +44,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ name: strin
       page,
       pageSize,
     })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (error) {
+    return serverError('tables/detail', error)
   }
 }

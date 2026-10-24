@@ -158,6 +158,7 @@ export function EasyAccess() {
   const favorites = useWorkbench((s) => s.favorites)
   const refreshFavorites = useWorkbench((s) => s.refreshFavorites)
   const openProgramByName = useWorkbench((s) => s.openProgramByName)
+  const openSandbox = useWorkbench((s) => s.openSandbox)
   const openSe38Initial = useWorkbench((s) => s.openSe38Initial)
   const navigate = useWorkbench((s) => s.navigate)
   const openBrowserFor = useWorkbench((s) => s.openBrowserFor)
@@ -579,8 +580,8 @@ export function EasyAccess() {
             objType="REPORT"
             objName="Z_MY_PRACTICE"
             meta="Z_MY_PRACTICE"
-            hint="Your own editable program — examples stay read-only; write, run and save your code here"
-            onClick={() => void openProgramByName('Z_MY_PRACTICE')}
+            hint="Your own private practice program — examples stay read-only; write, run and save your code here"
+            onClick={() => void openSandbox()}
           />
           <Leaf
             level={1}

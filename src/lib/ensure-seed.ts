@@ -1,6 +1,5 @@
 // Auto-seed guard — ensures the pre-stored content (10 syllabus topics,
-// 11 SAP demo tables + rows, 37 example programs + 1 practice sandbox, FMs)
-// always exists.
+// 11 SAP demo tables + rows, 37 example programs, FMs) always exists.
 //
 // Why: the SQLite file can be missing/empty after a fresh clone, a redeploy,
 // or an environment reset. Instead of requiring a manual `bun run seed`,
@@ -9,12 +8,15 @@
 //
 // Deploy-safe: fully idempotent (upserts on unique keys, rows replaced per
 // table), so concurrent cold-start instances on serverless platforms
-// (Vercel/Netlify) can never create duplicates or partial state.
-import { db } from '@/lib/db'
+// (Vercel/Netlify) can never create duplicates or partial state. The former
+// shared Z_MY_PRACTICE is deliberately not seeded; /api/sandbox creates a
+// private sandbox per user.
+import { db, ensureSchema } from '@/lib/db'
 
 let seedPromise: Promise<boolean> | null = null
 
 async function seedIfEmpty(): Promise<boolean> {
+  await ensureSchema()
   // Fast pre-check: any topic row means the repository is already seeded.
   const topicCount = await db.topic.count().catch(() => -1)
 
@@ -35,7 +37,10 @@ async function seedIfEmpty(): Promise<boolean> {
 
   // Atomic: on serverless platforms multiple cold-start instances can race —
   // the transaction + upserts guarantee a consistent final state every time.
-  const programs = [...(programsPart1 as any[]), ...(programsPart2 as any[]), includeProgram as any]
+  // The practice sandbox is per-user and created on demand by /api/sandbox.
+  const programs = [...(programsPart1 as any[]), ...(programsPart2 as any[]), includeProgram as any].filter(
+    (p) => p.name !== 'Z_MY_PRACTICE',
+  )
   await db.$transaction(
     async (tx) => {
       // topics (idempotent on unique `code`)

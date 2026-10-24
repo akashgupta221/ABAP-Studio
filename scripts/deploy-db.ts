@@ -7,8 +7,8 @@
 //
 // What it does:
 //   1. generates CREATE TABLE DDL from prisma/schema.prisma (offline)
-//   2. applies it to the remote database (idempotent — safe to re-run)
-//   3. runs the seed script against the remote database (wipe + reseed + verify)
+//   2. applies additive schema changes to the remote database (idempotent)
+//   3. seeds/upserts example content without deleting users or their programs
 import { execSync } from 'node:child_process'
 import { createClient } from '@libsql/client/web'
 
