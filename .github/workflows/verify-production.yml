@@ -62,24 +62,28 @@ jobs:
           fi
 
           ME_CODE=$(curl -sS -b "$COOKIE" -o /tmp/abap-me.json -w '%{http_code}' "$BASE_URL/api/auth/me")
+          ROLE_FLAG=$(jq -r '.user.role // "none"' /tmp/abap-me.json)
           OWNER_FLAG=$(jq -r '.user.owner // false' /tmp/abap-me.json)
-          echo "me_http=$ME_CODE owner=$OWNER_FLAG"
+          echo "me_http=$ME_CODE role=$ROLE_FLAG owner=$OWNER_FLAG"
+          OWNER_OK=true
           if [ "$ME_CODE" != "200" ] || [ "$OWNER_FLAG" != "true" ]; then
-            echo "::error::Owner session or owner flag check failed."
-            exit 1
+            echo "::warning::Owner flag is not true; capturing admin status for diagnosis."
+            OWNER_OK=false
           fi
 
           ADMIN_CODE=$(curl -sS -b "$COOKIE" -o /tmp/abap-admin.json -w '%{http_code}' "$BASE_URL/api/admin/overview")
           echo "admin_api_http=$ADMIN_CODE"
+          ADMIN_OK=true
           if [ "$ADMIN_CODE" != "200" ]; then
             echo "::error::Owner admin API returned HTTP $ADMIN_CODE."
-            exit 1
+            ADMIN_OK=false
           fi
 
           PAGE_CODE=$(curl -sS -b "$COOKIE" -o /dev/null -w '%{http_code}' "$BASE_URL/admin")
           echo "admin_page_http=$PAGE_CODE"
-          if [ "$PAGE_CODE" != "200" ]; then
-            echo "::error::Owner admin page returned HTTP $PAGE_CODE."
+
+          if [ "$OWNER_OK" != "true" ] || [ "$ADMIN_OK" != "true" ] || [ "$PAGE_CODE" != "200" ]; then
+            echo "::error::Owner production acceptance failed."
             exit 1
           fi
 
