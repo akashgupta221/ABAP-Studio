@@ -85,8 +85,10 @@ registration.
 ## 1. Configure the production Clerk instance (owner, interactive)
 
 Production Clerk needs a domain whose DNS records you control. A bare
-`*.vercel.app` address cannot be used for the production Clerk domain. The repository
-does not currently have a custom domain, so this is the main blocker.
+`*.vercel.app` address cannot be used for the production Clerk domain. The app itself can
+remain on its Vercel hostname; the DNS-controlled domain is for Clerk's production
+Frontend API, commonly a subdomain such as `clerk.example.com`. The repository does not
+currently have a custom domain, so this is the main blocker.
 
 Before deploying, confirm the production instance uses **only Email OTP and Google**.
 Phone sign-up/sign-in and username sign-up/sign-in were disabled in the development
