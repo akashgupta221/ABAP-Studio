@@ -286,3 +286,34 @@ Stage Summary:
 - Remaining blocker: set OWNER_USERNAME in Vercel and run owner provisioning with the Turso token; until then `/admin` is inaccessible and the 12 legacy programs are hidden
 - Owner password was not set or reused; the chat-supplied password remains exposed and must not be reused
 - Clerk and Modern ABAP remain blocked/not started; full acceptance is not claimed
+
+---
+Task ID: 15
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Owner priority correction — close the remaining P0 provisioning gap, align P2 owner identity, and prepare P1 Clerk without exposing secrets
+
+Work Log:
+- Re-audited the owner's correction against the live code. P0 server-side authentication/isolation and P2 owner administration were already implemented and deployed; they were not "completely missing". The real P0/P2 release gaps were operational: no production `role = OWNER`, 12 legacy programs unclaimed, owner identity not configured in Vercel, and no production owner login. P1 Clerk remains genuinely unimplemented.
+- Owner gate: added `OWNER_EMAIL` as the authoritative identity when configured, with `OWNER_USERNAME` retained as the interim built-in-auth fallback. Both still require the server-managed `OWNER` role; missing configuration fails closed. Session resolution now loads the stored email.
+- Provisioning: made `owner:provision` preserve an existing owner email when run without `OWNER_EMAIL`, reject an email already linked to another account, and keep the role/claim/session-invalidation behavior idempotent.
+- Added `scripts/verify-owner.ts` and `bun run owner:verify`: read-only check that exactly one OWNER exists, is not suspended, matches `OWNER_EMAIL` when supplied, and has zero unclaimed legacy non-example programs; prints no secrets or email address.
+- Added `.github/workflows/provision-owner.yml`: manual `workflow_dispatch` only, requires typing `PROVISION`, validates Turso secrets without printing them, supports an optional temporary `OWNER_PASSWORD` secret, runs provisioning and verification, and uses env indirection to avoid shell injection from workflow inputs.
+- P2 alignment: added a 7-day executions/errors chart to the owner overview and an API check that the series always contains seven daily buckets; no changes to the Standard ABAP GUI.
+- Documentation: updated README, DEPLOY, master spec and `.env.example` for `OWNER_EMAIL`, the GitHub Actions provisioning path and `owner:verify`; added `docs/CLERK-SETUP.md` with the owner's step-by-step Clerk application, Email OTP/Google, Vercel env, account-mapping choice and cutover checklist. No secret values are documented.
+- Explicitly did not implement or claim Clerk: no keys exist and the migration choice is still an owner decision. Recommended migration is verified-email mapping to the existing three user rows, retaining SAP usernames and private programs.
+
+Verification:
+- `bun run lint` → pass
+- `bun test tests` → 19 pass, 0 fail
+- `bash tests/run-api-tests.sh` → 52 checks passed, 0 failed (added 7-day admin series check)
+- `bun run build` → pass
+- Disposable SQLite provisioning test: owner creation, email storage, sandbox, `owner:verify` success, and mismatch failure all behaved as intended
+- `git push origin main` → `46f89e5`; both Vercel project deployments reported success
+- Production sweep after deployment: protected GETs and POST `/api/execute`, `/api/seed`, `/api/programs` return 401 anonymously; cross-origin login 403; invalid login 401; `/admin` 307; `/` and `/api/health` 200; health reports 3 users and 49 programs
+- The Provision owner workflow is active, but no GitHub Actions repository secrets are configured yet, so no production mutation was performed
+
+Stage Summary:
+- P0 code remains deployed and the production API is closed; the remaining P0 release step is now a one-click, secret-safe owner provisioning run that only the owner can authorize with repository secrets.
+- P2 now includes the requested chart and email-authoritative owner identity, but production owner access is still blocked until provisioning runs.
+- P1 Clerk is still blocked on the owner-created Clerk app, Vercel keys and the account-mapping choice; it is not claimed complete.
+- No production owner password was set or reused; the previously chat-exposed password remains invalid. No secrets were printed or committed.

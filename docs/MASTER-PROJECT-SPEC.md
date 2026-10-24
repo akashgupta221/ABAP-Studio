@@ -4,7 +4,7 @@
 **Date:** 24.10.2026
 **Owner specification:** v0.3 (restated 24.10.2026)
 **Repository:** https://github.com/akashgupta221/ABAP-Studio
-**Live site:** https://abap-studio-rd9d.vercel.app (v0.3 security code `eb4e018`; docs follow-up `b12b3c4`; owner provisioning pending)
+**Live site:** https://abap-studio-rd9d.vercel.app (v0.3 security + owner-provisioning workflow `46f89e5`; owner provisioning pending)
 **Document status:** implementation audit — **not a final acceptance certificate**
 
 This document records **verified facts** and explicitly separates completed work,
@@ -61,10 +61,10 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 - **Per-user sandbox:** each user receives a private practice program. Physical names use
   `Z_MY_PRACTICE_<USERNAME>` because `Program.name` is globally unique; the UI always
   shows `Z_MY_PRACTICE`. The owner keeps any legacy `Z_MY_PRACTICE` row.
-- **Owner dashboard** provides counts, user search, all programs, recent activity,
-  execution health/errors, audit log, suspend/reactivate, session revocation and
-  confirmed permanent deletion. The UI is not trusted for authorization; every admin API
-  independently calls the owner gate.
+- **Owner dashboard** provides counts, a 7-day execution/error chart, user search, all
+  programs, recent activity, execution health/errors, audit log, suspend/reactivate,
+  session revocation and confirmed permanent deletion. The UI is not trusted for
+  authorization; every admin API independently calls the owner gate.
 - **Account deletion** removes the user's private programs and favorites, unlinks their
   execution logs (aggregate metrics retained), and keeps audit entries immutable.
 - **Seeding is non-destructive.** `run-seed`/`deploy:db` upsert shared examples and
@@ -124,8 +124,8 @@ Schema models: `Topic`, `Program`, `DbTable`, `DbRow`, `FunctionModule`,
   disposable database and an isolated server. Covered: anonymous denial on every
   protected route, CSRF rejection, registration/role escalation attempts, owner logon,
   private-program isolation, owner override, sandbox separation, favorites/recents
-  isolation, execution attribution, suspension, session revocation, deletion and
-  reserved-name protection.
+  isolation, execution attribution, suspension, session revocation, deletion,
+  reserved-name protection and the owner 7-day execution series.
 - `bun run build` — passed.
 - Manual browser verification:
   - owner logon → `/admin` dashboard data;
@@ -133,16 +133,19 @@ Schema models: `Topic`, `Program`, `DbTable`, `DbRow`, `FunctionModule`,
   - a newly registered user receives `Z_MY_PRACTICE_UIVERIFY`, cannot see the owner's
     legacy programs and receives `403` from `/api/admin/overview`;
   - no admin link is rendered for an ordinary user.
-- Production deployment check after pushing `eb4e018`:
-  - `/api/programs`, `/api/topics`, `/api/tables`, `/api/functions`, `/api/favorites`,
-    `/api/recents`, `/api/search`, `/api/admin/overview`, `/api/execute` and `/api/seed`
-    all return `401` anonymously (previously `/api/programs` returned `200`);
+- Production deployment check after pushing `46f89e5`:
+  - anonymous GET `/api/programs`, `/api/topics`, `/api/tables`, `/api/functions`,
+    `/api/favorites`, `/api/recents`, `/api/search` and `/api/admin/overview` return
+    `401`; anonymous POST `/api/execute`, `/api/seed` and `/api/programs` also return
+    `401` (the GET-only 405s are method guards, not authentication);
   - cross-origin logon is rejected with `403`, invalid credentials with `401`, and
     `/api/auth/me` remains public (`200`);
-  - `/api/health` remains public and reports 3 users and 49 programs;
-  - the v0.3 schema migration ran successfully against Turso; existing sessions are
-    intentionally invalid and users must log on once;
-  - owner provisioning is still pending, so the 12 legacy programs remain hidden.
+  - `/admin` redirects (`307`); `/` and `/api/health` load (`200`); health reports 3
+    users and 49 programs;
+  - Vercel reports both project deployments as successful;
+  - the secret-safe **Provision owner** workflow is active, but no repository secrets are
+    configured yet, so owner provisioning is still pending and the 12 legacy programs
+    remain hidden.
 - The test user and its sandbox were deleted after verification; the local database
   backup was removed and the database was untracked.
 
@@ -250,8 +253,9 @@ Full owner walkthrough: [`docs/CLERK-SETUP.md`](CLERK-SETUP.md).
 
 ### 4.2 Production owner provisioning (blocking release)
 
-The v0.3 build is **deployed** as commit `eb4e018` (docs follow-up `b12b3c4`). The additive schema migration ran
-against Turso and the anonymous API is closed: protected endpoints return `401`,
+The v0.3 build with the owner-email gate and secret-safe provisioning workflow is
+**deployed** as commit `46f89e5`. The additive schema migration ran against Turso and the
+anonymous API is closed: protected endpoints return `401` (including POST execute/seed),
 cross-origin mutations return `403`, and `/api/health` reports 3 users and 49 programs.
 Old session cookies are intentionally invalid.
 
@@ -347,7 +351,7 @@ bun run owner:favorites      # dry-run legacy favorite migration (APPLY=YES to c
 
 - Clerk authentication is **not** implemented.
 - The Modern ABAP environment is **not** implemented.
-- The v0.3 security code **is** deployed (`eb4e018`), but the production owner is **not**
+- The v0.3 security code **is** deployed (`46f89e5`), but the production owner is **not**
   provisioned, so `/admin` and the 12 legacy programs are not yet available.
 - The 12 production legacy programs are **not** yet assigned to the owner.
 - The password previously supplied in chat was **not** reused, stored or verified, and

@@ -154,8 +154,9 @@ or production. Stop any dev server sharing `.next` before running it.
 
 ## Deploy for free (Vercel + Turso)
 
-Every `git push` rebuilds and redeploys the live app. The v0.3 build is already live as
-`eb4e018`; **owner provisioning is still pending**. Read
+Every `git push` rebuilds and redeploys the live app. The v0.3 build with the
+owner-provisioning workflow is live as `46f89e5`; **owner provisioning is still pending**.
+Read
 [`docs/MASTER-PROJECT-SPEC.md`](docs/MASTER-PROJECT-SPEC.md) §4.2 for the required steps.
 The ownership migration changes who can see legacy programs and invalidates old sessions.
 
@@ -233,7 +234,10 @@ scripts/
   run-seed.ts            Non-destructive content upsert + engine verification
   deploy-db.ts           Remote schema + content upsert
   provision-owner.ts     Owner role + legacy program claim
+  verify-owner.ts        Read-only owner/email/legacy consistency check
   set-owner-password.ts  Hidden-input password reset
+.github/workflows/
+  provision-owner.yml    Manual, secret-safe owner provisioning
 src/
   app/admin/             Owner-only dashboard page
   app/api/               REST endpoints (auth, programs, admin, sandbox, execute, …)
