@@ -16,6 +16,7 @@
     "owner:provision": "bun run scripts/provision-owner.ts",
     "owner:password": "bun run scripts/set-owner-password.ts",
     "owner:favorites": "bun run scripts/migrate-legacy-favorites.ts",
+    "owner:verify": "bun run scripts/verify-owner.ts",
     "db:push": "prisma db push --accept-data-loss",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

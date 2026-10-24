@@ -83,6 +83,13 @@ interface ActivityRow {
   username: string | null
 }
 
+interface ExecutionDay {
+  date: string
+  label: string
+  executions: number
+  errors: number
+}
+
 interface Overview {
   generatedAt: string
   metrics: Metrics
@@ -90,6 +97,7 @@ interface Overview {
   programs: ProgramRow[]
   audit: AuditRow[]
   recentActivity: ActivityRow[]
+  executionSeries: ExecutionDay[]
 }
 
 type Tab = 'overview' | 'users' | 'programs' | 'audit'
@@ -376,6 +384,52 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
                   <Stat label="Executions (7 d)" value={data.metrics.executions7d} hint={`${data.metrics.totalExecutions} all time`} icon={<Database className="h-4 w-4" />} />
                   <Stat label="Runtime errors (7 d)" value={data.metrics.errors7d} hint={`Avg ${data.metrics.avgDurationMs7d} ms`} icon={<AlertTriangle className="h-4 w-4" />} tone={data.metrics.errors7d ? 'bad' : 'good'} />
                 </div>
+
+                <section className="rounded border border-[#c9d4e0] bg-white shadow-sm">
+                  <div className="flex flex-wrap items-center gap-2 border-b border-[#dbe4ed] px-3 py-2">
+                    <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[#3f566d]">
+                      Executions · last 7 days
+                    </h2>
+                    <div className="ml-auto flex items-center gap-3 text-[10px] text-[#5b6b7c]">
+                      <span className="flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-sm bg-[#0a6ed1]" /> executions
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-sm bg-red-500" /> errors
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex h-40 items-end gap-2 px-3 pb-2 pt-4">
+                    {data.executionSeries.map((day) => {
+                      const max = Math.max(1, ...data.executionSeries.map((d) => d.executions))
+                      const height = (day.executions / max) * 100
+                      const errorHeight = day.executions ? (day.errors / max) * 100 : 0
+                      return (
+                        <div key={day.date} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
+                          <div
+                            className="relative flex w-full max-w-12 flex-1 items-end"
+                            title={`${day.date}: ${day.executions} execution(s), ${day.errors} error(s)`}
+                            aria-label={`${day.date}: ${day.executions} executions, ${day.errors} errors`}
+                          >
+                            <div
+                              className="relative w-full rounded-t-sm bg-[#0a6ed1]"
+                              style={{ height: `${height}%` }}
+                            >
+                              {day.errors > 0 && (
+                                <div
+                                  className="absolute inset-x-0 bottom-0 rounded-t-sm bg-red-500"
+                                  style={{ height: `${(errorHeight / Math.max(height, 1)) * 100}%` }}
+                                />
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-[9.5px] font-medium text-[#5b6b7c]">{day.label}</div>
+                          <div className="text-[9px] tabular-nums text-[#8a99a8]">{day.executions}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
 
                 <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
                   <section className="rounded border border-[#c9d4e0] bg-white shadow-sm">

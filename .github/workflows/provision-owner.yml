@@ -1,0 +1,79 @@
+name: Provision owner
+
+# Manual, owner-authorized production provisioning. Secrets are supplied by
+# GitHub Actions secrets and are never printed. This workflow never deploys the
+# app; it only assigns the owner role, claims legacy programs and verifies the
+# result.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type PROVISION to confirm'
+        required: true
+        type: string
+      owner_username:
+        description: 'SAP owner username'
+        required: true
+        default: 'AKASH'
+        type: string
+      owner_email:
+        description: 'Owner email (optional; used for Clerk owner gate later)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: provision-owner
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      OWNER_USERNAME: ${{ inputs.owner_username }}
+      OWNER_EMAIL: ${{ inputs.owner_email }}
+      OWNER_PASSWORD: ${{ secrets.OWNER_PASSWORD }}
+      CONFIRM_OWNER_PROVISION: YES
+    steps:
+      - name: Confirm authorization
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "PROVISION" ]; then
+            echo "::error::Type PROVISION in the confirm field."
+            exit 1
+          fi
+          if [ -z "$TURSO_DATABASE_URL" ]; then
+            echo "::error::Missing repository secret TURSO_DATABASE_URL."
+            exit 1
+          fi
+          if [ -z "$TURSO_AUTH_TOKEN" ]; then
+            echo "::error::Missing repository secret TURSO_AUTH_TOKEN."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Provision owner and claim legacy programs
+        env:
+          NODE_ENV: production
+        run: bun run scripts/provision-owner.ts
+
+      - name: Verify owner state
+        env:
+          NODE_ENV: production
+        run: bun run scripts/verify-owner.ts

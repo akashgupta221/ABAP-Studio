@@ -55,9 +55,11 @@ describe('built-in authentication', () => {
     expect(validateUsername('AKASH-DEV')).not.toBeNull()
   })
 
-  test('owner gate requires both the stored role and the configured username', () => {
-    const previous = process.env.OWNER_USERNAME
+  test('owner gate requires both the stored role and the configured identity', () => {
+    const previousUsername = process.env.OWNER_USERNAME
+    const previousEmail = process.env.OWNER_EMAIL
     try {
+      delete process.env.OWNER_EMAIL
       process.env.OWNER_USERNAME = 'AKASH'
       expect(isOwner({ username: 'AKASH', role: 'OWNER' })).toBe(true)
       expect(isOwner({ username: 'AKASH', role: 'USER' })).toBe(false)
@@ -65,9 +67,21 @@ describe('built-in authentication', () => {
 
       delete process.env.OWNER_USERNAME
       expect(isOwner({ username: 'AKASH', role: 'OWNER' })).toBe(false)
+
+      process.env.OWNER_EMAIL = 'owner@example.com'
+      expect(
+        isOwner({ username: 'ANYNAME', role: 'OWNER', email: 'OWNER@example.com' }),
+      ).toBe(true)
+      expect(
+        isOwner({ username: 'AKASH', role: 'OWNER', email: 'other@example.com' }),
+      ).toBe(false)
+      expect(isOwner({ username: 'AKASH', role: 'USER', email: 'owner@example.com' })).toBe(false)
+      expect(isOwner({ username: 'AKASH', role: 'OWNER' })).toBe(false)
     } finally {
-      if (previous === undefined) delete process.env.OWNER_USERNAME
-      else process.env.OWNER_USERNAME = previous
+      if (previousUsername === undefined) delete process.env.OWNER_USERNAME
+      else process.env.OWNER_USERNAME = previousUsername
+      if (previousEmail === undefined) delete process.env.OWNER_EMAIL
+      else process.env.OWNER_EMAIL = previousEmail
     }
   })
 })

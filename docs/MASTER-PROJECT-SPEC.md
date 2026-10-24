@@ -53,7 +53,8 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 - **Passwords** use scrypt with a random salt; plaintext is never stored or logged.
 - **Roles are server-managed only.** Public registration always creates `USER` and
   ignores a client-supplied role. The owner gate requires both the stored `OWNER` role
-  and the configured `OWNER_USERNAME`, and **fails closed** if the variable is unset.
+  and a configured identity: `OWNER_EMAIL` is authoritative when set; `OWNER_USERNAME`
+  remains the interim built-in-auth fallback. It **fails closed** if neither is set.
 - **Examples** are shared and read-only. **Private programs** are visible/editable only
   by their creator; the designated owner may inspect and edit every non-example program.
   **Unclaimed legacy programs** are owner-only.
@@ -78,7 +79,7 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 |---|---|---|
 | **Clerk not integrated** | No Clerk dependency or keys; interim built-in logon is active | Email OTP, Google sign-in, Clerk webhooks and Clerk account migration remain blocked on owner-created keys. |
 | **Modern ABAP environment not implemented** | No environment switch, CDS/RAP/AMDP runtime or capability matrix | Specification §10 is not started. Scope needs owner approval. |
-| **Production owner provisioning not applied** | v0.3 code is live (`eb4e018`), but the owner role/legacy claim has not run and `OWNER_USERNAME` is not confirmed in Vercel. Turso credentials are not available locally. | Set `OWNER_USERNAME` in Vercel and redeploy, then run `owner:provision` against Turso. Until then the 12 legacy programs are hidden and `/admin` is inaccessible. |
+| **Production owner provisioning not applied** | v0.3 code is live, but the owner role/legacy claim has not run and the owner identity is not confirmed in Vercel. Turso credentials are not available locally. | Set `OWNER_EMAIL` (or `OWNER_USERNAME`) in Vercel and redeploy, then run the secret-safe **Provision owner** GitHub Actions workflow (or `owner:provision` locally) against Turso. Until then the 12 legacy programs are hidden and `/admin` is inaccessible. |
 | **Production owner password not set** | No production provisioning has run; the password supplied in chat must be treated as exposed | Set a fresh password securely with `owner:password` after provisioning. Never paste it in chat. |
 | **Legacy production favorites not migrated** | Old global `Favorite` table has no user link; new code uses `UserFavorite` | Run the supplied `owner:favorites` script (dry-run then apply) after a backup; it copies entries to the owner without deleting the old table. |
 | **`AUTH_SECRET` rotation pending** | Production health reports `hasAuthSecret: true`; the signer fails closed if it is missing | The existing secret is working. Rotate it during owner provisioning; rotation invalidates all sessions (expected). |
@@ -119,7 +120,7 @@ Schema models: `Topic`, `Program`, `DbTable`, `DbRow`, `FunctionModule`,
 - `bun run lint` — passed.
 - `bun test tests` — **19 tests passed** across auth, access rules, sandbox, interpreter
   and all seeded example programs.
-- `bash tests/run-api-tests.sh` — **51 end-to-end API checks passed** against a
+- `bash tests/run-api-tests.sh` — **52 end-to-end API checks passed** against a
   disposable database and an isolated server. Covered: anonymous denial on every
   protected route, CSRF rejection, registration/role escalation attempts, owner logon,
   private-program isolation, owner override, sandbox separation, favorites/recents
@@ -162,7 +163,7 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 | 11 | Professional developer GUI | **Partial** | Standard SAP GUI is complete. Modern environment GUI and a formal accessibility audit are pending. |
 | 12 | Data ownership and isolation | **Done (code deployed)** | Server-side ownership rules + private sandbox verified; production APIs secured. Production legacy claim pending. |
 | 13 | Security and reliability | **Done (application layer, deployed)** | Sessions, CSRF, rate limiting, per-user execution authorization and audit trail; production anonymous APIs verified closed. Shared/distributed limiter remains future hardening. |
-| 14 | Continuous testing and completion verification | **Partial** | 19 unit tests + 51 API checks + build/lint. UI automation and final acceptance report pending. |
+| 14 | Continuous testing and completion verification | **Partial** | 19 unit tests + 52 API checks + build/lint. UI automation and final acceptance report pending. |
 | 15 | Phase 0 audit | **Done** | This document. |
 | 15 | Phase 1 architecture/migration design | **Partial** | Architecture and legacy ownership plan documented; Clerk migration choice pending. |
 | 15 | Phases 2–8 | **In progress / blocked** | Security/admin/ownership complete in code. Clerk and Modern ABAP not started. |
@@ -177,7 +178,7 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 - [x] Standard ABAP automated regression tests — 19 unit tests pass.
 - [ ] Modern ABAP capability matrix and tests — pending scope approval.
 - [x] Improved Standard ABAP GUI fidelity — 24.10.2026.
-- [x] Security and authorization test coverage — 51 API checks pass.
+- [x] Security and authorization test coverage — 52 API checks pass.
 - [x] Environment and deployment documentation — README, DEPLOY, `.env.example`.
 - [x] Non-destructive seed/deploy path — verified locally.
 - [ ] Production migration and owner provisioning — v0.3 deployed; owner role/legacy claim needs Turso credentials.
@@ -235,6 +236,8 @@ The owner supplied seven screenshots of a real SAP system (`MER`, client `105`, 
 
 ### 4.1 Clerk integration (blocking spec §7)
 
+Full owner walkthrough: [`docs/CLERK-SETUP.md`](CLERK-SETUP.md).
+
 1. Create a Clerk application and enable **Email OTP** and **Google**.
 2. Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` and
    `CLERK_WEBHOOK_SECRET` in Vercel. Never paste secrets into chat.
@@ -253,29 +256,43 @@ cross-origin mutations return `403`, and `/api/health` reports 3 users and 49 pr
 Old session cookies are intentionally invalid.
 
 What remains is owner provisioning. Until it runs, no production account has
-`role = OWNER`, `OWNER_USERNAME` is not confirmed in Vercel, the 12 legacy non-example
+`role = OWNER`, the owner identity is not confirmed in Vercel, the 12 legacy non-example
 programs are hidden, and `/admin` is inaccessible.
 
+A secret-safe manual workflow now exists at `.github/workflows/provision-owner.yml`. It
+uses repository secrets, runs only on explicit dispatch, and verifies the result without
+printing tokens or the password.
+
 1. Take a verified Turso backup.
-2. Set `OWNER_USERNAME=AKASH` in Vercel and redeploy so the server picks it up. Rotate
+2. Set the owner identity in Vercel and redeploy. Use `OWNER_EMAIL=<verified owner email>`
+   (recommended; authoritative) or `OWNER_USERNAME=AKASH` as the interim fallback. Rotate
    `AUTH_SECRET` at the same time if desired; rotation logs everyone out again.
-3. Run against Turso (this also runs additive schema safety checks):
+3. Add repository secrets (never in chat or Git): `TURSO_DATABASE_URL`,
+   `TURSO_AUTH_TOKEN`, and optionally `OWNER_PASSWORD` with a fresh strong password.
+   Trigger **Actions → Provision owner → Run workflow** with `confirm=PROVISION`,
+   `owner_username=AKASH`, and the same `owner_email`. The local equivalent is:
    ```bash
-   CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH \
+   CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH OWNER_EMAIL="owner@example.com" \
    TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:provision
    ```
-   This assigns the owner role, creates the owner account if needed, and claims all
-   ownerless non-example programs.
-4. Set the owner password securely, without shell history or chat:
+   This assigns the owner role, creates or updates the owner account, and claims all
+   ownerless non-example programs. Delete the temporary `OWNER_PASSWORD` secret after.
+4. If the workflow did not set a password, set it securely, without shell history or chat:
    ```bash
    CONFIRM_OWNER_PASSWORD=YES OWNER_USERNAME=AKASH \
    TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:password
    ```
-5. Migrate legacy global favorites with `owner:favorites` (dry-run first), or explicitly
+5. Run the read-only check the workflow uses; it must report exactly one owner, a matching
+   email, zero unclaimed legacy programs, and the expected shared examples:
+   ```bash
+   OWNER_EMAIL="owner@example.com" TURSO_DATABASE_URL="libsql://…" \
+   TURSO_AUTH_TOKEN="…" bun run owner:verify
+   ```
+6. Migrate legacy global favorites with `owner:favorites` (dry-run first), or explicitly
    decide to discard them.
-6. Re-verify: all users log on once, see only shared examples, their own programs and
+7. Re-verify: all users log on once, see only shared examples, their own programs and
    their own sandbox. The owner must see all users/programs and the audit dashboard.
-7. Do not announce full acceptance until these checks pass against production.
+8. Do not announce full acceptance until these checks pass against production.
 
 ### 4.3 Modern ABAP scope (blocking spec §10)
 
@@ -322,6 +339,7 @@ bun run seed                 # non-destructive local content upsert + engine che
 bun run deploy:db            # remote schema/content upsert (requires TURSO_*)
 bun run owner:provision      # assign owner + claim legacy programs
 bun run owner:password       # hidden-input password reset
+bun run owner:verify         # read-only owner/legacy/email consistency check
 bun run owner:favorites      # dry-run legacy favorite migration (APPLY=YES to copy)
 ```
 

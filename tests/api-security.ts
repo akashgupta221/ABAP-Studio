@@ -180,6 +180,14 @@ async function main() {
   check('ordinary user is denied admin overview', (await call('/api/admin/overview', { cookie: cookieA })).status === 403)
   const overview = await call('/api/admin/overview', { cookie: owner })
   check('owner receives administration metrics', overview.status === 200 && overview.data.metrics.totalUsers >= 3)
+  check(
+    'owner receives a 7-day execution series',
+    Array.isArray(overview.data.executionSeries) &&
+      overview.data.executionSeries.length === 7 &&
+      overview.data.executionSeries.every(
+        (day: any) => typeof day.date === 'string' && Number.isInteger(day.executions),
+      ),
+  )
   check('owner sees every repository program', (overview.data.programs ?? []).some((p: any) => p.id === programId))
   check('owner sees user list without password hashes', !JSON.stringify(overview.data.users).includes('passwordHash'))
 

@@ -8,6 +8,7 @@ import { parseSessionToken, SESSION_COOKIE } from '@/lib/auth'
 export interface AuthUser {
   id: string
   username: string
+  email: string | null
   role: string
   suspended: boolean
   sessionVersion: number
@@ -31,7 +32,14 @@ export async function getSessionUserFromToken(token: string | undefined): Promis
   await ensureSchema()
   const user = await db.user.findUnique({
     where: { id: session.uid },
-    select: { id: true, username: true, role: true, suspended: true, sessionVersion: true },
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      role: true,
+      suspended: true,
+      sessionVersion: true,
+    },
   })
   if (!user) return null
   if (user.suspended) return null
@@ -54,16 +62,28 @@ function ownerUsername(): string {
   return (process.env.OWNER_USERNAME ?? '').trim().toUpperCase()
 }
 
+function ownerEmail(): string {
+  return (process.env.OWNER_EMAIL ?? '').trim().toLowerCase()
+}
+
 /**
- * The single owner is identified by a server-managed role **and** the
- * OWNER_USERNAME environment variable. Both must agree, and an unset variable
- * fails closed, so a stray role value or client-supplied field can never grant
- * administration on its own.
+ * The single owner is identified by a server-managed role **and** an
+ * environment-configured identity. `OWNER_EMAIL` is authoritative when set
+ * (Clerk-ready); `OWNER_USERNAME` is the interim built-in-auth fallback. If
+ * neither is configured, owner access fails closed, so a stray role value or
+ * client-supplied field can never grant administration on its own.
  */
-export function isOwner(user: Pick<AuthUser, 'username' | 'role'>): boolean {
-  const configured = ownerUsername()
-  if (!configured) return false
-  return user.role === 'OWNER' && user.username === configured
+export function isOwner(
+  user: Pick<AuthUser, 'username' | 'role'> & { email?: string | null },
+): boolean {
+  if (user.role !== 'OWNER') return false
+  const configuredEmail = ownerEmail()
+  if (configuredEmail) {
+    return Boolean(user.email && user.email.trim().toLowerCase() === configuredEmail)
+  }
+  const configuredUsername = ownerUsername()
+  if (!configuredUsername) return false
+  return user.username.trim().toUpperCase() === configuredUsername
 }
 
 /** Require the designated owner. Denies ordinary users even with valid sessions. */

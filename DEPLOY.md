@@ -10,11 +10,11 @@ What this gives you:
 
 Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 
-> **Current production status:** v0.3 is deployed as commit `eb4e018`. The anonymous API
-> is closed, old cookies are invalid, and the 12 legacy programs are hidden. The only
-> remaining release step is **owner provisioning** in Part 5, which needs your Turso
-> token and `OWNER_USERNAME` in Vercel. See §4.2 of
-> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md).
+> **Current production status:** v0.3 is deployed. The anonymous API is closed, old
+> cookies are invalid, and the 12 legacy programs are hidden. The only remaining release
+> step is **owner provisioning** in Part 5. A manual, secret-safe GitHub Actions workflow
+> is now included; it needs repository secrets and one explicit confirmation run. See
+> §4.2 of [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md).
 
 ---
 
@@ -63,11 +63,13 @@ turso db shell abap-studio ".dump" > abap-studio-backup-$(date +%Y%m%d).sql
    | `TURSO_DATABASE_URL` | `libsql://…` (Part 2) |
    | `TURSO_AUTH_TOKEN` | token from Part 2 |
    | `AUTH_SECRET` | long random value — `openssl rand -base64 32` |
-   | `OWNER_USERNAME` | the single owner account name (e.g. `AKASH`) |
+   | `OWNER_EMAIL` | the verified owner email (authoritative when set) |
+   | `OWNER_USERNAME` | interim fallback: the single owner account name (e.g. `AKASH`) |
 
    `AUTH_SECRET` is required in production: the app refuses to sign sessions with a
-   public development fallback. Owner recognition also fails closed if
-   `OWNER_USERNAME` is missing.
+   public development fallback. Owner recognition fails closed if neither owner identity
+   is configured. If both are set, `OWNER_EMAIL` wins and must match the email stored on
+   the `OWNER` row.
 
 4. Click **Deploy**. The database is still empty; Part 4 fixes that.
 
@@ -87,14 +89,43 @@ history. It then verifies every seeded example against the engine.
 
 ## Part 5 — Provision the owner and claim legacy data
 
-The owner is the account named by `OWNER_USERNAME` with server-managed `role = OWNER`.
-Legacy non-example programs (created before ownership existed) are assigned to the owner;
-ordinary users must not see them.
+The owner is the account with server-managed `role = OWNER`, identified by
+`OWNER_EMAIL` (or `OWNER_USERNAME` until Clerk is integrated). Legacy non-example
+programs (created before ownership existed) are assigned to the owner; ordinary users
+must not see them.
+
+### Option A — GitHub Actions (recommended; no secrets in chat)
+
+1. In the GitHub repository, open **Settings → Secrets and variables → Actions** and add:
+   - `TURSO_DATABASE_URL` — the `libsql://` URL.
+   - `TURSO_AUTH_TOKEN` — a Turso token.
+   - `OWNER_PASSWORD` — optional but recommended: a fresh owner password you have not
+     used anywhere else. GitHub masks it in logs; delete the secret after the run.
+   You can add them from a terminal instead (the values are prompted, not written to
+   shell history):
+
+   ```bash
+   gh secret set TURSO_DATABASE_URL --repo akashgupta221/ABAP-Studio
+   gh secret set TURSO_AUTH_TOKEN --repo akashgupta221/ABAP-Studio
+   gh secret set OWNER_PASSWORD --repo akashgupta221/ABAP-Studio
+   ```
+
+2. Open **Actions → Provision owner → Run workflow** and enter:
+   - `confirm`: `PROVISION`
+   - `owner_username`: `AKASH`
+   - `owner_email`: the verified owner email (recommended; it is stored on the owner row)
+
+3. The workflow runs `owner:provision` and the read-only `owner:verify`. It fails unless
+   exactly one owner exists and every legacy program is claimed. It never prints tokens
+   or the password. Delete the temporary `OWNER_PASSWORD` secret afterward; if you omitted
+   it, set the password locally with the command below.
+
+### Option B — local shell
 
 After a verified backup, run against Turso:
 
 ```bash
-CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH \
+CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH OWNER_EMAIL="owner@example.com" \
 TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="eyJ..." \
 bun run owner:provision
 ```
@@ -109,6 +140,13 @@ Set the real owner password with hidden input (no shell history, no chat):
 CONFIRM_OWNER_PASSWORD=YES OWNER_USERNAME=AKASH \
 TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="eyJ..." \
 bun run owner:password
+```
+
+Finally verify the result read-only (same check the workflow runs):
+
+```bash
+OWNER_EMAIL="owner@example.com" TURSO_DATABASE_URL="libsql://..." \
+TURSO_AUTH_TOKEN="eyJ..." bun run owner:verify
 ```
 
 ### Legacy favorites
@@ -167,7 +205,8 @@ step instead of changing this guarantee.
   by Git and created with `bun run db:push`.
 - Custom domain: Vercel → Project → Settings → Domains.
 - Clerk Email OTP + Google is **not** integrated yet; the built-in user master is the
-  interim authentication method.
+  interim authentication method. `OWNER_EMAIL` is already accepted by the owner gate so
+  the Clerk migration can keep the same server-side owner check.
 
 ## Troubleshooting
 
@@ -175,8 +214,10 @@ step instead of changing this guarantee.
   them on the same command line.
 - **Site loads but lists are empty** — `deploy:db` was not run, or ran against a different
   database than Vercel is configured to use.
-- **Owner cannot open `/admin`** — check `OWNER_USERNAME` in Vercel matches the account,
-  the account has `role = OWNER`, and the session was created after provisioning.
+- **Owner cannot open `/admin`** — check the configured identity in Vercel (`OWNER_EMAIL`
+  wins when set), the account has `role = OWNER`, the stored email matches exactly, and
+  the session was created after provisioning. Run `bun run owner:verify` for a read-only
+  diagnosis; re-login after changing the identity.
 - **Everyone is logged out after deploy** — expected for v0.3: cookies now carry a
   database session version and old cookies lack it. Ask users to log on once.
 - **Legacy programs disappeared for ordinary users** — intended: they are owner-only

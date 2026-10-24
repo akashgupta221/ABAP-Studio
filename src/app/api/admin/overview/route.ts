@@ -8,6 +8,13 @@ function since(days: number): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 }
 
+function startOfUtcDay(daysAgo: number): Date {
+  const date = new Date()
+  date.setUTCHours(0, 0, 0, 0)
+  date.setUTCDate(date.getUTCDate() - daysAgo)
+  return date
+}
+
 // GET /api/admin/overview — owner dashboard data in one round trip
 export async function GET(req: NextRequest) {
   const auth = await requireOwner(req)
@@ -33,6 +40,7 @@ export async function GET(req: NextRequest) {
       programs,
       audit,
       recent,
+      executionSeriesRows,
     ] = await Promise.all([
       db.user.count(),
       db.user.count({ where: { lastLoginAt: { gte: active7 } } }),
@@ -90,7 +98,25 @@ export async function GET(req: NextRequest) {
           user: { select: { username: true } },
         },
       }),
+      db.executionLog.findMany({
+        where: { createdAt: { gte: startOfUtcDay(6) } },
+        select: { createdAt: true, status: true },
+      }),
     ])
+
+    const executionSeries = Array.from({ length: 7 }, (_, index) => {
+      const day = startOfUtcDay(6 - index)
+      const key = day.toISOString().slice(0, 10)
+      const rows = executionSeriesRows.filter(
+        (row) => row.createdAt.toISOString().slice(0, 10) === key,
+      )
+      return {
+        date: key,
+        label: day.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' }),
+        executions: rows.length,
+        errors: rows.filter((row) => row.status === 'ERROR').length,
+      }
+    })
 
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
@@ -118,6 +144,7 @@ export async function GET(req: NextRequest) {
       programs: programs.map((p) => ({ ...p, ownerUsername: p.owner?.username ?? null, owner: undefined })),
       audit,
       recentActivity: recent.map((r) => ({ ...r, username: r.user?.username ?? null, user: undefined })),
+      executionSeries,
     })
   } catch (error) {
     return serverError('admin/overview', error)

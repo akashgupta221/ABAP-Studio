@@ -39,6 +39,12 @@ async function main() {
 
   await ensureSchema()
   const existing = await db.user.findUnique({ where: { username } })
+  if (email) {
+    const emailOwner = await db.user.findUnique({ where: { email } })
+    if (emailOwner && emailOwner.username !== username) {
+      fail(`OWNER_EMAIL is already linked to another account (${emailOwner.username})`)
+    }
+  }
   const generated = !existing && !password ? randomBytes(24).toString('base64url') : null
   const passwordHash = password
     ? await hashPassword(password)
@@ -50,7 +56,8 @@ async function main() {
     where: { username },
     update: {
       ...(passwordHash ? { passwordHash } : {}),
-      email,
+      // Do not erase an owner email when provisioning runs without one.
+      ...(email ? { email } : {}),
       role: 'OWNER',
       suspended: false,
       sessionVersion: { increment: 1 },

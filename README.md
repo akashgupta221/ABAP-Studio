@@ -66,7 +66,7 @@ practice sandbox**; training examples are shared and read-only.
 - **Owner-only admin dashboard** (`/admin`): metrics, activity, users, programs, audit
   log, suspend/reactivate, revoke sessions and confirmed deletion
 - Built-in logon is **interim**; Clerk Email OTP + Google sign-in is planned but not yet
-  integrated
+  implemented. The owner setup/cutover guide is [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md).
 
 ## Tech stack
 
@@ -110,11 +110,14 @@ To make a local account the owner:
 
 ```bash
 # Register the account in the UI first, then:
-OWNER_USERNAME=AKASH bun run owner:provision
+OWNER_USERNAME=AKASH OWNER_EMAIL="owner@example.com" bun run owner:provision
 OWNER_USERNAME=AKASH bun run owner:password   # hidden input; no shell history
+bun run owner:verify                          # read-only: role, email match, legacy claim
 ```
 
-Add `OWNER_USERNAME="AKASH"` to `.env` so the admin gate recognizes the account. Use the
+Add `OWNER_USERNAME="AKASH"` **or** `OWNER_EMAIL="owner@example.com"` to `.env` so the
+admin gate recognizes the account. `OWNER_EMAIL` is authoritative when both are set and
+must match the email stored on the owner row. Use the
 command field `ADMIN` or the System menu to open the dashboard.
 
 Production build locally:
@@ -131,8 +134,8 @@ bun run build && bun run start
 | `TURSO_DATABASE_URL` | Vercel + shell | libSQL URL of the Turso database (`libsql://…`) |
 | `TURSO_AUTH_TOKEN` | Vercel + shell | Turso access token |
 | `AUTH_SECRET` | Vercel | Long random session-signing secret — **required in production**; generate with `openssl rand -base64 32` |
-| `OWNER_USERNAME` | Vercel + local | The single owner account name; owner access fails closed if unset |
-| `OWNER_EMAIL` | provisioning | Optional email stored on the owner account |
+| `OWNER_USERNAME` | Vercel + local | Interim single-owner account name; fallback when `OWNER_EMAIL` is unset |
+| `OWNER_EMAIL` | Vercel + provisioning | Authoritative owner identity when set; must match the verified email on the `OWNER` row |
 
 Never commit real values; `.env` is git-ignored. Do not paste secrets into chat or issues.
 
@@ -159,7 +162,8 @@ The ownership migration changes who can see legacy programs and invalidates old 
 1. **GitHub** — push this repository.
 2. **Turso** — create a free database, copy its `libsql://` URL and create a token.
 3. **Vercel** — import the repo and set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`,
-   `AUTH_SECRET` and `OWNER_USERNAME`.
+   `AUTH_SECRET`, and the owner identity (`OWNER_EMAIL`, or `OWNER_USERNAME` as the
+   interim fallback). If both are set, `OWNER_EMAIL` is authoritative.
 4. **Seed the cloud database** — from your machine:
 
 ```bash
@@ -171,14 +175,23 @@ bun run deploy:db
 `deploy:db` applies additive schema changes and upserts shared content **without deleting
 users, private programs, favorites or execution history**.
 
-5. **Provision the owner and claim legacy programs** (after a verified backup):
+5. **Provision the owner and claim legacy programs** (after a verified backup). The
+   recommended path uses the manual **Provision owner** GitHub Actions workflow: store
+   `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` as repository secrets, optionally set
+   `OWNER_PASSWORD` to a fresh strong value, then run the workflow with
+   `confirm=PROVISION`, `owner_username=AKASH`, and the verified owner email. It runs
+   `owner:provision` and the read-only `owner:verify` without printing secrets. Delete the
+   temporary `OWNER_PASSWORD` secret after the run.
+
+   The local equivalent (set `TURSO_*` in your shell, never in Git) is:
 
 ```bash
-CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH \
+CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH OWNER_EMAIL="owner@example.com" \
 TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:provision
 
 CONFIRM_OWNER_PASSWORD=YES OWNER_USERNAME=AKASH \
 TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:password
+bun run owner:verify
 ```
 
 See **[DEPLOY.md](DEPLOY.md)** for the full walkthrough.
@@ -201,6 +214,7 @@ reachability without exposing secrets:
 | `bun run deploy:db` | Apply schema + upsert content on Turso |
 | `bun run owner:provision` | Assign the owner role and claim legacy programs |
 | `bun run owner:password` | Hidden-input owner password reset |
+| `bun run owner:verify` | Read-only check: exactly one owner, email match, no unclaimed legacy programs |
 | `bun run owner:favorites` | Dry-run/apply migration of legacy global favorites to the owner |
 | `bun run test` / `test:api` / `test:all` | Unit / live API / full test suites |
 | `bun run db:push` | Sync the Prisma schema to the local database |
