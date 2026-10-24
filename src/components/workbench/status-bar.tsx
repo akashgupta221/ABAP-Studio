@@ -124,7 +124,7 @@ export function StatusBar() {
               title="System information — click for System Status"
               onClick={() => setSystemStatusOpen(true)}
             >
-              NPL (1) (750)
+              MER (105)
             </button>
             <span className="sap-status-seg" title="User">
               {session.user}

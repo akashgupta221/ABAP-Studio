@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
         executions: p.executions,
         topicId: p.topicId,
         topicTitle: p.topic?.title ?? null,
+        createdAt: p.createdAt,
         updatedAt: p.updatedAt,
       })),
     })

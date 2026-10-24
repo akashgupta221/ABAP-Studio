@@ -27,7 +27,7 @@ import { SelectionScreen } from './selection-screen'
 import { CommandPalette } from './command-palette'
 import {
   AboutDialog, ConfirmCreateDialog, ConfirmDeleteDialog, LogoffConfirmDialog,
-  NewObjectDialog, SystemStatusDialog, TcodeRegistryDialog,
+  NewObjectDialog, ObjectDirectoryDialog, SystemStatusDialog, TcodeRegistryDialog,
 } from './dialogs'
 import { LogonPad } from './logon-pad'
 import { getContextTitle } from './context-title'
@@ -1189,6 +1189,7 @@ export function SapShell() {
 
       {/* ── dialogs & toasts ── */}
       <NewObjectDialog />
+      <ObjectDirectoryDialog />
       <ConfirmCreateDialog />
       <ConfirmDeleteDialog />
       <LogoffConfirmDialog />

@@ -111,6 +111,7 @@ export interface ProgramListItem {
   executions: number
   topicId: number | null
   topicTitle: string | null
+  createdAt?: string
   updatedAt: string
 }
 

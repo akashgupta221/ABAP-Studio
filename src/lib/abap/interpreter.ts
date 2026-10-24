@@ -351,7 +351,7 @@ export class Interpreter {
       ['TFILL', 'I', 0], ['FDPOS', 'I', 0], ['PAGNO', 'I', 1], ['LINNO', 'I', 1],
       ['COLNO', 'I', 1], ['LSIND', 'I', 0], ['SCOLS', 'I', 255], ['SROWS', 'I', 65],
       ['UNAME', 'C', 'DEVELOPER', 12], ['MANDT', 'C', '100', 3], ['LANGU', 'C', 'E', 1],
-      ['SYSID', 'C', 'NPL', 8], ['HOST', 'C', 'NPLAPP01', 32], ['TCODE', 'C', 'SE38', 20],
+      ['SYSID', 'C', 'MER', 8], ['HOST', 'C', 'MERAPP01', 32], ['TCODE', 'C', 'SE38', 20],
       ['CPROG', 'C', this.prog.repid || this.opts.repid, 40], ['REPID', 'C', this.prog.repid || this.opts.repid, 40],
       ['SAPRL', 'C', '750', 4], ['MSGTY', 'C', ' ', 1], ['MSGID', 'C', '', 20], ['MSGNO', 'C', '000', 3],
       ['MSGV1', 'C', '', 50], ['MSGV2', 'C', '', 50], ['MSGV3', 'C', '', 50], ['MSGV4', 'C', '', 50],

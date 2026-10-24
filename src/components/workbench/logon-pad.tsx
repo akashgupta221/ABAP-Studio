@@ -24,7 +24,7 @@ export function LogonPad() {
   const restoreSession = useWorkbench((s) => s.restoreSession)
 
   const [mode, setMode] = useState<Mode>('logon')
-  const [client, setClient] = useState('100')
+  const [client, setClient] = useState('105')
   const [user, setUser] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -40,7 +40,7 @@ export function LogonPad() {
         const res = await fetch('/api/auth/me')
         const data = (await res.json()) as { user?: { username: string } | null }
         if (!cancelled && data.user?.username) {
-          restoreSession({ user: data.user.username, client: '100', language: 'EN', loggedIn: true })
+          restoreSession({ user: data.user.username, client: '105', language: 'EN', loggedIn: true })
         }
       } catch {
         /* stay on the logon pad */
@@ -52,7 +52,7 @@ export function LogonPad() {
   }, [restoreSession])
 
   const enterSystem = (username: string, lang = language) => {
-    const c = (client.trim() || '100').padStart(3, '0')
+    const c = (client.trim() || '105').padStart(3, '0')
     logon({ user: username, client: c, language: lang })
   }
 
@@ -259,7 +259,7 @@ export function LogonPad() {
                   <tr>
                     <td className="pr-3 text-right align-top text-[12.5px] text-[#1c2b3a]">System</td>
                     <td className="pt-[3px] text-[12.5px] text-[#1c2b3a]">
-                      <span className="font-mono">NPL</span>
+                      <span className="font-mono">MER</span>
                       <span className="pl-2 text-[#44586c]">SAP NetWeaver AS ABAP — Training Edition</span>
                     </td>
                   </tr>
@@ -273,7 +273,7 @@ export function LogonPad() {
             <div className="flex h-[74px] w-[74px] items-center justify-center bg-gradient-to-br from-[#3fa0e8] via-[#0a6ed1] to-[#0b3d78] shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_6px_rgba(0,0,0,0.25)]">
               <span className="text-[26px] font-black tracking-tight text-white">SAP</span>
             </div>
-            <span className="text-[10.5px] text-[#62748a]">NPL (1) (750)</span>
+            <span className="text-[10.5px] text-[#62748a]">MER (105)</span>
           </div>
         </div>
 

@@ -210,3 +210,28 @@ Work Log:
 Stage Summary:
 - App is free-publish ready. Recommended path documented to user: GitHub (private/free) → Neon Postgres free tier (switch provider to postgresql + prisma db push) → Vercel Hobby import with DATABASE_URL env → first visit auto-seeds everything
 - No code changes required for deploy besides the one-line provider switch in prisma/schema.prisma
+
+---
+Task ID: 12
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Master specification v0.2 — Phase 0 audit + Standard ABAP screenshot fidelity (owner: "it is for standard make it real as it given")
+
+Work Log:
+- Audited the actual repository and production deployment against the 0.2 master specification (no assumptions from the README alone)
+- Created docs/MASTER-PROJECT-SPEC.md: verified stack, architecture/data-flow, honest capability audit, requirement-by-requirement status table, deliverables checklist, owner blockers and next implementation order
+- Confirmed pre-existing gaps to address next: APIs have no server-side session checks, programs/favorites are global (no user ownership), no admin role/dashboard, no Clerk, no Modern ABAP environment, no automated test script
+- Standard environment fidelity implemented from the 7 real SAP screenshots (MER / client 105):
+  - Easy Access: exact standard folder order (Financial Services Network Connector, Global Bike Transactions, Office, Cross-Application Components, Logistics, Accounting, Human Resources, Patient Accounting, Information Systems, Tools, WebClient UI Framework); Tools ▸ ABAP Workbench ▸ Overview/Development/Programming Environment/Enhancement Framework/Switch Framework + Business Object Builder; Development now includes Data Modeler, User Interface, Shared Objects Area Administration, Shared Objects Monitor with real transaction codes; gear icons; real toolbar (SAP menu / SAP Business Workplace / Add to Favorite / More + search/print/exit); existing actions preserved in More
+  - SE38 initial screen: real text-button toolbar and order (Check, Activate, Execute, Where-Used List, Environment Analysis, Online Help, Delete…, Copy…, Rename…, Debugging, With Variant, Variants, More); Subobjects heading/rule and radio order Source code, Variants, Attributes, Text elements, Documentation; Display/Change
+  - Program Attributes: real modal title/fields (Title, Original Language, Created, Last Changed, Status, Type, Status, Authorization Group, Application, Editor lock) with the full real type list; save persists title/type; unsupported types disabled in UI and rejected by PUT; examples/display read-only
+  - Create Object Directory Entry: R3TR PROG, Package ($TMP), Person Responsible = session user, Original System MER, Original Language EN, Created On, Local Object / Lock Overview / X; Local Object creates and opens the program
+  - Editor: application toolbar Display<>Change, Active<>Inactive, Other Object..., Enhance, Check, Activate, Direct Processing, Where-Used List, Display Object List, Display Navigation Window, More; info line Report/Include/Class/Function group + Inactive (Revised)/Inactive/Active; display mode read-only; Save/Save As/Attributes/Where-Used/Delete in More
+  - System identity: status bar, logon pad, System Status/About and sy-sysid now MER (105) / MERAPP01; local logon client defaults to 105
+- API: GET /api/programs returns createdAt for the attributes dialog; PUT /api/programs/[id] accepts a whitelisted type
+- Verification: lint 0 errors; production build passed; browser E2E at localhost — logon; Easy Access exact tree; SE38 initial; Attributes dialog opened, title edited and saved (status message + API confirmed); Create → Object Directory Entry → Local Object created Z_FIDELITY_TEST and opened the editor; Display<>Change toggled textarea read-only; Active<>Inactive changed the status line
+- Cleanup: deleted the verification program and restored prisma/db/app.db; no test data committed
+- docs/MASTER-PROJECT-SPEC.md records the remaining work; owner actions required for Clerk keys, owner admin email and Modern ABAP scope
+
+Stage Summary:
+- Standard ABAP environment now mirrors the supplied real-SAP screenshots for Easy Access, SE38 initial/attributes, object-directory creation and the include/editor toolbar
+- Phase 0 audit complete and documented; Clerk/admin/Modern ABAP/automated tests remain (Clerk is blocked on owner-created credentials)

@@ -25,12 +25,23 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
     const body = await req.json()
     const existing = await db.program.findUnique({ where: { id } })
     if (!existing) return NextResponse.json({ error: 'Program not found' }, { status: 404 })
+    // The training runtime can only execute these program types. The real
+    // Attributes dialog lists more (module pool, type pool, …); those are
+    // shown disabled in the UI and rejected here.
+    const allowedTypes = ['REPORT', 'CLASS', 'INCLUDE', 'FUNCTION_GROUP']
+    if (body.type !== undefined && !allowedTypes.includes(body.type)) {
+      return NextResponse.json(
+        { error: `Type ${body.type} is not supported by the training runtime` },
+        { status: 400 },
+      )
+    }
     const program = await db.program.update({
       where: { id },
       data: {
         source: body.source ?? existing.source,
         title: body.title ?? existing.title,
         description: body.description ?? existing.description,
+        type: body.type ?? existing.type,
         paradigm: body.paradigm ?? existing.paradigm,
         topicId: body.topicId ?? existing.topicId,
         tags: body.tags ?? existing.tags,

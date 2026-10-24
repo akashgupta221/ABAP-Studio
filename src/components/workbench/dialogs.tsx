@@ -78,6 +78,143 @@ function SapPopupTitle({ title, description, onClose }: {
   )
 }
 
+// ── Object Directory Entry (SE38 Create → package assignment) ──────────
+export function ObjectDirectoryDialog() {
+  const objectDir = useWorkbench((s) => s.objectDir)
+  const setObjectDir = useWorkbench((s) => s.setObjectDir)
+  const createProgram = useWorkbench((s) => s.createProgram)
+  const sessionUser = useWorkbench((s) => s.session.user)
+
+  const [packageName, setPackageName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const open = !!objectDir
+  const name = objectDir?.name ?? ''
+
+  const today = (() => {
+    const d = new Date()
+    const dd = String(d.getDate()).padStart(2, '0')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    return `${dd}.${mm}.${d.getFullYear()}`
+  })()
+
+  const createLocalObject = async () => {
+    if (!name || busy) return
+    setBusy(true)
+    try {
+      await createProgram({
+        name,
+        title: name,
+        type: 'REPORT',
+        source: `REPORT ${name.toLowerCase()}.\n\nWRITE: / 'Hello from ${name}'.\n`,
+      })
+    } finally {
+      setBusy(false)
+      setPackageName('')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && setObjectDir(null)}>
+      <DialogContent showCloseButton={false} className="sap-popup max-w-[560px] gap-0 p-0 sm:max-w-[560px]">
+        <SapPopupTitle
+          title="Create Object Directory Entry"
+          description={`Assign a package to program ${name}`}
+          onClose={() => setObjectDir(null)}
+        />
+
+        <div className="sap-popup-body space-y-[7px] text-[12.5px] text-[#1c2b3a]">
+          <div className="flex items-center gap-2">
+            <span className="w-[120px] text-right text-[#33475c]">Object</span>
+            <span className="flex h-[22px] w-[62px] items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px]">
+              R3TR
+            </span>
+            <span className="flex h-[22px] w-[62px] items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px]">
+              PROG
+            </span>
+            <span className="flex h-[22px] min-w-[160px] items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px]">
+              {name}
+            </span>
+          </div>
+
+          <div className="border-t border-[#c3cfdc] pt-2 text-[12px] font-semibold text-[#33475c]">
+            Attributes
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="w-[120px] text-right text-[#1c2b3a]">Package</span>
+            <input
+              value={packageName}
+              onChange={(e) => setPackageName(e.target.value.toUpperCase())}
+              className="sap-field w-[180px] font-mono uppercase"
+              placeholder=" "
+              aria-label="Package"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              className="flex h-[22px] w-[20px] items-center justify-center border border-[#c6d3e2] bg-[#eef3f9] text-[#33475c] hover:bg-[#dbe8f8]"
+              title="Possible entries — only local objects are available"
+              aria-label="Possible entries for package"
+              onClick={() =>
+                useWorkbench
+                  .getState()
+                  .addMessage('I', 'Package selection: only local objects ($TMP) are available in this training system')
+              }
+            >
+              ▼
+            </button>
+            <span className="text-[11px] italic text-[#7b8a9c]">blank = local object ($TMP)</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="w-[120px] text-right text-[#1c2b3a]">Person Responsible</span>
+            <span className="flex h-[22px] w-[160px] items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px]">
+              {sessionUser}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="w-[120px] text-right text-[#1c2b3a]">Original System</span>
+            <span className="flex h-[22px] w-[100px] items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px]">
+              MER
+            </span>
+            <span className="w-[20px]" />
+            <span className="text-[#1c2b3a]">Original language</span>
+            <span className="flex h-[22px] w-[100px] items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px]">
+              EN English
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="w-[120px] text-right text-[#1c2b3a]">Created On</span>
+            <span className="flex h-[22px] w-[120px] items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px]">
+              {today}
+            </span>
+          </div>
+        </div>
+
+        <div className="sap-popup-buttons">
+          <button
+            type="button"
+            className="sap-btn sap-btn-primary"
+            onClick={() => void createLocalObject()}
+            disabled={busy || !name}
+            title="Create the object as a local object in package $TMP"
+          >
+            {busy ? 'Creating…' : 'Local Object'}
+          </button>
+          <button type="button" className="sap-btn" disabled title="Lock overview is not available in this training system">
+            Lock Overview
+          </button>
+          <button type="button" className="sap-btn" onClick={() => setObjectDir(null)} title="Cancel">
+            X
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── New Object ─────────────────────────────────────────────────────────
 export function NewObjectDialog() {
   const dialog = useWorkbench((s) => s.newDialog)
@@ -277,7 +414,7 @@ export function AboutDialog() {
   const rows: [string, string][] = [
     ['Component', 'ABAPForge Workbench — web edition'],
     ['Release', '1.0 (SAP GUI 7.70 look-alike)'],
-    ['System', `NPL (1) (750) — Client ${session.client}`],
+    ['System', `MER (105) — Client ${session.client}`],
     ['User', session.user],
     ['File Name', 'abapforge-web'],
     ['Build', '2026.10'],
@@ -410,11 +547,11 @@ export function LogoffConfirmDialog() {
       <DialogContent showCloseButton={false} className="sap-popup max-w-[430px] gap-0 p-0 sm:max-w-[430px]">
         <SapPopupTitle
           title="Log Off"
-          description="System NPL (1) (750)"
+          description="System MER (105)"
           onClose={() => setOpen(false)}
         />
         <div className="sap-popup-body space-y-2 text-[12.5px] text-[#1c2b3a]">
-          <div className="text-[11.5px] text-[#5b6d80]">System NPL (1) (750)</div>
+          <div className="text-[11.5px] text-[#5b6d80]">System MER (105)</div>
           <p>Data that was not saved will be lost. Do you want to log off from the system?</p>
         </div>
         <div className="sap-popup-buttons">
@@ -452,7 +589,7 @@ export function SystemStatusDialog() {
 
   const rows: [string, string][] = [
     ['SAP GUI', 'SAP GUI 7.70 (64-bit) — web edition'],
-    ['System', 'NPL'],
+    ['System', 'MER'],
     ['Client', session.client],
     ['User', session.user],
     ['Language', session.language],
@@ -460,7 +597,7 @@ export function SystemStatusDialog() {
     ['Program', program],
     ['Release', '750'],
     ['Kernel', '754 (in-browser ABAP interpreter)'],
-    ['Host', 'NPLAPP01'],
+    ['Host', 'MERAPP01'],
     ['Database', 'HDB (simulated SFLIGHT model)'],
     ['Server', 'Node.js / Next.js runtime'],
   ]
@@ -470,7 +607,7 @@ export function SystemStatusDialog() {
       <DialogContent showCloseButton={false} className="sap-popup max-w-[520px] gap-0 p-0 sm:max-w-[520px]">
         <SapPopupTitle
           title="System Status"
-          description="NPL — SAP NetWeaver AS ABAP (training edition)"
+          description="MER — SAP NetWeaver AS ABAP (training edition)"
           onClose={() => setOpen(false)}
         />
         <div className="sap-popup-body">

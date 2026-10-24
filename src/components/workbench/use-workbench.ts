@@ -89,11 +89,13 @@ interface WorkbenchState {
   se38Program: string
   se38Subobject: Se38Subobject
   se38ShowSubobject: boolean
+  se38Mode: 'display' | 'change'
   lastTcode: string
   // dialogs
   pendingSelection: PendingSelection | null
   selectionBusy: boolean
   newDialog: NewDialogState
+  objectDir: { name: string } | null
   confirmCreate: { name: string } | null
   aboutOpen: boolean
   tcodeDialogOpen: boolean
@@ -152,6 +154,10 @@ interface WorkbenchState {
   setSe38Subobject: (subobject: Se38Subobject) => void
   setSe38ShowSubobject: (v: boolean) => void
   se38Display: (mode?: 'display' | 'change') => Promise<void>
+  updateProgramAttributes: (
+    name: string,
+    attributes: { title: string; type: ProgramType },
+  ) => Promise<boolean>
   addMessage: (msgType: MessageType, text: string) => void
 
   openProgramByName: (name: string) => Promise<void>
@@ -181,6 +187,7 @@ interface WorkbenchState {
 
   openNewDialog: (prefill?: Partial<NewDialogState>) => void
   closeNewDialog: () => void
+  setObjectDir: (v: { name: string } | null) => void
   setConfirmCreate: (v: { name: string } | null) => void
   setAboutOpen: (v: boolean) => void
   setTcodeDialogOpen: (v: boolean) => void
@@ -216,16 +223,18 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   se38Program: '',
   se38Subobject: 'source',
   se38ShowSubobject: false,
+  se38Mode: 'display',
   lastTcode: 'SESSION_MANAGER',
   pendingSelection: null,
   selectionBusy: false,
   newDialog: { open: false },
+  objectDir: null,
   confirmCreate: null,
   aboutOpen: false,
   tcodeDialogOpen: false,
   favorites: [],
 
-  session: { user: 'DEVELOPER', client: '100', language: 'EN', loggedIn: false },
+  session: { user: 'DEVELOPER', client: '105', language: 'EN', loggedIn: false },
   insertMode: 'INS',
   systemInfoVisible: true,
   editorFontSize: 13,
@@ -276,7 +285,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       s.addMessage('E', 'Enter a program name')
       return
     }
-    set({ se38Program: name })
+    set({ se38Program: name, se38Mode: mode })
     try {
       const { programs } = await api<{ programs: ProgramListItem[] }>(
         `/api/programs?q=${encodeURIComponent(name)}`,
@@ -548,6 +557,42 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     }
   },
 
+  // ── program attributes (SE38 Attributes dialog) ─────────────────────
+  updateProgramAttributes: async (name, attributes) => {
+    const prog = get().programs[name]
+    if (!prog) {
+      get().addMessage('E', `Program ${name} is not open`)
+      return false
+    }
+    if (prog.isExample) {
+      get().addMessage('W', 'Example programs are read-only — attributes cannot be changed')
+      toast.info('Example is read-only', { description: 'Create your own copy with Save As.' })
+      return false
+    }
+    try {
+      const { program } = await api<{ program: ProgramFull }>(`/api/programs/${prog.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ title: attributes.title, type: attributes.type }),
+      })
+      set((s) => ({
+        programs: {
+          ...s.programs,
+          [name]: {
+            ...s.programs[name],
+            title: program.title,
+            type: program.type as ProgramType,
+            version: program.version,
+          },
+        },
+      }))
+      return true
+    } catch (e) {
+      toast.error((e as Error).message)
+      get().addMessage('E', (e as Error).message)
+      return false
+    }
+  },
+
   createProgram: async (input) => {
     try {
       const res = await fetch('/api/programs', {
@@ -567,7 +612,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       const { program } = data as { program: ProgramFull }
       get().addMessage('S', `Object ${program.name} created`)
       toast.success('Object created', { description: `${program.name} (${program.type})` })
-      set((s) => ({ newDialog: { open: false } }))
+      set({ newDialog: { open: false }, objectDir: null })
       await get().openProgramById(program.id)
       return true
     } catch (e) {
@@ -608,6 +653,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   openNewDialog: (prefill) =>
     set({ newDialog: { open: true, ...prefill } }),
   closeNewDialog: () => set({ newDialog: { open: false } }),
+  setObjectDir: (v) => set({ objectDir: v }),
   setConfirmCreate: (v) => set({ confirmCreate: v }),
   setAboutOpen: (v) => set({ aboutOpen: v }),
   setTcodeDialogOpen: (v) => set({ tcodeDialogOpen: v }),
@@ -662,12 +708,12 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   logon: ({ user, client, language }) => {
     const session: SapSession = {
       user: user.trim().toUpperCase() || 'DEVELOPER',
-      client: client.trim() || '100',
+      client: client.trim() || '105',
       language: (language.trim() || 'EN').toUpperCase(),
       loggedIn: true,
     }
     set({ session })
-    get().addMessage('S', `Logon to system NPL (client ${session.client}) successful`)
+    get().addMessage('S', `Logon to system MER (client ${session.client}) successful`)
   },
 
   restoreSession: (session) => set({ session: { ...session, loggedIn: true } }),
@@ -693,6 +739,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         se38Program: '',
         se38Subobject: 'source',
         se38ShowSubobject: false,
+        se38Mode: 'display',
+        objectDir: null,
         pendingSelection: null,
         findOpen: false,
         systemStatusOpen: false,

@@ -2,7 +2,8 @@
 
 // ── ABAP Editor view (SE38) for one open program ──────────────────────
 import { useState } from 'react'
-import { Search, Star, X } from 'lucide-react'
+import { ChevronDown, FileCheck2, MoreHorizontal, Power, Search, Star, X } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useWorkbench } from './use-workbench'
 import { AbapEditor } from './abap-editor'
 import type { CheckIssue, SearchHit } from './types'
@@ -30,8 +31,17 @@ export function EditorView({ programName }: { programName: string }) {
   const whereUsed = useWorkbench((s) => s.whereUsed)
   const closeWhereUsed = useWorkbench((s) => s.closeWhereUsed)
 
+  const checkProgram = useWorkbench((s) => s.checkProgram)
+  const saveProgram = useWorkbench((s) => s.saveProgram)
+  const setProgramActive = useWorkbench((s) => s.setProgramActive)
+  const addMessage = useWorkbench((s) => s.addMessage)
+  const showWhereUsedList = useWorkbench((s) => s.showWhereUsed)
+  const setConfirmDelete = useWorkbench((s) => s.setConfirmDelete)
+  const openNewDialog = useWorkbench((s) => s.openNewDialog)
+
   const [panelOpen, setPanelOpen] = useState(false)
   const [cursor, setCursor] = useState({ line: 1, col: 1 })
+  const [displayMode, setDisplayMode] = useState(false)
 
   // auto-open the check panel when new issues arrive — adjust-state-during-render
   // pattern (see react.dev "You Might Not Need an Effect"); avoids cascading effects
@@ -60,20 +70,61 @@ export function EditorView({ programName }: { programName: string }) {
     else s.addMessage('I', `${hit.objectType} ${hit.name}: ${hit.detail}`)
   }
 
+  const objectLabel =
+    prog.type === 'INCLUDE'
+      ? 'Include'
+      : prog.type === 'CLASS'
+        ? 'Class'
+        : prog.type === 'FUNCTION_GROUP'
+          ? 'Function group'
+          : 'Report'
+  const statusText = prog.dirty ? 'Inactive (Revised)' : prog.active === false ? 'Inactive' : 'Active'
+
+  const activate = async () => {
+    if (prog.isExample) {
+      addMessage('I', `${programName} is an example program and is already active`)
+      return
+    }
+    await saveProgram(programName)
+    await checkProgram(programName)
+    const issuesNow = useWorkbench.getState().checkResults[programName] ?? []
+    const errs = issuesNow.filter((i) => i.kind === 'E')
+    if (errs.length > 0) {
+      addMessage('E', `Activation failed — ${errs.length} syntax error(s) in ${programName}`)
+      return
+    }
+    setProgramActive(programName, true)
+    addMessage('S', `Program ${programName} activated`)
+  }
+
+  const saveAs = () =>
+    openNewDialog({
+      prefillName: `${programName}_COPY`.slice(0, 30),
+      prefillSource: prog.source,
+      prefillTitle: prog.title,
+      prefillType: prog.type,
+      saveAsFrom: programName,
+    })
+
+  const openAttributes = () => {
+    const s = useWorkbench.getState()
+    s.openSe38Initial(programName)
+    s.setSe38Subobject('attributes')
+    void s.se38Display('change')
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      {/* SE38 editor info line: Report <program> Active/Inactive */}
+      {/* SE38 editor info line: Report/Include <program> Active/Inactive */}
       <div className="flex items-center gap-3 border-b border-[#c5d2e2] bg-[#f7fafd] px-3 py-[3px] text-[12.5px]">
-        <span className="shrink-0 text-[#33475c]">Report</span>
+        <span className="shrink-0 text-[#33475c]">{objectLabel}</span>
         <span
           className="flex h-[20px] max-w-[300px] items-center border border-[#c6d3e2] bg-[#f4f8fc] px-2 font-mono text-[12.5px] text-[#12283c] shadow-[inset_1px_1px_2px_rgba(0,0,0,0.05)]"
           title={prog.title || prog.name}
         >
           <span className="truncate">{prog.name}</span>
         </span>
-        <span className="shrink-0 text-[#1c2b3a]">
-          {prog.dirty || prog.active === false ? 'Inactive' : 'Active'}
-        </span>
+        <span className="shrink-0 text-[#1c2b3a]">{statusText}</span>
         {prog.isExample && (
           <span
             className="shrink-0 whitespace-nowrap text-[11.5px] text-[#8a6d1a]"
@@ -95,6 +146,136 @@ export function EditorView({ programName }: { programName: string }) {
             />
           </button>
         </span>
+      </div>
+
+      {/* SE38 editor application toolbar (real Change Include button set) */}
+      <div className="sap-apptoolbar flex h-[26px] shrink-0 items-center gap-0.5 overflow-x-auto px-1.5">
+        <button
+          type="button"
+          className="sap-tool-textbtn"
+          title={displayMode ? 'Switch to change mode' : 'Switch to display mode'}
+          onClick={() => setDisplayMode((v) => !v)}
+        >
+          <span>{'Display<>Change'}</span>
+        </button>
+        <button
+          type="button"
+          className="sap-tool-textbtn"
+          title="Set the program active or inactive"
+          onClick={() => {
+            const next = prog.active === false
+            setProgramActive(programName, next)
+            addMessage('S', `Program ${programName} is now ${next ? 'active' : 'inactive'}`)
+          }}
+        >
+          <span>{'Active<>Inactive'}</span>
+        </button>
+        <span className="sap-toolbar-sep" aria-hidden />
+        <button
+          type="button"
+          className="sap-tool-textbtn"
+          title="Open another object"
+          onClick={() => addMessage('I', 'Other Object: enter the object name in the command field (Ctrl+K)')}
+        >
+          <span>Other Object...</span>
+        </button>
+        <button
+          type="button"
+          className="sap-tool-textbtn"
+          title="Enhancement framework"
+          onClick={() => addMessage('I', 'Enhance: the enhancement framework is not part of this training system')}
+        >
+          <span>Enhance</span>
+        </button>
+        <button
+          type="button"
+          className="sap-tool-textbtn"
+          title="Check (Ctrl+F2)"
+          onClick={() => void checkProgram(programName)}
+        >
+          <FileCheck2 className="h-3.5 w-3.5 text-[#2e5b8a]" />
+          <span>Check</span>
+        </button>
+        <button
+          type="button"
+          className="sap-tool-textbtn"
+          title="Activate the program"
+          onClick={() => void activate()}
+        >
+          <Power className="h-3.5 w-3.5 text-[#1c7a1c]" />
+          <span>Activate</span>
+        </button>
+        <button
+          type="button"
+          className="sap-tool-textbtn"
+          title="Direct processing — save and execute"
+          onClick={() => {
+            void (async () => {
+              await saveProgram(programName)
+              await useWorkbench.getState().runProgram(programName)
+            })()
+          }}
+        >
+          <span>Direct Processing</span>
+        </button>
+        <button
+          type="button"
+          className="sap-tool-textbtn"
+          title="Where-Used List"
+          onClick={() => void showWhereUsedList(programName)}
+        >
+          <Search className="h-3.5 w-3.5 text-[#2e5b8a]" />
+          <span>Where-Used List</span>
+        </button>
+        <button
+          type="button"
+          className="sap-tool-textbtn"
+          title="Display the object list"
+          onClick={() => addMessage('I', `Object list for ${programName}: use the SE80 Object Navigator`)}
+        >
+          <span>Display Object List</span>
+        </button>
+        <button
+          type="button"
+          className="sap-tool-textbtn"
+          title="Display the navigation window"
+          onClick={() => addMessage('I', 'Navigation window: use SAP Easy Access (the Easy Access tab) to navigate')}
+        >
+          <span>Display Navigation Window</span>
+        </button>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" className="sap-tool-textbtn" title="More functions">
+              <MoreHorizontal className="h-3.5 w-3.5 text-[#2e5b8a]" />
+              <span>More</span>
+              <ChevronDown className="h-3 w-3 text-[#5b6d80]" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            sideOffset={2}
+            className="w-[240px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[12.5px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+          >
+            {[
+              { label: 'Save (Ctrl+S)', run: () => void saveProgram(programName), disabled: prog.isExample || !prog.dirty },
+              { label: 'Save As...', run: saveAs, disabled: false },
+              { label: 'Attributes (change)', run: openAttributes, disabled: false },
+              { label: 'Where-Used List', run: () => void showWhereUsedList(programName), disabled: false },
+              { label: 'Delete...', run: () => setConfirmDelete({ name: programName }), disabled: prog.isExample },
+            ].map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                disabled={item.disabled}
+                className="flex w-full items-center rounded-none px-2 py-[4px] text-left hover:bg-[#bcd6f2] disabled:opacity-45"
+                onClick={item.run}
+              >
+                {item.label}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* find bar (Ctrl+F) */}
@@ -139,6 +320,7 @@ export function EditorView({ programName }: { programName: string }) {
             value={prog.source}
             onChange={(v) => updateSource(programName, v)}
             onCursor={(line, col) => setCursor({ line, col })}
+            readOnly={displayMode || prog.isExample}
             fontSize={editorFontSize}
             findRequest={{ query: findOpen ? findQuery : '', nonce: findNonce }}
             undoNonce={undoNonce}

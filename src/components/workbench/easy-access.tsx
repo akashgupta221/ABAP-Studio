@@ -1,18 +1,27 @@
 'use client'
 
 // ── SAP Easy Access — classic SAP GUI for HTML layout ──────────────────
-// Menu paths follow the real SAP standard menu:
-//   SE80 Object Navigator  → Tools ▸ ABAP Workbench ▸ Overview ▸ Object Navigator
-//   SE16 Data Browser      → Tools ▸ ABAP Workbench ▸ Overview ▸ Data Browser
-//   SE38 ABAP Editor       → Tools ▸ ABAP Workbench ▸ Development ▸ ABAP Editor
-//   SE11 ABAP Dictionary   → Tools ▸ ABAP Workbench ▸ Development ▸ ABAP Dictionary
-//   SE24 Class Builder     → Tools ▸ ABAP Workbench ▸ Development ▸ Class Builder
-//   SE37 Function Builder  → Tools ▸ ABAP Workbench ▸ Development ▸ Function Builder
+// Menu structure follows the real SAP Easy Access screenshots:
+//   Favorites / SAP Menu
+//     Financial Services Network Connector, Global Bike Transactions, Office,
+//     Cross-Application Components, Logistics, Accounting, Human Resources,
+//     Patient Accounting, Information Systems,
+//     Tools → ABAP Workbench → Overview / Development / Programming
+//             Environment / Enhancement Framework / Switch Framework,
+//             Business Object Builder
+//     WebClient UI Framework
+//   Development → ABAP Dictionary, Data Modeler, User Interface, ABAP Editor,
+//                 Function Builder, Class Builder, Shared Objects Area
+//                 Administration, Shared Objects Monitor
+// Real transactions used by the training workbench:
+//   SE80 Object Navigator, SE16 Data Browser, SE38 ABAP Editor,
+//   SE11 ABAP Dictionary, SE37 Function Builder, SE24 Class Builder.
 import { Fragment, useEffect, useState } from 'react'
 import {
-  BookOpen, Braces, ChevronsDownUp, ChevronsUpDown, Database, FileText, FolderClosed, FolderOpen,
-  FunctionSquare, ListTree, Pencil, Play, Star, StarOff, Table2, User, Users,
+  BookOpen, ChevronDown, FolderClosed, FolderOpen,
+  LogOut, MoreHorizontal, Pencil, Play, Printer, Search, Settings, Star,
 } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useWorkbench, api } from './use-workbench'
 import { groupTopicsByCategory, TOPIC_CATEGORIES } from './types'
 import type { RecentExecution, Topic } from './types'
@@ -23,23 +32,29 @@ const indent = (level: number) => ({ paddingLeft: INDENT[Math.min(level, INDENT.
 
 const C_FOLDER = '#e8b53a'
 const C_PROGRAM = '#2b6cb8'
-const C_TABLE = '#0e7b7b'
-const C_CLASS = '#7a3ea8'
-const C_FM = '#b35c00'
+const C_TRANSACTION = '#44586c'
 const C_PRACTICE = '#2e7d32'
+const C_TABLE = '#0e7b7b'
 
-// standard SAP top-level folders (empty in a pure training system)
-const STANDARD_FOLDERS = [
+// Standard SAP top-level folders in the order shown by the system (MER).
+const STANDARD_FOLDERS_BEFORE_TOOLS = [
+  'Financial Services Network Connector',
+  'Global Bike Transactions',
   'Office',
   'Cross-Application Components',
   'Logistics',
   'Accounting',
   'Human Resources',
+  'Patient Accounting',
   'Information Systems',
-  'WebClient UI Framework',
 ]
+const STANDARD_FOLDERS_AFTER_TOOLS = ['WebClient UI Framework']
+const STANDARD_FOLDERS = [...STANDARD_FOLDERS_BEFORE_TOOLS, 'Tools', ...STANDARD_FOLDERS_AFTER_TOOLS]
 
 const EMPTY_NOTE = 'No entries in this training system.'
+const UI_NOTE = 'Screen Painter and Menu Painter are not part of this training system.'
+const PROGRAMMING_NOTE =
+  'Use Tools ▸ ABAP Workbench ▸ Development for the ABAP Editor, ABAP Dictionary, Class Builder and Function Builder.'
 
 function fmtDate(iso: string) {
   const d = new Date(iso)
@@ -52,21 +67,21 @@ function fmtDate(iso: string) {
 const ROW_CLS =
   'group flex min-h-[26px] w-full items-center gap-2 pr-3 text-left hover:bg-[#dbe8f8]'
 
-// ── application toolbar button (icon + label, SAP GUI for HTML style) ──
+// ── application toolbar button (text / icon, SAP GUI for HTML style) ───
 function EaToolBtn({
   icon, label, title, onClick,
 }: {
-  icon: React.ReactNode
+  icon?: React.ReactNode
   label?: string
   title?: string
-  onClick: () => void
+  onClick?: () => void
 }) {
   return (
     <button
       type="button"
       title={title ?? label}
       onClick={onClick}
-      className="flex h-[28px] shrink-0 items-center gap-1.5 rounded-[2px] border border-transparent px-2 text-[13px] text-[#12283c] hover:border-[#a9c2d8] hover:bg-[#cfe0f0] active:border-[#8fb0d0] active:bg-[#bcd4ea]"
+      className="flex h-[28px] shrink-0 items-center gap-1.5 rounded-[2px] border border-transparent px-2 text-[12.5px] text-[#12283c] hover:border-[#a9c2d8] hover:bg-[#cfe0f0] active:border-[#8fb0d0] active:bg-[#bcd4ea]"
     >
       {icon}
       {label && <span className="whitespace-nowrap">{label}</span>}
@@ -137,6 +152,8 @@ function Leaf({
   )
 }
 
+const gear = <Settings className="h-4 w-4" style={{ color: C_TRANSACTION }} />
+
 export function EasyAccess() {
   const favorites = useWorkbench((s) => s.favorites)
   const refreshFavorites = useWorkbench((s) => s.refreshFavorites)
@@ -157,6 +174,10 @@ export function EasyAccess() {
     workbench: true,
     overview: true,
     development: true,
+    programming: false,
+    enhancement: false,
+    switch: false,
+    'user-interface': false,
     training: true,
     'cat-CORE': true,
     'cat-REPORTING': true,
@@ -180,7 +201,8 @@ export function EasyAccess() {
   const toggle = (id: string) => setOpenMap((o) => ({ ...o, [id]: !o[id] }))
   const setAll = (v: boolean) => {
     const ids = [
-      'favorites', 'recent', 'sapmenu', 'tools', 'workbench', 'overview', 'development', 'training',
+      'favorites', 'recent', 'sapmenu', 'tools', 'workbench', 'overview', 'development',
+      'programming', 'enhancement', 'switch', 'user-interface', 'training',
       ...STANDARD_FOLDERS,
       ...TOPIC_CATEGORIES.map((c) => `cat-${c.id}`),
       ...(topics ?? []).map((t) => `topic-${t.id}`),
@@ -228,16 +250,30 @@ export function EasyAccess() {
   const editFavorites = () =>
     useWorkbench
       .getState()
-      .addMessage('I', 'Favorites maintenance: use the star on a program to add or remove favorites in this training system')
+      .addMessage('I', 'Favorites maintenance: use Add to Favorite or Remove from Favorites in the More menu')
 
-  const otherMenu = () =>
-    useWorkbench.getState().addMessage('I', 'Other menu: no role menus are maintained in this training system')
+  const businessWorkplace = () =>
+    useWorkbench
+      .getState()
+      .addMessage('I', 'SAP Business Workplace: the Business Workplace is not part of this training system')
 
   const createRole = () =>
     useWorkbench.getState().addMessage('I', 'Create role (PFCG): role maintenance is not part of this training system')
 
   const assignUsers = () =>
     useWorkbench.getState().addMessage('I', 'Assign users (PFCG): user administration is not part of this training system')
+
+  const dataModeler = () =>
+    useWorkbench.getState().addMessage('I', 'Data Modeler (SD11): data modeling tools are not part of this training system')
+
+  const sharedObjectsArea = () =>
+    useWorkbench.getState().addMessage('I', 'Shared Objects Area Administration (SHMA): not part of this training system')
+
+  const sharedObjectsMonitor = () =>
+    useWorkbench.getState().addMessage('I', 'Shared Objects Monitor (SHMM): not part of this training system')
+
+  const businessObjectBuilder = () =>
+    useWorkbench.getState().addMessage('I', 'Business Object Builder (SWO1): not part of this training system')
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#f4f8fc]">
@@ -246,62 +282,69 @@ export function EasyAccess() {
         <span className="text-[19px] font-bold italic leading-none text-[#1c4a7e] [text-shadow:1px_1px_0_rgba(255,255,255,0.9)]">
           SAP Easy Access
         </span>
+        <span className="ml-auto flex items-center gap-3 font-mono text-[11.5px] text-[#44586c]">
+          MER (105)
+          <button
+            type="button"
+            className="text-[#33475c] hover:text-[#0b4fa8]"
+            title="Print"
+            aria-label="Print"
+            onClick={() => window.print()}
+          >
+            <Printer className="h-3.5 w-3.5" />
+          </button>
+        </span>
       </div>
 
       {/* ── application toolbar (real SAP Easy Access button set) ── */}
-      <div className="flex h-[34px] shrink-0 items-center gap-1 overflow-x-auto border-b border-[#b6c9dc] bg-[#e2ecf6] px-2">
-        <EaToolBtn
-          icon={<ListTree className="h-4 w-4 text-[#2e5b8a]" />}
-          label="Other menu"
-          title="Other menu — display a role menu"
-          onClick={otherMenu}
-        />
-        <span className="sap-toolbar-sep" aria-hidden />
-        <EaToolBtn
-          icon={<Star className="h-4 w-4" style={{ color: '#c9a227' }} />}
-          title="Add to favorites"
-          onClick={addFavorite}
-        />
-        <EaToolBtn
-          icon={<StarOff className="h-4 w-4 text-[#2e5b8a]" />}
-          title="Remove from favorites"
-          onClick={removeFavorite}
-        />
-        <EaToolBtn
-          icon={<Pencil className="h-4 w-4 text-[#2e5b8a]" />}
-          title="Edit favorites"
-          onClick={editFavorites}
-        />
-        <span className="sap-toolbar-sep" aria-hidden />
-        <EaToolBtn
-          icon={<ChevronsDownUp className="h-4 w-4 text-[#2e5b8a]" />}
-          title="Collapse all"
-          onClick={() => setAll(false)}
-        />
-        <EaToolBtn
-          icon={<ChevronsUpDown className="h-4 w-4 text-[#2e5b8a]" />}
-          title="Expand all"
-          onClick={() => setAll(true)}
-        />
-        <span className="sap-toolbar-sep" aria-hidden />
-        <EaToolBtn
-          icon={<User className="h-4 w-4 text-[#2e5b8a]" />}
-          label="Create role"
-          title="Create role (PFCG)"
-          onClick={createRole}
-        />
-        <EaToolBtn
-          icon={<Users className="h-4 w-4 text-[#2e5b8a]" />}
-          label="Assign users"
-          title="Assign users to a role"
-          onClick={assignUsers}
-        />
-        <EaToolBtn
-          icon={<FileText className="h-4 w-4 text-[#0e7b7b]" />}
-          label="Documentation"
-          title="Documentation — open the ABAP training syllabus"
-          onClick={() => openSyllabusTopic(-1)}
-        />
+      <div className="flex h-[34px] shrink-0 items-center gap-0.5 overflow-x-auto border-b border-[#b6c9dc] bg-[#e2ecf6] px-2">
+        <EaToolBtn label="SAP menu" title="SAP menu — expand or collapse the standard menu" onClick={() => toggle('sapmenu')} />
+        <EaToolBtn label="SAP Business Workplace" title="SAP Business Workplace" onClick={businessWorkplace} />
+        <EaToolBtn label="Add to Favorite" title="Add the selected program to your favorites" onClick={addFavorite} />
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="flex h-[28px] shrink-0 items-center gap-1 rounded-[2px] border border-transparent px-2 text-[12.5px] text-[#12283c] hover:border-[#a9c2d8] hover:bg-[#cfe0f0]"
+              title="More functions"
+            >
+              <MoreHorizontal className="h-3.5 w-3.5 text-[#2e5b8a]" />
+              More
+              <ChevronDown className="h-3 w-3 text-[#5b6d80]" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            sideOffset={2}
+            className="w-[280px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[12.5px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+          >
+            {[
+              { label: 'Remove from Favorites', run: removeFavorite },
+              { label: 'Edit Favorites', run: editFavorites },
+              { label: 'Expand All', run: () => setAll(true) },
+              { label: 'Collapse All', run: () => setAll(false) },
+              { label: 'Create Role (PFCG)', run: createRole },
+              { label: 'Assign Users', run: assignUsers },
+              { label: 'Documentation — syllabus', run: () => openSyllabusTopic(-1) },
+            ].map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                className="flex w-full items-center rounded-none px-2 py-[4px] text-left hover:bg-[#bcd6f2]"
+                onClick={item.run}
+              >
+                {item.label}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+
+        <span className="ml-auto flex items-center gap-1 pl-2">
+          <EaToolBtn icon={<Search className="h-4 w-4 text-[#2e5b8a]" />} title="Search — find a repository object (Ctrl+K)" onClick={() => useWorkbench.getState().setCommandPaletteOpen(true)} />
+          <EaToolBtn icon={<Printer className="h-4 w-4 text-[#2e5b8a]" />} title="Print" onClick={() => window.print()} />
+          <EaToolBtn icon={<LogOut className="h-4 w-4 text-[#2e5b8a]" />} title="Exit — log off" onClick={() => useWorkbench.getState().setLogoffConfirm(true)} />
+        </span>
       </div>
 
       {/* ── menu tree ── */}
@@ -364,9 +407,9 @@ export function EasyAccess() {
           )}
         </TreeFolder>
 
-        {/* SAP Menu — standard structure */}
+        {/* SAP Menu — standard structure (screenshot order) */}
         <TreeFolder level={0} label="SAP Menu" open={open('sapmenu')} onToggle={() => toggle('sapmenu')}>
-          {STANDARD_FOLDERS.map((label) => (
+          {STANDARD_FOLDERS_BEFORE_TOOLS.map((label) => (
             <TreeFolder key={label} level={1} label={label} open={open(label)} onToggle={() => toggle(label)}>
               <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(2)}>
                 {EMPTY_NOTE}
@@ -384,7 +427,7 @@ export function EasyAccess() {
               <TreeFolder level={3} label="Overview" open={open('overview')} onToggle={() => toggle('overview')}>
                 <Leaf
                   level={4}
-                  icon={<ListTree className="h-4 w-4" style={{ color: C_PROGRAM }} />}
+                  icon={gear}
                   label="Object Navigator"
                   meta="SE80"
                   hint="Search repository objects — programs, tables, classes, function modules"
@@ -392,7 +435,7 @@ export function EasyAccess() {
                 />
                 <Leaf
                   level={4}
-                  icon={<Table2 className="h-4 w-4" style={{ color: C_TABLE }} />}
+                  icon={gear}
                   label="Data Browser"
                   meta="SE16"
                   hint="Display and analyze database table contents"
@@ -408,15 +451,7 @@ export function EasyAccess() {
               >
                 <Leaf
                   level={4}
-                  icon={<Play className="h-4 w-4" style={{ color: C_PROGRAM }} />}
-                  label="ABAP Editor"
-                  meta="SE38"
-                  hint="Create, change and execute ABAP programs"
-                  onClick={() => openSe38Initial()}
-                />
-                <Leaf
-                  level={4}
-                  icon={<Database className="h-4 w-4" style={{ color: C_TABLE }} />}
+                  icon={gear}
                   label="ABAP Dictionary"
                   meta="SE11"
                   hint="Tables, data elements, domains, structures"
@@ -424,7 +459,41 @@ export function EasyAccess() {
                 />
                 <Leaf
                   level={4}
-                  icon={<Braces className="h-4 w-4" style={{ color: C_CLASS }} />}
+                  icon={gear}
+                  label="Data Modeler"
+                  meta="SD11"
+                  hint="Data modeling tools (not part of this training system)"
+                  onClick={dataModeler}
+                />
+                <TreeFolder
+                  level={4}
+                  label="User Interface"
+                  open={open('user-interface')}
+                  onToggle={() => toggle('user-interface')}
+                >
+                  <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(5)}>
+                    {UI_NOTE}
+                  </p>
+                </TreeFolder>
+                <Leaf
+                  level={4}
+                  icon={gear}
+                  label="ABAP Editor"
+                  meta="SE38"
+                  hint="Create, change and execute ABAP programs"
+                  onClick={() => openSe38Initial()}
+                />
+                <Leaf
+                  level={4}
+                  icon={gear}
+                  label="Function Builder"
+                  meta="SE37"
+                  hint="Function modules and function groups"
+                  onClick={() => navigate('functions')}
+                />
+                <Leaf
+                  level={4}
+                  icon={gear}
                   label="Class Builder"
                   meta="SE24"
                   hint="ABAP Objects classes and interfaces"
@@ -432,15 +501,73 @@ export function EasyAccess() {
                 />
                 <Leaf
                   level={4}
-                  icon={<FunctionSquare className="h-4 w-4" style={{ color: C_FM }} />}
-                  label="Function Builder"
-                  meta="SE37"
-                  hint="Function modules and function groups"
-                  onClick={() => navigate('functions')}
+                  icon={gear}
+                  label="Shared Objects Area Administration"
+                  meta="SHMA"
+                  hint="Shared objects administration (not part of this training system)"
+                  onClick={sharedObjectsArea}
+                />
+                <Leaf
+                  level={4}
+                  icon={gear}
+                  label="Shared Objects Monitor"
+                  meta="SHMM"
+                  hint="Shared objects monitor (not part of this training system)"
+                  onClick={sharedObjectsMonitor}
                 />
               </TreeFolder>
+
+              <TreeFolder
+                level={3}
+                label="Programming Environment"
+                open={open('programming')}
+                onToggle={() => toggle('programming')}
+              >
+                <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(4)}>
+                  {PROGRAMMING_NOTE}
+                </p>
+              </TreeFolder>
+
+              <TreeFolder
+                level={3}
+                label="Enhancement Framework"
+                open={open('enhancement')}
+                onToggle={() => toggle('enhancement')}
+              >
+                <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(4)}>
+                  {EMPTY_NOTE}
+                </p>
+              </TreeFolder>
+
+              <TreeFolder
+                level={3}
+                label="Switch Framework"
+                open={open('switch')}
+                onToggle={() => toggle('switch')}
+              >
+                <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(4)}>
+                  {EMPTY_NOTE}
+                </p>
+              </TreeFolder>
             </TreeFolder>
+
+            <Leaf
+              level={2}
+              icon={gear}
+              label="Business Object Builder"
+              meta="SWO1"
+              hint="Business Object Builder (not part of this training system)"
+              onClick={businessObjectBuilder}
+            />
           </TreeFolder>
+
+          {STANDARD_FOLDERS_AFTER_TOOLS.map((label) => (
+            <TreeFolder key={label} level={1} label={label} open={open(label)} onToggle={() => toggle(label)}>
+              <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(2)}>
+                {EMPTY_NOTE}
+              </p>
+            </TreeFolder>
+          ))}
         </TreeFolder>
 
         {/* ABAP Training — custom area menu (topics → example programs) */}

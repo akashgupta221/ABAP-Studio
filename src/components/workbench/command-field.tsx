@@ -68,7 +68,7 @@ export function CommandField() {
         return
       }
       if (lower === '/o') {
-        st().addMessage('I', 'Session list: NPL (1) — this is session 1')
+        st().addMessage('I', 'Session list: MER (1) — this is session 1')
         return
       }
       v = v.replace(/^\/(n|o|\*)/i, '').trim()
