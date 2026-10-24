@@ -67,8 +67,11 @@ practice sandbox**; training examples are shared and read-only.
 - **Owner-only admin dashboard** (`/admin`): metrics, activity, users, programs, audit
   log, suspend/reactivate, revoke sessions and confirmed deletion
 - **Clerk Email OTP + Google** is implemented on `clerk-migration`, with verified-email
-  account linking and database-authoritative roles. Production Clerk is not configured
-  yet; the built-in scrypt logon remains a temporary fallback during cutover. Guide:
+  account linking and database-authoritative roles. Development Email OTP and the
+  owner/non-owner admin flows are verified with disposable test users; password, phone and
+  username sign-in are disabled. Production Clerk is not configured yet, so Google,
+  webhooks and production sessions remain unverified. The built-in scrypt logon remains a
+  temporary fallback during cutover. Guide:
   [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md).
 
 ## Tech stack
@@ -173,8 +176,10 @@ or production. Stop any dev server sharing `.next` before running it.
 Every `git push` rebuilds and redeploys the live app. The v0.3 security build is live;
 **database provisioning and the Vercel owner gate are verified**, a controlled production
 isolation run passed, and the owner reviewed `/admin` (**P0 accepted**). P1 Clerk code is
-implemented on `clerk-migration` and passes the local gates, but production Clerk is not
-configured yet, so P1 is **not deployed or accepted**. Read
+implemented on `clerk-migration` and passes the local gates; development Email OTP,
+owner/non-owner mapping, admin ban/unban/revoke/delete and client sign-out were verified
+with disposable test users. Production Clerk is not configured yet, and Google/webhooks/
+production sessions remain unverified, so P1 is **not deployed or accepted**. Read
 [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) before the cutover. The ownership migration
 changes who can see legacy programs and invalidates old sessions; the production
 legacy-favorites table is verified empty.
@@ -301,8 +306,9 @@ tests/                   Unit tests + disposable API/security suite
 
 ## Roadmap
 
-- P1 Clerk cutover: code and local gates pass; production instance/domain, production keys,
-  webhook and interactive owner/non-owner verification remain
+- P1 Clerk cutover: code and local gates pass; development Email OTP plus owner/non-owner
+  admin flows are verified. Production instance/domain/keys, Google OAuth, webhook and
+  production owner/non-owner verification remain.
 - Separate Modern ABAP environment with an honest executable / simulated / unsupported matrix
 - Distributed rate limiting for multi-instance deployments
 - Broader ABAP OO coverage, RAP/AMDP constructs and UI acceptance automation

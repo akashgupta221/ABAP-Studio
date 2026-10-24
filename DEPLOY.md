@@ -15,9 +15,12 @@ Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 > programs are claimed, no legacy programs are unclaimed, and the Vercel owner gate is
 > verified. The read-only **Verify production** and controlled **Verify production
 > isolation** checks pass; the production legacy-favorites table is verified empty. P0 is
-> accepted. **P1 Clerk code is implemented on `clerk-migration` and passes the local gates,
-> but production Clerk is not configured, so P1 is not deployed or accepted.** See §1.6
-> and §4 of [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md) and the owner guide
+> accepted. **P1 Clerk code is implemented on `clerk-migration` and passes the local
+> gates. Development Email OTP, owner/non-owner mapping, admin ban/unban/revoke/delete,
+> audit and client sign-out were verified with disposable test users (removed). Production
+> Clerk is not configured and Google/webhooks/production sessions remain unverified, so P1
+> is not deployed or accepted.** See §1.6 and §4 of
+> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md) and the owner guide
 > [`docs/CLERK-SETUP.md`](CLERK-SETUP.md).
 
 ---
@@ -238,8 +241,10 @@ step instead of changing this guarantee.
 - Local development uses `prisma/db/app.db` when `TURSO_*` is unset. The file is ignored
   by Git and created with `bun run db:push`.
 - Custom domain: Vercel → Project → Settings → Domains.
-- Clerk Email OTP + Google is **implemented in code** on `clerk-migration`, but production
-  Clerk is not configured and P1 is not accepted. The built-in user master remains a
+- Clerk Email OTP + Google is **implemented in code** on `clerk-migration`. Development
+  Email OTP and the owner/non-owner admin flows are verified, but production Clerk is not
+  configured, Google/webhooks/production sessions are unverified, and P1 is not accepted.
+  Password, phone and username sign-in are disabled. The built-in user master remains a
   temporary fallback. `OWNER_EMAIL` is already accepted by the owner gate, so the Clerk
   migration keeps the same server-side owner check.
 
@@ -261,8 +266,9 @@ step instead of changing this guarantee.
 - **`AUTH_SECRET must be set in production`** — add the Vercel environment variable and
   redeploy.
 - **Clerk sign-in shows no form or no Google button** — confirm the Clerk keys are set in
-  the environment that built the deployment, wait for hydration and reload. Password
-  sign-in is intentionally disabled; only Email OTP and Google should be offered.
+  the environment that built the deployment, wait for hydration and reload. Password,
+  phone and username sign-in are intentionally disabled; only Email OTP and Google should
+  be offered.
 - **Clerk session active but no SAP user** — the verified email is not mapped to an active
   `User` row. Sign out of Clerk and use `bun run user:email` after verifying the address.
 - **Webhook returns 503** — set `CLERK_WEBHOOK_SECRET` in Vercel and redeploy.

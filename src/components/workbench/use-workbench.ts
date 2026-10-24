@@ -3,6 +3,7 @@
 // ── Central workbench store (zustand) ─────────────────────────────────
 import { create } from 'zustand'
 import { toast } from 'sonner'
+import { signOutClerkClient } from '@/lib/clerk-client'
 import type {
   CheckIssue,
   Favorite,
@@ -755,6 +756,16 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         toast.error('Cannot reach the system — logoff was not confirmed')
         return
       }
+
+      // A revoked Clerk session still has a valid browser JWT until it expires.
+      // Clear the Clerk cookies before returning to the logon pad so the user
+      // is not immediately signed back in by the stale client session.
+      const clerkSignedOut = await signOutClerkClient()
+      if (!clerkSignedOut) {
+        toast.error('The secure session was revoked, but the browser sign-out did not complete — retry logoff')
+        return
+      }
+
       set({
         session: { ...get().session, loggedIn: false },
         tabs: [],

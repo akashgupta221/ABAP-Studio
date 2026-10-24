@@ -13,10 +13,11 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 | Clerk application | Owner-selected **ABAP Studio** app, id `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
 | Development instance | Configured; local `.env` has development keys |
 | Production instance | **Not configured** — `clerk deploy status` reports `not_started`; there is no production domain |
-| Sign-in methods | Email OTP + Google enabled; password, Facebook and GitHub disabled |
+| Sign-in methods | Email OTP + Google enabled; password, phone, username, Facebook and GitHub disabled |
 | P1 code | Implemented on `clerk-migration`; not merged or deployed |
 | Local gates | `lint`, 26 unit tests, 52 API checks and `build` pass |
-| Interactive Clerk sign-in | **Not verified** — no authenticated Clerk session has been exercised |
+| Interactive Clerk sign-in | **Development verified** with disposable test users; production not verified |
+| Local Clerk integration | Owner mapping, non-owner isolation, ban/unban, force logout, deletion, audit and client sign-out verified on a throwaway DB; test users removed |
 | Google OAuth | Enabled in config, but a real Google sign-in has **not** been exercised |
 | Webhook | Route and signature verification are implemented; no Clerk endpoint/signing secret is configured |
 | Production keys | **Not set** in Vercel; only development keys exist locally |
@@ -29,6 +30,11 @@ application.
 - Email one-time passcode (passwordless) sign-in.
 - Google sign-in.
 - Clerk-managed sessions.
+
+The development instance is deliberately limited to those two methods: application
+passwords, phone sign-in and username sign-in are disabled. Sign-up collects only a
+verified email address; the SAP username is generated and stored by ABAP-Studio, not
+chosen in Clerk.
 
 Clerk proves **identity only**. The ABAP-Studio database remains authoritative for:
 
@@ -81,6 +87,12 @@ registration.
 Production Clerk needs a domain whose DNS records you control. A bare
 `*.vercel.app` address cannot be used for the production Clerk domain. The repository
 does not currently have a custom domain, so this is the main blocker.
+
+Before deploying, confirm the production instance uses **only Email OTP and Google**.
+Phone sign-up/sign-in and username sign-up/sign-in were disabled in the development
+instance on 25.10.2026 after they unexpectedly appeared as required sign-up fields.
+Recheck the same settings in production; do not let a copied legacy phone/username field
+reappear.
 
 In a normal terminal (not through the agent), run:
 
@@ -185,8 +197,32 @@ Before switching production traffic, complete these checks in a browser:
    username check.
 8. Sign out through Clerk and confirm the old legacy cookie cannot resurface.
 
-The local browser has only reached the sign-in screen (Email OTP + Google, no password);
-the signed-in checks above are still **unverified**.
+**Development verification (25.10.2026).** A throwaway SQLite database and two disposable
+Clerk test users (`+clerk_test` addresses, test OTP, no email/SMS sent) exercised the
+signed-in paths:
+
+- Email OTP sign-in linked the owner test email to `AKASH`; `/api/auth/me` returned
+  `owner=true`, `role=OWNER`; `/api/admin/overview` returned `200`; `/admin` rendered.
+- A second test user received `USER`; `/api/admin/overview` returned `403`; `/admin`
+  redirected to `/`.
+- Suspend set Clerk `banned=true` and the database `suspended=true`; the banned test user
+  could request a code but received **“You have been banned”** after verification and no
+  session was created. Reactivate cleared both flags.
+- Force-logout incremented `sessionVersion` and revoked the linked Clerk sessions. The
+  target was signed out at that moment, so immediate revocation of an active second
+  browser was not exercised.
+- Admin deletion removed the Clerk user and the database row after the typed-username
+  confirmation. Audit entries `USER_SUSPEND`, `USER_REACTIVATE`, `USER_SESSION_REVOKE`
+  and `USER_DELETE` were written.
+- Logoff now calls Clerk's client `signOut()` after server revocation; `/api/auth/me`
+  returned `null` and the SAP logon pad returned without a stale `AKASH` session.
+- The disposable Clerk users and throwaway database were deleted. The local Clerk config
+  was then reduced to Email OTP + Google only; `/sign-in` and `/sign-up` show no password,
+  phone or username fields.
+
+**Still unverified:** real Google OAuth, webhook delivery/signature against Clerk, the
+production Clerk instance/domain/keys, a mapped non-owner production account, and an
+active-session force-logout. Complete the production checks above before accepting P1.
 
 ## 6. Retire the fallback
 
@@ -206,17 +242,19 @@ Local `.env` currently has development Clerk keys. The local gates are:
 
 ```bash
 bun run lint
-bun test tests
+bun run test
 bun run test:api
 bun run build
 ```
 
 The API suite intentionally runs with `LEGACY_AUTH_MODE=full` and a disposable database.
-It does not exercise real Clerk sessions, webhooks or Google.
+It does not exercise real Clerk sessions, webhooks or Google. The separate development
+integration run described in section 5 did exercise Email OTP, owner/non-owner identity,
+admin ban/unban/revoke/delete, audit and client sign-out against a throwaway database.
 
 The local `/sign-in` page shows only **Continue with Google** and **Email address**; the
-password field is absent. If the form appears blank immediately after a config change,
-wait for Clerk hydration and reload before diagnosing a code fault.
+password, phone and username fields are absent. If the form appears blank immediately
+after a config change, wait for Clerk hydration and reload before diagnosing a code fault.
 
 ## Security notes
 

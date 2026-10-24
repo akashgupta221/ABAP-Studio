@@ -457,3 +457,37 @@ Stage Summary:
 - P1 identity code, local gates, admin integration, webhook route and migration tooling are complete on `clerk-migration`; P1 is **not** accepted.
 - Blocking owner actions: run interactive `npx clerk deploy` on a DNS-controlled production domain, add production Clerk keys + webhook secret in Vercel, run the browser sign-in/owner/isolation checks, and provide verified-email mappings for the remaining non-owner accounts.
 - P0 remains deployed, accepted and unchanged. Modern ABAP remains paused.
+
+---
+Task ID: 22
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Verify real Clerk development sessions, fix sign-out/config gaps, and re-run the local gates
+
+Work Log:
+- Owner approved disposable Clerk test users for local verification. No real owner email, password or OTP was requested or handled.
+- Created a throwaway SQLite database containing only a temporary `AKASH` owner row, then used two disposable Clerk development test users (`+clerk_test`; no email/SMS delivery).
+- Email OTP sign-in linked the temporary owner email to `AKASH`; `/api/auth/me` returned `owner=true`, `role=OWNER`; `/api/admin/overview` returned `200`; `/admin` rendered successfully.
+- A second test user was created as `USER`; `/api/admin/overview` returned `403` and `/admin` redirected to `/`.
+- Admin suspend set Clerk `banned=true` and database `suspended=true`. The banned test user could request a code but received “You have been banned” after verification and no session was created. Reactivate cleared both states.
+- Force-logout incremented `sessionVersion` and revoked linked Clerk sessions; the target was signed out at the time, so an active second-browser immediate-revocation check was not performed.
+- Admin delete removed the Clerk identity and the database row after the typed-username confirmation. Audit entries `USER_SUSPEND`, `USER_REACTIVATE`, `USER_SESSION_REVOKE` and `USER_DELETE` were written.
+- Found a logoff UX/security gap: server-side Clerk session revocation left the browser JWT valid until expiry, so the workbench could still render the old user. Added `src/lib/clerk-client.ts` and made admin/workbench logoff call Clerk client `signOut()` after server revocation. Repeat verification returned `/api/auth/me` with `user=null` and the SAP logon pad.
+- Found Clerk sign-up unexpectedly required a phone number and a Clerk username, beyond the approved Email OTP + Google scope. Patched the development instance config to disable phone and username sign-up/sign-in and second-factor strategies. Verified `/sign-in` and `/sign-up` now show only **Continue with Google** and **Email address**.
+- Deleted both disposable Clerk test users and removed the throwaway database and temporary config files. No test user or test data remains.
+- Updated `docs/CLERK-SETUP.md`, `docs/MASTER-PROJECT-SPEC.md`, README, DEPLOY and this worklog with the verified development evidence and remaining production/Google/webhook blockers.
+
+Verification:
+- `bun run lint` → pass
+- `bun run test` → 26 pass, 0 fail (69 assertions)
+- `bun run test:api` → 52 checks passed
+- `bun run build` → pass
+- Filtered `bunx tsc --noEmit` check for application/script/test files → no errors beyond the known pre-existing ABAP interpreter/example debt
+- Development Clerk integration: Email OTP sign-in, owner mapping, non-owner isolation, ban/unban, session revocation, deletion, audit and client sign-out verified
+- Google OAuth, webhook delivery/signature, production Clerk instance/domain/keys and production sessions remain unverified
+- No key, password, OTP, session token or real user email was printed or committed
+
+Stage Summary:
+- P1 Clerk code and development Email OTP/admin behavior are verified on `clerk-migration`; P1 is still **not accepted** because production Clerk, Google OAuth and webhooks are unverified.
+- The development Clerk instance is now limited to the approved Email OTP + Google methods.
+- Remaining owner actions: deploy production Clerk on a DNS-controlled domain, set production keys and webhook secret, map non-owner accounts, then complete production owner/non-owner/Google/webhook checks.
+- P0 remains deployed and accepted. Modern ABAP remains paused.

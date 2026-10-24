@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { signOutClerkClient } from '@/lib/clerk-client'
 import {
   Activity,
   AlertTriangle,
@@ -309,6 +310,11 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
                   if (!res.ok) {
                     const data = (await res.json().catch(() => ({}))) as { error?: string }
                     toast.error(data.error ?? 'Logoff could not be completed')
+                    return
+                  }
+                  const clerkSignedOut = await signOutClerkClient()
+                  if (!clerkSignedOut) {
+                    toast.error('The secure session was revoked, but the browser sign-out did not complete — retry logoff')
                     return
                   }
                   window.location.assign('/')
