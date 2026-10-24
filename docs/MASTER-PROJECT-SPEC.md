@@ -132,6 +132,9 @@ Schema models: `Topic`, `Program`, `DbTable`, `DbRow`, `FunctionModule`,
   - a newly registered user receives `Z_MY_PRACTICE_UIVERIFY`, cannot see the owner's
     legacy programs and receives `403` from `/api/admin/overview`;
   - no admin link is rendered for an ordinary user.
+- Production read-only check: live site still serves `11d2b1c` with 3 users and 49
+  programs; anonymous `/api/programs` returns `200`, confirming the old unauthenticated
+  build remains live.
 - The test user and its sandbox were deleted after verification; the local database
   backup was removed and the database was untracked.
 
@@ -238,11 +241,18 @@ The owner supplied seven screenshots of a real SAP system (`MER`, client `105`, 
 
 The new code is **not deployed** because deployment changes ownership visibility and
 invalidates old cookies. The live app must remain available until the migration is ready.
-Required order:
+Verified on 24.10.2026: the live site still serves `11d2b1c`, has 3 users and 49 programs,
+and its anonymous `/api/programs` still returns `200` because it predates server-side API
+authorization. This is the strongest reason to complete the migration promptly.
+
+Recommended order: run the backup, schema/content upsert and owner provisioning against
+Turso **first**, then deploy the new code and verify. The old build ignores the added
+ownership columns, so it keeps working during the short migration window.
 
 1. Take a verified Turso backup.
-2. Set `OWNER_USERNAME=AKASH` and a fresh long `AUTH_SECRET` in Vercel.
-3. Deploy the new code (or run `deploy:db` + provisioning against Turso first).
+2. Set `OWNER_USERNAME=AKASH` and a fresh long `AUTH_SECRET` in Vercel. `AUTH_SECRET` is
+   already present on the live deployment but rotate it during this migration.
+3. Run `deploy:db` against Turso to apply additive schema/content changes.
 4. Run:
    ```bash
    CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH \
@@ -256,10 +266,11 @@ Required order:
    ```
 6. Migrate legacy global favorites with `owner:favorites` (dry-run first), or explicitly
    decide to discard them.
-7. Re-verify: all users must log on once (old cookies intentionally invalid), then see
+7. Deploy the committed v0.3 branch to production.
+8. Re-verify: all users must log on once (old cookies intentionally invalid), then see
    only shared examples, their own programs and their own sandbox. The owner must see all
    users/programs and the audit dashboard.
-8. Do not announce completion until these checks pass against production.
+9. Do not announce completion until these checks pass against production.
 
 ### 4.3 Modern ABAP scope (blocking spec §10)
 

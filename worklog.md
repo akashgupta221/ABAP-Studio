@@ -263,5 +263,7 @@ Verification:
 
 Stage Summary:
 - v0.3 security, ownership, sandbox and owner-administration work is complete and verified locally; seed/deploy preserves user data
-- NOT deployed: live production remains commit 11d2b1c. Production still needs a Turso backup, OWNER_USERNAME + fresh AUTH_SECRET in Vercel, owner provisioning/legacy claim, legacy-favorite decision and post-deploy verification
+- Committed locally as `988132c` on branch `v0.3-security-ownership` (not pushed and not deployed)
+- NOT deployed: live production remains commit 11d2b1c. A read-only production check on 24.10.2026 confirmed 3 users, 49 programs, and anonymous `/api/programs` returning 200 — the old unauthenticated build is still public
+- Production still needs a Turso backup, OWNER_USERNAME + fresh AUTH_SECRET in Vercel, owner provisioning/legacy claim, legacy-favorite decision and post-deploy verification
 - Clerk (keys/migration) and Modern ABAP (scope approval) remain blocked; they are not claimed complete
