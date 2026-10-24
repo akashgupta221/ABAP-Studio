@@ -1,0 +1,227 @@
+name: Verify production isolation
+
+# Controlled production authorization check. It creates one temporary USER,
+# exercises owner/regular-user isolation, suspension, session revocation and
+# deletion, then deletes that same user. It never prints the owner password,
+# user password, session cookies, emails or program source.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type ISOLATION to create and delete a temporary test user'
+        required: true
+        type: string
+      base_url:
+        description: 'Production base URL'
+        required: true
+        default: 'https://abap-studio-rd9d.vercel.app'
+        type: string
+      owner_username:
+        description: 'SAP owner username'
+        required: true
+        default: 'AKASH'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-production-isolation
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_URL: ${{ inputs.base_url }}
+      OWNER_USERNAME: ${{ inputs.owner_username }}
+      OWNER_PASSWORD: ${{ secrets.OWNER_PASSWORD }}
+      CONFIRM: ${{ inputs.confirm }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: Check configuration
+        run: |
+          if [ "$CONFIRM" != "ISOLATION" ]; then
+            echo "::error::Type ISOLATION in the confirm input."
+            exit 1
+          fi
+          case "$BASE_URL" in
+            https://*) ;;
+            *) echo "::error::base_url must start with https://"; exit 1 ;;
+          esac
+          if [ -z "$OWNER_PASSWORD" ]; then
+            echo "::error::Missing repository secret OWNER_PASSWORD."
+            exit 1
+          fi
+
+      - name: Owner and regular-user isolation
+        run: |
+          set -euo pipefail
+          WORK="$(mktemp -d)"
+          OWNER_COOKIE="$WORK/owner.cookie"
+          TEST_COOKIE="$WORK/test.cookie"
+          OUT="$WORK/out.json"
+          TEST_USER="P0CHK${GITHUB_RUN_ID}"
+          TEST_PASS="$(openssl rand -hex 24)"
+          TEST_ID=""
+
+          cleanup() {
+            if [ -n "$TEST_ID" ] && [ -s "$OWNER_COOKIE" ]; then
+              local code
+              code=$(curl -sS -b "$OWNER_COOKIE" -o /dev/null -w '%{http_code}' \
+                -X DELETE "$BASE_URL/api/admin/users/$TEST_ID" \
+                -H 'Content-Type: application/json' \
+                -H "Origin: $BASE_URL" \
+                --data "$(jq -nc --arg u "$TEST_USER" '{confirmUsername:$u}')" || true)
+              echo "cleanup_delete_http=${code:-none}"
+            fi
+            rm -rf "$WORK"
+          }
+          trap cleanup EXIT
+
+          fail() {
+            echo "::error::$1"
+            exit 1
+          }
+
+          expect() {
+            local actual="$1" expected="$2" label="$3"
+            if [ "$actual" != "$expected" ]; then
+              fail "$label expected HTTP $expected, got $actual"
+            fi
+            echo "PASS $label (HTTP $actual)"
+          }
+
+          req() {
+            local method="$1" path="$2" cookie="$3" body="${4:-}"
+            local args=(-sS -X "$method" -b "$cookie" -o "$OUT" -w '%{http_code}' -H "Origin: $BASE_URL")
+            if [ -n "$body" ]; then
+              args+=(-H 'Content-Type: application/json' --data "$body")
+            fi
+            curl "${args[@]}" "$BASE_URL$path"
+          }
+
+          login_form() {
+            local username="$1" password="$2" jar="$3"
+            curl -sS -c "$jar" -o "$OUT" -w '%{http_code}' \
+              -X POST "$BASE_URL/api/auth/login" \
+              -H 'Content-Type: application/json' \
+              -H "Origin: $BASE_URL" \
+              --data "$(jq -nc --arg u "$username" --arg p "$password" '{username:$u,password:$p}')"
+          }
+
+          # Owner session and owner-only API.
+          CODE=$(login_form "$OWNER_USERNAME" "$OWNER_PASSWORD" "$OWNER_COOKIE")
+          expect "$CODE" 200 "owner login"
+          CODE=$(req GET /api/auth/me "$OWNER_COOKIE")
+          expect "$CODE" 200 "owner session"
+          [ "$(jq -r '.user.owner // false' "$OUT")" = "true" ] || fail "owner flag is not true"
+          [ "$(jq -r '.user.role // "none"' "$OUT")" = "OWNER" ] || fail "owner role is not OWNER"
+          echo "PASS owner flag and role"
+
+          CODE=$(req GET /api/admin/overview "$OWNER_COOKIE")
+          expect "$CODE" 200 "owner admin API"
+          OWNER_ID=$(jq -r --arg u "$OWNER_USERNAME" '.users[] | select(.username == $u) | .id' "$OUT" | head -1)
+          [ -n "$OWNER_ID" ] || fail "owner user row not found"
+          LEGACY_ID=$(jq -r '.programs[] | select(.isExample == false and .ownerUsername != null) | .id' "$OUT" | head -1)
+          EXAMPLE_ID=$(jq -r '.programs[] | select(.isExample == true) | .id' "$OUT" | head -1)
+          [ -n "$LEGACY_ID" ] || fail "no owner/private program found"
+          [ -n "$EXAMPLE_ID" ] || fail "no shared example found"
+          echo "owner_metrics: users=$(jq -r '.metrics.totalUsers' "$OUT") programs=$(jq -r '.metrics.totalPrograms' "$OUT") examples=$(jq -r '.metrics.examplePrograms' "$OUT") private=$(jq -r '.metrics.privatePrograms' "$OUT") unclaimed_legacy=$(jq -r '.metrics.legacyPrograms' "$OUT")"
+
+          CODE=$(req GET "/api/programs/$LEGACY_ID" "$OWNER_COOKIE")
+          expect "$CODE" 200 "owner opens owner/private program"
+          [ "$(jq -r '.program.isExample' "$OUT")" = "false" ] || fail "owner-opened object is not private"
+
+          # Temporary regular user.
+          REG_CODE=$(curl -sS -c "$TEST_COOKIE" -o "$OUT" -w '%{http_code}' \
+            -X POST "$BASE_URL/api/auth/register" \
+            -H 'Content-Type: application/json' \
+            -H "Origin: $BASE_URL" \
+            --data "$(jq -nc --arg u "$TEST_USER" --arg p "$TEST_PASS" '{username:$u,password:$p}')")
+          expect "$REG_CODE" 200 "temporary regular user registration"
+          [ "$(jq -r '.user.role // "none"' "$OUT")" = "USER" ] || fail "registration did not create a USER"
+
+          CODE=$(req GET /api/auth/me "$TEST_COOKIE")
+          expect "$CODE" 200 "regular user session"
+          [ "$(jq -r '.user.owner // false' "$OUT")" = "false" ] || fail "regular user was flagged as owner"
+          [ "$(jq -r '.user.role // "none"' "$OUT")" = "USER" ] || fail "regular user role is not USER"
+          echo "PASS regular user is not owner"
+
+          CODE=$(req GET /api/admin/overview "$TEST_COOKIE")
+          expect "$CODE" 403 "regular user denied admin API"
+
+          CODE=$(req GET /api/programs "$TEST_COOKIE")
+          expect "$CODE" 200 "regular user program list"
+          VISIBLE_LEGACY=$(jq --arg id "$LEGACY_ID" '[.programs[] | select(.id == $id)] | length' "$OUT")
+          [ "$VISIBLE_LEGACY" = "0" ] || fail "regular user can list an owner/private program"
+          NON_EXAMPLES=$(jq '[.programs[] | select(.isExample == false)] | length' "$OUT")
+          [ "$NON_EXAMPLES" = "0" ] || fail "new regular user sees a private program before creating one"
+          echo "PASS regular user sees only shared examples"
+
+          CODE=$(req GET "/api/programs/$LEGACY_ID" "$TEST_COOKIE")
+          expect "$CODE" 404 "regular user cannot open owner/private program"
+          CODE=$(req PUT "/api/programs/$LEGACY_ID" "$TEST_COOKIE" '{"title":"blocked"}')
+          expect "$CODE" 404 "regular user cannot edit owner/private program"
+          CODE=$(req GET "/api/programs/$EXAMPLE_ID" "$TEST_COOKIE")
+          expect "$CODE" 200 "regular user can read shared example"
+          CODE=$(req PUT "/api/programs/$EXAMPLE_ID" "$TEST_COOKIE" '{"title":"blocked"}')
+          expect "$CODE" 403 "regular user cannot edit shared example"
+
+          SANDBOX_CODE=$(req POST /api/sandbox "$TEST_COOKIE")
+          if [ "$SANDBOX_CODE" != "200" ] && [ "$SANDBOX_CODE" != "201" ]; then
+            fail "regular user sandbox expected HTTP 200/201, got $SANDBOX_CODE"
+          fi
+          SANDBOX_ID=$(jq -r '.program.id // empty' "$OUT")
+          [ -n "$SANDBOX_ID" ] || fail "regular user sandbox was not returned"
+          echo "PASS regular user gets a private sandbox (HTTP $SANDBOX_CODE)"
+
+          CODE=$(req GET /api/programs "$TEST_COOKIE")
+          expect "$CODE" 200 "regular user program list after sandbox"
+          [ "$(jq --arg id "$SANDBOX_ID" '[.programs[] | select(.id == $id)] | length' "$OUT")" = "1" ] || fail "regular user cannot see own sandbox"
+          [ "$(jq --arg id "$LEGACY_ID" '[.programs[] | select(.id == $id)] | length' "$OUT")" = "0" ] || fail "regular user sees owner/private program after sandbox"
+          echo "PASS regular user sees own sandbox but not owner/private programs"
+
+          CODE=$(req GET "/api/programs/$SANDBOX_ID" "$OWNER_COOKIE")
+          expect "$CODE" 200 "owner can open regular user sandbox"
+
+          # Find the temporary user's database id through the owner API.
+          CODE=$(req GET /api/admin/overview "$OWNER_COOKIE")
+          expect "$CODE" 200 "owner admin refresh"
+          TEST_ID=$(jq -r --arg u "$TEST_USER" '.users[] | select(.username == $u) | .id' "$OUT" | head -1)
+          [ -n "$TEST_ID" ] || fail "temporary user row not found"
+          [ "$TEST_ID" != "$OWNER_ID" ] || fail "temporary user id matched owner id"
+
+          # Force logout.
+          CODE=$(req PATCH "/api/admin/users/$TEST_ID" "$OWNER_COOKIE" '{"action":"revoke_sessions"}')
+          expect "$CODE" 200 "owner revokes user sessions"
+          CODE=$(req GET /api/auth/me "$TEST_COOKIE")
+          expect "$CODE" 401 "revoked user session is rejected"
+          CODE=$(login_form "$TEST_USER" "$TEST_PASS" "$TEST_COOKIE")
+          expect "$CODE" 200 "temporary user can log in again after revocation"
+
+          # Suspend, deny login, reactivate.
+          CODE=$(req PATCH "/api/admin/users/$TEST_ID" "$OWNER_COOKIE" '{"action":"suspend"}')
+          expect "$CODE" 200 "owner suspends user"
+          SUSPEND_LOGIN=$(login_form "$TEST_USER" "$TEST_PASS" "$TEST_COOKIE")
+          expect "$SUSPEND_LOGIN" 403 "suspended user cannot log in"
+          CODE=$(req GET /api/auth/me "$TEST_COOKIE")
+          expect "$CODE" 401 "suspended user session is rejected"
+          CODE=$(req PATCH "/api/admin/users/$TEST_ID" "$OWNER_COOKIE" '{"action":"reactivate"}')
+          expect "$CODE" 200 "owner reactivates user"
+          CODE=$(login_form "$TEST_USER" "$TEST_PASS" "$TEST_COOKIE")
+          expect "$CODE" 200 "reactivated user can log in"
+
+          # Delete the temporary user and prove it is gone.
+          CODE=$(req DELETE "/api/admin/users/$TEST_ID" "$OWNER_COOKIE" "$(jq -nc --arg u "$TEST_USER" '{confirmUsername:$u}')")
+          expect "$CODE" 200 "owner deletes temporary user"
+          TEST_ID=""
+          CODE=$(req GET /api/admin/overview "$OWNER_COOKIE")
+          expect "$CODE" 200 "owner admin refresh after deletion"
+          [ "$(jq --arg u "$TEST_USER" '[.users[] | select(.username == $u)] | length' "$OUT")" = "0" ] || fail "temporary user still exists after deletion"
+          DELETED_LOGIN=$(login_form "$TEST_USER" "$TEST_PASS" "$TEST_COOKIE")
+          expect "$DELETED_LOGIN" 401 "deleted user cannot log in"
+          echo "final_metrics: users=$(jq -r '.metrics.totalUsers' "$OUT") programs=$(jq -r '.metrics.totalPrograms' "$OUT") examples=$(jq -r '.metrics.examplePrograms' "$OUT") private=$(jq -r '.metrics.privatePrograms' "$OUT") unclaimed_legacy=$(jq -r '.metrics.legacyPrograms' "$OUT")"
+          echo "ISOLATION_OK"
