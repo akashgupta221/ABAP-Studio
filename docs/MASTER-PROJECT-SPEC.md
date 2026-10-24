@@ -4,7 +4,7 @@
 **Date:** 24.10.2026
 **Owner specification:** v0.3 (restated 24.10.2026)
 **Repository:** https://github.com/akashgupta221/ABAP-Studio
-**Live site:** https://abap-studio-rd9d.vercel.app (serving commit `eb4e018`; owner provisioning pending)
+**Live site:** https://abap-studio-rd9d.vercel.app (v0.3 security code `eb4e018`; docs follow-up `b12b3c4`; owner provisioning pending)
 **Document status:** implementation audit — **not a final acceptance certificate**
 
 This document records **verified facts** and explicitly separates completed work,
@@ -247,7 +247,7 @@ The owner supplied seven screenshots of a real SAP system (`MER`, client `105`, 
 
 ### 4.2 Production owner provisioning (blocking release)
 
-The v0.3 build is **deployed** as commit `eb4e018`. The additive schema migration ran
+The v0.3 build is **deployed** as commit `eb4e018` (docs follow-up `b12b3c4`). The additive schema migration ran
 against Turso and the anonymous API is closed: protected endpoints return `401`,
 cross-origin mutations return `403`, and `/api/health` reports 3 users and 49 programs.
 Old session cookies are intentionally invalid.

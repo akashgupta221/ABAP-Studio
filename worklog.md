@@ -275,7 +275,7 @@ Task: Deploy the v0.3 security build after owner authorization and verify the li
 
 Work Log:
 - Owner explicitly authorized deploying the secure build immediately, accepting that old sessions reset and legacy programs stay hidden until owner provisioning
-- Fast-forwarded local main from 11d2b1c to eb4e018 and pushed to origin/main; Vercel deployed automatically
+- Fast-forwarded local main from 11d2b1c to eb4e018 and pushed to origin/main; Vercel deployed automatically; a docs-only follow-up (`b12b3c4`) was deployed afterwards without code changes
 - Confirmed the new build by polling the live site: `/api/programs` changed from anonymous 200 to 401
 - Production verification (read-only): `/api/programs`, `/api/topics`, `/api/tables`, `/api/functions`, `/api/favorites`, `/api/recents`, `/api/search`, `/api/admin/overview`, `/api/execute` and `/api/seed` all return 401 anonymously; cross-origin logon returns 403; invalid credentials return 401; `/api/auth/me` and `/api/health` remain public; `/admin` redirects (307); `/` loads (200)
 - `/api/health` reports `ok: true`, `dbTarget: turso`, `hasAuthSecret: true`, 3 users, 49 programs; the additive Turso schema migration applied successfully
