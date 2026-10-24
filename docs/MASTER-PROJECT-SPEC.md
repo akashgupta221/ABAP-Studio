@@ -79,14 +79,12 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 |---|---|---|
 | **Clerk not integrated** | No Clerk dependency or keys; interim built-in logon is active | Email OTP, Google sign-in, Clerk webhooks and Clerk account migration remain blocked on owner-created keys. |
 | **Modern ABAP environment not implemented** | No environment switch, CDS/RAP/AMDP runtime or capability matrix | Specification §10 is not started. Scope needs owner approval. |
-| **Production owner gate verified; browser sign-off pending** | `Verify production` run `40110886829` passed at 16:18Z: login `200`, `role=OWNER owner=true`, `/api/admin/overview` `200`, `/admin` `200`; metrics `users=4 programs=49 examples=37 private=12 unclaimed_legacy=0`. | The owner should open `/admin` in a browser and review the dashboard visually. No server-side blocker remains. |
-| **Production owner password** | A fresh password was supplied through the temporary GitHub `OWNER_PASSWORD` secret; the chat-supplied password was not reused | Keep the secret only until browser acceptance and isolation checks are complete, then delete it. Never paste the password in chat. |
 | **Legacy production favorites: verified empty** | Dry-run run `40111257243` found the old global `Favorite` table empty. | No migration is needed. The guarded workflow is retained for future databases; no data was copied or deleted. |
 | **`AUTH_SECRET` rotation optional** | Production health reports `hasAuthSecret: true`; the signer fails closed if it is missing | The existing secret is working. Rotation is optional and invalidates all sessions (expected). |
 | **Rate limits are per process** | In-memory limiter | Serverless instances do not share counters; interpreter limits remain authoritative. A shared limiter is future hardening. |
 | **Type-check debt remains** | `bunx tsc --noEmit` reports pre-existing interpreter/example typing errors; `next build` passes | Clean up without changing verified behaviour before final acceptance. |
 | **Historical local database was committed** | Earlier commits tracked `prisma/db/app.db`, which contains scrypt hashes for local demo accounts (not the production Turso database) | The file is now untracked/ignored, but it remains in Git history. Treat any password reused from those local accounts as compromised. Rewriting public history requires owner approval. |
-| **Final UI/accessibility acceptance pending** | The production owner API/page and a controlled regular-user isolation run pass; the dashboard has not yet had a visual/accessibility sign-off. | Owner reviews `/admin` in a browser; add automated UI checks and an accessibility audit before final acceptance. |
+| **Final UI/accessibility automation pending** | The owner visually reviewed `/admin` on 24.10.2026; production owner and isolation checks pass. | Add automated UI checks and an accessibility audit before final acceptance. |
 
 ### 1.5 Architecture and data flow
 
@@ -296,15 +294,13 @@ cannot log in, reactivation works, and confirmed deletion removes the temporary 
 workflow deleted its unique temporary user and sandbox; final metrics returned to
 `users=4 programs=49`.
 
-**Remaining P0 actions (no server-side blocker):**
-1. Owner opens `/admin` in a browser and signs off the dashboard visually.
-2. Delete the temporary `OWNER_PASSWORD` GitHub secret after sign-off. Never paste the
-   password in chat.
-3. Do not announce final acceptance until the browser review, full test suite and
-   production build checks are recorded.
+**P0 owner acceptance: complete (24.10.2026).** The owner reviewed `/admin` in the
+browser. The temporary `OWNER_PASSWORD` GitHub secret was deleted after acceptance; the
+database owner password remains owner-held. The legacy-favorites dry-run (`40111257243`)
+found the old global `Favorite` table empty, so no migration is required.
 
-The legacy-favorites dry-run (`40111257243`) found the old global `Favorite` table empty;
-no migration or discard decision is required.
+Final acceptance is still not claimed: UI/accessibility automation, the remaining
+type-check debt and the P1/P2 work are open.
 
 ### 4.3 Modern ABAP scope (blocking spec §10)
 
@@ -327,11 +323,10 @@ Explicit owner approval is required before implementation.
 
 ## 5. Next implementation order
 
-1. Complete the owner's browser sign-off of `/admin`; legacy favorites are verified empty.
-2. Re-run the full test suite and production-build verification against the deployed app.
-3. Integrate Clerk Email OTP + Google and migrate/retire built-in accounts per owner
+1. Complete Clerk Email OTP + Google and migrate/retire the built-in accounts per owner
    decision.
-4. Implement the approved Modern ABAP environment and capability matrix.
+2. Re-run the full test suite and production-build verification after the Clerk cutover.
+3. Implement the approved Modern ABAP environment and capability matrix.
 5. Add UI-level automated acceptance tests and a formal accessibility review.
 6. Replace in-memory rate limiting with a shared limiter if the hosting tier requires it.
 7. Publish the final acceptance report — only after every production check passes.
@@ -366,9 +361,9 @@ bun run owner:favorites      # dry-run legacy favorite migration (APPLY=YES to c
   deleted. Final counts are `users=4`, `programs=49` (37 examples, 12 owner/private,
   zero unclaimed legacy).
 - The password previously supplied in chat was **not** reused, stored or verified, and
-  must be considered exposed. A separate fresh password is held only in the temporary
-  GitHub `OWNER_PASSWORD` secret for acceptance.
-- Final acceptance is **not complete**: the owner's browser sign-off, UI/accessibility
-  automation and the remaining type-check debt are still open. The legacy-favorites
-  dry-run found the old table empty. Clerk and Modern ABAP are not implemented.
+  must be considered exposed. The temporary GitHub `OWNER_PASSWORD` secret was deleted
+  after the owner's admin review; the database password remains owner-held.
+- Final acceptance is **not complete**: UI/accessibility automation and the remaining
+  type-check debt are still open. The legacy-favorites dry-run found the old table empty.
+  Clerk and Modern ABAP are not implemented.
 - The live site is the v0.3 build, not the earlier `11d2b1c` build.

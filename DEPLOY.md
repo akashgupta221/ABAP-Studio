@@ -15,8 +15,8 @@ Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 > no legacy programs are unclaimed, and the Vercel owner gate is verified. The read-only
 > **Verify production** and controlled **Verify production isolation** checks pass; the
 > production legacy-favorites table is verified empty. See §1.6 and §4.2 of
-> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md). Remaining: browser/UI sign-off,
-> UI/accessibility automation, and final acceptance.
+> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md). P0 is accepted; next is the
+> Clerk cutover, UI/accessibility automation, and final acceptance.
 
 ---
 
@@ -163,8 +163,8 @@ production**. It logs in with the `OWNER_PASSWORD` repository secret, checks
 prints only counts. It never prints the password, cookie or email. Then run **Actions →
 Verify production isolation** with `confirm=ISOLATION`; it creates one temporary regular
 user, checks owner/regular-user isolation, revocation, suspension and deletion, and
-deletes that same user. Delete the temporary `OWNER_PASSWORD` secret after both checks
-and the owner's browser review pass.
+deletes that same user. The temporary `OWNER_PASSWORD` secret was deleted after P0
+acceptance; re-add it only if you deliberately need to rerun these workflows.
 
 ### Legacy favorites
 

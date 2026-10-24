@@ -157,10 +157,11 @@ or production. Stop any dev server sharing `.next` before running it.
 
 Every `git push` rebuilds and redeploys the live app. The v0.3 build is live;
 **database provisioning and the Vercel owner gate are verified**, and a controlled
-production isolation run passed. Read
-[`docs/MASTER-PROJECT-SPEC.md`](docs/MASTER-PROJECT-SPEC.md) §4.2 for the remaining
-browser sign-off. The ownership migration changes who can see legacy programs and
-invalidates old sessions; the production legacy-favorites table is verified empty.
+production isolation run passed, and the owner has reviewed `/admin`. **P0 is accepted**;
+the next phase is Clerk Email OTP + Google sign-in. Read
+[`docs/MASTER-PROJECT-SPEC.md`](docs/MASTER-PROJECT-SPEC.md) §4.2 for the P1 cutover.
+The ownership migration changes who can see legacy programs and invalidates old sessions;
+the production legacy-favorites table is verified empty.
 
 1. **GitHub** — push this repository.
 2. **Turso** — create a free database, copy its `libsql://` URL and create a token.

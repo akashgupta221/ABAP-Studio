@@ -403,3 +403,20 @@ Stage Summary:
 - P0 owner access, legacy ownership, production isolation, session revocation, suspension/deletion and legacy-favorites status are verified.
 - Remaining: owner browser sign-off of `/admin`, deletion of the temporary `OWNER_PASSWORD` GitHub secret, UI/accessibility automation and type-check debt.
 - Clerk and Modern ABAP remain unimplemented; no final acceptance or completion claim is made.
+
+---
+Task ID: 20
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Record P0 owner acceptance and remove the temporary CI password secret
+
+Work Log:
+- Owner confirmed the `/admin` browser review on 24.10.2026; P0 owner acceptance is complete.
+- Deleted the temporary `OWNER_PASSWORD` GitHub Actions secret after acceptance. Remaining repository secrets: `OWNER_EMAIL`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`.
+- The database owner password remains owner-held; it was never printed in chat or committed.
+- Updated the master spec, README, DEPLOY and this worklog to close P0 and point to P1 Clerk.
+- Clerk setup has not started; the existing built-in scrypt/HMAC auth remains active pending the approved migration.
+
+Stage Summary:
+- P0: accepted and closed at the owner-interface level; production owner access, isolation and admin review are verified.
+- Next: P1 Clerk migration using the owner-selected application; migration plan and explicit approval required before auth code changes.
+- Final acceptance remains open (UI/accessibility automation, type-check debt, Clerk, Modern ABAP).
