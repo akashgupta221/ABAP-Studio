@@ -198,7 +198,10 @@ jobs:
           CODE=$(req PATCH "/api/admin/users/$TEST_ID" "$OWNER_COOKIE" '{"action":"revoke_sessions"}')
           expect "$CODE" 200 "owner revokes user sessions"
           CODE=$(req GET /api/auth/me "$TEST_COOKIE")
-          expect "$CODE" 401 "revoked user session is rejected"
+          expect "$CODE" 200 "revoked session /api/auth/me responds"
+          [ "$(jq -r '.user == null' "$OUT")" = "true" ] || fail "revoked session still resolves a user"
+          CODE=$(req GET /api/programs "$TEST_COOKIE")
+          expect "$CODE" 401 "revoked session is rejected by a protected API"
           CODE=$(login_form "$TEST_USER" "$TEST_PASS" "$TEST_COOKIE")
           expect "$CODE" 200 "temporary user can log in again after revocation"
 
@@ -208,7 +211,10 @@ jobs:
           SUSPEND_LOGIN=$(login_form "$TEST_USER" "$TEST_PASS" "$TEST_COOKIE")
           expect "$SUSPEND_LOGIN" 403 "suspended user cannot log in"
           CODE=$(req GET /api/auth/me "$TEST_COOKIE")
-          expect "$CODE" 401 "suspended user session is rejected"
+          expect "$CODE" 200 "suspended session /api/auth/me responds"
+          [ "$(jq -r '.user == null' "$OUT")" = "true" ] || fail "suspended session still resolves a user"
+          CODE=$(req GET /api/programs "$TEST_COOKIE")
+          expect "$CODE" 401 "suspended session is rejected by a protected API"
           CODE=$(req PATCH "/api/admin/users/$TEST_ID" "$OWNER_COOKIE" '{"action":"reactivate"}')
           expect "$CODE" 200 "owner reactivates user"
           CODE=$(login_form "$TEST_USER" "$TEST_PASS" "$TEST_COOKIE")
