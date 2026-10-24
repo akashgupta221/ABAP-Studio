@@ -1,0 +1,86 @@
+name: Verify production
+
+# Read-only production acceptance check. Uses the owner password only inside the
+# runner, never prints it or the session cookie, and never mutates the database.
+# The OWNER_PASSWORD repository secret can be deleted after acceptance.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Production base URL'
+        required: true
+        default: 'https://abap-studio-rd9d.vercel.app'
+        type: string
+      owner_username:
+        description: 'SAP owner username'
+        required: true
+        default: 'AKASH'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BASE_URL: ${{ inputs.base_url }}
+      OWNER_USERNAME: ${{ inputs.owner_username }}
+      OWNER_PASSWORD: ${{ secrets.OWNER_PASSWORD }}
+    steps:
+      - name: Check configuration
+        run: |
+          case "$BASE_URL" in
+            https://*) ;;
+            *) echo "::error::base_url must start with https://"; exit 1 ;;
+          esac
+          if [ -z "$OWNER_PASSWORD" ]; then
+            echo "::error::Missing repository secret OWNER_PASSWORD."
+            exit 1
+          fi
+
+      - name: Owner login and admin access
+        run: |
+          COOKIE="$(mktemp)"
+          trap 'rm -f "$COOKIE" /tmp/abap-login.json /tmp/abap-me.json /tmp/abap-admin.json' EXIT
+
+          LOGIN_CODE=$(curl -sS -c "$COOKIE" -o /tmp/abap-login.json -w '%{http_code}' \
+            -X POST "$BASE_URL/api/auth/login" \
+            -H 'Content-Type: application/json' \
+            -H "Origin: $BASE_URL" \
+            --data "$(jq -nc --arg u "$OWNER_USERNAME" --arg p "$OWNER_PASSWORD" '{username:$u,password:$p}')")
+          echo "login_http=$LOGIN_CODE"
+          if [ "$LOGIN_CODE" != "200" ]; then
+            echo "::error::Owner login failed with HTTP $LOGIN_CODE."
+            exit 1
+          fi
+
+          ME_CODE=$(curl -sS -b "$COOKIE" -o /tmp/abap-me.json -w '%{http_code}' "$BASE_URL/api/auth/me")
+          OWNER_FLAG=$(jq -r '.user.owner // false' /tmp/abap-me.json)
+          echo "me_http=$ME_CODE owner=$OWNER_FLAG"
+          if [ "$ME_CODE" != "200" ] || [ "$OWNER_FLAG" != "true" ]; then
+            echo "::error::Owner session or owner flag check failed."
+            exit 1
+          fi
+
+          ADMIN_CODE=$(curl -sS -b "$COOKIE" -o /tmp/abap-admin.json -w '%{http_code}' "$BASE_URL/api/admin/overview")
+          echo "admin_api_http=$ADMIN_CODE"
+          if [ "$ADMIN_CODE" != "200" ]; then
+            echo "::error::Owner admin API returned HTTP $ADMIN_CODE."
+            exit 1
+          fi
+
+          PAGE_CODE=$(curl -sS -b "$COOKIE" -o /dev/null -w '%{http_code}' "$BASE_URL/admin")
+          echo "admin_page_http=$PAGE_CODE"
+          if [ "$PAGE_CODE" != "200" ]; then
+            echo "::error::Owner admin page returned HTTP $PAGE_CODE."
+            exit 1
+          fi
+
+          jq -r '"admin_metrics: users=\(.metrics.totalUsers) programs=\(.metrics.totalPrograms) examples=\(.metrics.examplePrograms) private=\(.metrics.privatePrograms) legacy=\(.metrics.legacyPrograms) executions=\(.metrics.totalExecutions)"' /tmp/abap-admin.json
