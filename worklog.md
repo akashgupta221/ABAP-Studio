@@ -317,3 +317,29 @@ Stage Summary:
 - P2 now includes the requested chart and email-authoritative owner identity, but production owner access is still blocked until provisioning runs.
 - P1 Clerk is still blocked on the owner-created Clerk app, Vercel keys and the account-mapping choice; it is not claimed complete.
 - No production owner password was set or reused; the previously chat-exposed password remains invalid. No secrets were printed or committed.
+
+---
+Task ID: 16
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Execute production owner provisioning with owner-supplied GitHub secrets and verify live owner access
+
+Work Log:
+- Confirmed the owner added repository secrets `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `OWNER_EMAIL` and `OWNER_PASSWORD`; values were never read, printed or committed
+- Triggered the manual `Provision owner` workflow with `confirm=PROVISION` and `owner_username=AKASH` (run `40107647554`). An earlier owner-triggered run (`40106253543`) had already created the owner and claimed the legacy programs.
+- First provisioning run: `AKASH` created, owner email stored, **12 legacy programs claimed**, owner sessions invalidated
+- Confirming rerun: existing owner updated, 0 additional legacy claims (already claimed), `owner:verify` reported exactly one owner, email matches the `OWNER_EMAIL` secret, 12 owner-owned non-example programs, 0 unclaimed, 37 shared examples
+- Added read-only `.github/workflows/verify-production.yml` to log in as owner and check `/api/auth/me`, `/api/admin/overview` and `/admin` without mutating data. It uses the temporary `OWNER_PASSWORD` secret, prints only HTTP statuses and aggregate metrics, and removes the session cookie from the runner.
+- Live acceptance check failed at the Vercel owner gate: login `200`, `/api/auth/me` `200 role=OWNER owner=false`, `/api/admin/overview` `403`, `/admin` `307`. Database provisioning is correct; Vercel's runtime owner environment is missing or does not match the GitHub secret. GitHub Actions secrets do not configure Vercel.
+- Re-ran after confirming the latest Vercel deployment was successful; the same owner gate failure reproduced. This is an environment/deployment configuration issue, not an auth or data-isolation regression.
+
+Verification:
+- Provisioning workflow: success; owner role/email and 12 legacy claims verified against Turso
+- Read-only production verification workflow: fails only at owner gate (`owner=false`, admin `403`, page `307`)
+- Anonymous API remains closed; health still reports 3 users and 49 programs
+- No secrets, session cookie, owner email or password were printed in logs or committed
+
+Stage Summary:
+- Production data provisioning is COMPLETE: owner `AKASH`, 12 legacy programs assigned, 0 unclaimed, 37 shared examples.
+- P0 is NOT complete because the live owner gate still denies `/admin`. The remaining fix is to set Vercel `OWNER_EMAIL` to the exact email stored in the GitHub secret (or set `OWNER_USERNAME=AKASH` as fallback) and redeploy.
+- Keep the temporary `OWNER_PASSWORD` secret until the read-only production check passes, then delete it.
+- Clerk and Modern ABAP remain unimplemented; no acceptance claim is made.

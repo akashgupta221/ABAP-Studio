@@ -10,11 +10,12 @@ What this gives you:
 
 Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 
-> **Current production status:** v0.3 is deployed. The anonymous API is closed, old
-> cookies are invalid, and the 12 legacy programs are hidden. The only remaining release
-> step is **owner provisioning** in Part 5. A manual, secret-safe GitHub Actions workflow
-> is now included; it needs repository secrets and one explicit confirmation run. See
-> §4.2 of [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md).
+> **Current production status:** v0.3 is deployed and the anonymous API is closed. Owner
+> provisioning has run: `AKASH` has `role = OWNER`, the 12 legacy programs are claimed,
+> and no legacy programs are unclaimed. The live owner gate is still failing because
+> Vercel's runtime `OWNER_EMAIL`/`OWNER_USERNAME` does not match; set it in Vercel and
+> redeploy, then run the read-only **Verify production** workflow. See §4.2 of
+> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md).
 
 ---
 
@@ -153,6 +154,14 @@ OWNER_EMAIL="owner@example.com" TURSO_DATABASE_URL="libsql://..." \
 TURSO_AUTH_TOKEN="eyJ..." bun run owner:verify
 ```
 
+### Live owner acceptance
+
+After setting the Vercel owner environment and redeploying, run **Actions → Verify
+production**. It logs in with the `OWNER_PASSWORD` repository secret, checks
+`/api/auth/me` (`owner=true`), `/api/admin/overview` (`200`) and `/admin` (`200`), and
+prints only counts. It never prints the password, cookie or email. Delete the temporary
+`OWNER_PASSWORD` secret after the check passes.
+
 ### Legacy favorites
 
 The old global `Favorite` table was not tied to a user. The new code uses per-user
@@ -224,7 +233,8 @@ step instead of changing this guarantee.
   diagnosis; re-login after changing the identity.
 - **Everyone is logged out after deploy** — expected for v0.3: cookies now carry a
   database session version and old cookies lack it. Ask users to log on once.
-- **Legacy programs disappeared for ordinary users** — intended: they are owner-only
-  until explicitly reassigned. Run the owner provisioning/claim step.
+- **Legacy programs disappeared for ordinary users** — intended: they are owner-only.
+  Provisioning has already claimed 12 programs for the owner; run `owner:verify` to
+  confirm exactly one owner and zero unclaimed legacy programs.
 - **`AUTH_SECRET must be set in production`** — add the Vercel environment variable and
   redeploy.

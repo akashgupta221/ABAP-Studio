@@ -30,9 +30,10 @@ INCLUDE, 11 demo tables with 113 rows and function modules). Every user gets a *
 practice sandbox**; training examples are shared and read-only.
 
 > **Live demo:** https://abap-studio-rd9d.vercel.app — open it, click **Register**, and
-> you are inside the secure v0.3 build. The production owner role and legacy-program
-> claim are still pending, so `/admin` and the older legacy programs remain unavailable
-> until the owner runs the provisioning steps in `docs/MASTER-PROJECT-SPEC.md` §4.2.
+> you are inside the secure v0.3 build. Production owner provisioning has run: the 12
+> legacy programs are assigned to the owner. `/admin` still awaits the Vercel
+> `OWNER_EMAIL`/`OWNER_USERNAME` runtime fix described in
+> `docs/MASTER-PROJECT-SPEC.md` §4.2.
 
 ## Features
 
@@ -155,9 +156,9 @@ or production. Stop any dev server sharing `.next` before running it.
 ## Deploy for free (Vercel + Turso)
 
 Every `git push` rebuilds and redeploys the live app. The v0.3 build with the
-owner-provisioning workflow is live as `46f89e5`; **owner provisioning is still pending**.
-Read
-[`docs/MASTER-PROJECT-SPEC.md`](docs/MASTER-PROJECT-SPEC.md) §4.2 for the required steps.
+owner-provisioning workflow is live; **database provisioning is applied**, but the Vercel
+runtime owner gate is still pending. Read
+[`docs/MASTER-PROJECT-SPEC.md`](docs/MASTER-PROJECT-SPEC.md) §4.2 for the remaining fix.
 The ownership migration changes who can see legacy programs and invalidates old sessions.
 
 1. **GitHub** — push this repository.
@@ -194,6 +195,12 @@ CONFIRM_OWNER_PASSWORD=YES OWNER_USERNAME=AKASH \
 TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:password
 bun run owner:verify
 ```
+
+6. **Verify live owner access** — after setting `OWNER_EMAIL` (or the
+   `OWNER_USERNAME` fallback) in Vercel and redeploying, run **Actions → Verify
+   production**. It logs in with the temporary owner secret, checks the owner flag,
+   `/api/admin/overview` and `/admin`, and prints only statuses/counts. Delete the
+   temporary `OWNER_PASSWORD` secret after it passes.
 
 See **[DEPLOY.md](DEPLOY.md)** for the full walkthrough.
 
@@ -238,6 +245,7 @@ scripts/
   set-owner-password.ts  Hidden-input password reset
 .github/workflows/
   provision-owner.yml    Manual, secret-safe owner provisioning
+  verify-production.yml  Read-only live owner/admin acceptance check
 src/
   app/admin/             Owner-only dashboard page
   app/api/               REST endpoints (auth, programs, admin, sandbox, execute, …)
