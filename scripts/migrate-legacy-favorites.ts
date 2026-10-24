@@ -15,7 +15,7 @@
 //
 // The old Favorite table is left intact; this script only adds UserFavorite
 // rows for the owner. Re-running is safe (upsert on user/type/name).
-import { db } from '../src/lib/db'
+import { db, ensureSchema } from '../src/lib/db'
 import { normalizeUsername } from '../src/lib/auth'
 
 interface LegacyFavorite {
@@ -44,6 +44,7 @@ async function main() {
     process.exit(0)
   }
 
+  await ensureSchema()
   const owner = await db.user.findUnique({ where: { username } })
   if (!owner) fail(`Owner ${username} does not exist — run owner:provision first`)
 
