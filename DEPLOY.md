@@ -12,10 +12,11 @@ Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 
 > **Current production status:** v0.3 is deployed and the anonymous API is closed. Owner
 > provisioning has run: `AKASH` has `role = OWNER`, the 12 legacy programs are claimed,
-> and no legacy programs are unclaimed. The live owner gate is still failing because
-> Vercel's runtime `OWNER_EMAIL`/`OWNER_USERNAME` does not match; set it in Vercel and
-> redeploy, then run the read-only **Verify production** workflow. See §4.2 of
-> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md).
+> no legacy programs are unclaimed, and the Vercel owner gate is verified. The read-only
+> **Verify production** and controlled **Verify production isolation** checks pass; the
+> production legacy-favorites table is verified empty. See §1.6 and §4.2 of
+> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md). Remaining: browser/UI sign-off,
+> UI/accessibility automation, and final acceptance.
 
 ---
 
@@ -159,14 +160,18 @@ TURSO_AUTH_TOKEN="eyJ..." bun run owner:verify
 After setting the Vercel owner environment and redeploying, run **Actions → Verify
 production**. It logs in with the `OWNER_PASSWORD` repository secret, checks
 `/api/auth/me` (`owner=true`), `/api/admin/overview` (`200`) and `/admin` (`200`), and
-prints only counts. It never prints the password, cookie or email. Delete the temporary
-`OWNER_PASSWORD` secret after the check passes.
+prints only counts. It never prints the password, cookie or email. Then run **Actions →
+Verify production isolation** with `confirm=ISOLATION`; it creates one temporary regular
+user, checks owner/regular-user isolation, revocation, suspension and deletion, and
+deletes that same user. Delete the temporary `OWNER_PASSWORD` secret after both checks
+and the owner's browser review pass.
 
 ### Legacy favorites
 
 The old global `Favorite` table was not tied to a user. The new code uses per-user
-`UserFavorite` rows and ignores the old table. Inspect/copy those entries to the owner
-after a backup:
+`UserFavorite` rows and ignores the old table. A production dry-run (run `40111257243`)
+found the table empty, so no migration is needed. The guarded workflow and local command
+remain available for other databases. Inspect/copy entries to the owner after a backup:
 
 ```bash
 # dry run

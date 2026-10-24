@@ -4,7 +4,7 @@
 **Date:** 24.10.2026
 **Owner specification:** v0.3 (restated 24.10.2026)
 **Repository:** https://github.com/akashgupta221/ABAP-Studio
-**Live site:** https://abap-studio-rd9d.vercel.app (v0.3 security + owner-provisioning workflow; owner role and legacy claim applied, Vercel runtime owner gate pending)
+**Live site:** https://abap-studio-rd9d.vercel.app (v0.3 security; owner gate and production isolation verified 24.10.2026)
 **Document status:** implementation audit — **not a final acceptance certificate**
 
 This document records **verified facts** and explicitly separates completed work,
@@ -79,14 +79,14 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 |---|---|---|
 | **Clerk not integrated** | No Clerk dependency or keys; interim built-in logon is active | Email OTP, Google sign-in, Clerk webhooks and Clerk account migration remain blocked on owner-created keys. |
 | **Modern ABAP environment not implemented** | No environment switch, CDS/RAP/AMDP runtime or capability matrix | Specification §10 is not started. Scope needs owner approval. |
-| **Production owner gate not active** | The provisioning workflow ran successfully: owner `AKASH`, email stored, 12 legacy programs claimed, 0 unclaimed, 37 shared examples. Live login returns `200`, but `/api/auth/me` reports `role=OWNER owner=false`; `/api/admin/overview` returns `403` and `/admin` redirects (`307`). | Set Vercel `OWNER_EMAIL` to the exact same email used in the GitHub secret (or `OWNER_USERNAME=AKASH` as fallback) and redeploy. GitHub secrets do not configure Vercel. Then rerun the read-only **Verify production** workflow. |
-| **Production owner password** | A fresh password was supplied through the temporary GitHub `OWNER_PASSWORD` secret and used by the provisioning workflow; the chat-supplied password was not reused | Keep the secret only until live owner acceptance passes, then delete it. Never paste the password in chat. |
-| **Legacy production favorites not migrated** | Old global `Favorite` table has no user link; new code uses `UserFavorite` | Run the supplied `owner:favorites` script (dry-run then apply) after a backup; it copies entries to the owner without deleting the old table. |
-| **`AUTH_SECRET` rotation pending** | Production health reports `hasAuthSecret: true`; the signer fails closed if it is missing | The existing secret is working. Rotate it during owner provisioning; rotation invalidates all sessions (expected). |
+| **Production owner gate verified; browser sign-off pending** | `Verify production` run `40110886829` passed at 16:18Z: login `200`, `role=OWNER owner=true`, `/api/admin/overview` `200`, `/admin` `200`; metrics `users=4 programs=49 examples=37 private=12 unclaimed_legacy=0`. | The owner should open `/admin` in a browser and review the dashboard visually. No server-side blocker remains. |
+| **Production owner password** | A fresh password was supplied through the temporary GitHub `OWNER_PASSWORD` secret; the chat-supplied password was not reused | Keep the secret only until browser acceptance and isolation checks are complete, then delete it. Never paste the password in chat. |
+| **Legacy production favorites: verified empty** | Dry-run run `40111257243` found the old global `Favorite` table empty. | No migration is needed. The guarded workflow is retained for future databases; no data was copied or deleted. |
+| **`AUTH_SECRET` rotation optional** | Production health reports `hasAuthSecret: true`; the signer fails closed if it is missing | The existing secret is working. Rotation is optional and invalidates all sessions (expected). |
 | **Rate limits are per process** | In-memory limiter | Serverless instances do not share counters; interpreter limits remain authoritative. A shared limiter is future hardening. |
 | **Type-check debt remains** | `bunx tsc --noEmit` reports pre-existing interpreter/example typing errors; `next build` passes | Clean up without changing verified behaviour before final acceptance. |
 | **Historical local database was committed** | Earlier commits tracked `prisma/db/app.db`, which contains scrypt hashes for local demo accounts (not the production Turso database) | The file is now untracked/ignored, but it remains in Git history. Treat any password reused from those local accounts as compromised. Rewriting public history requires owner approval. |
-| **Admin UI production verification pending** | `/admin`, owner access, regular-user denial, sandbox and isolation tested on localhost. Production owner login succeeds, but the Vercel owner gate still reports `owner=false`, so `/admin` redirects (`307`). | Fix the Vercel owner environment and rerun the read-only **Verify production** workflow; then verify the dashboard and user management in the browser. |
+| **Final UI/accessibility acceptance pending** | The production owner API/page and a controlled regular-user isolation run pass; the dashboard has not yet had a visual/accessibility sign-off. | Owner reviews `/admin` in a browser; add automated UI checks and an accessibility audit before final acceptance. |
 
 ### 1.5 Architecture and data flow
 
@@ -140,18 +140,25 @@ Schema models: `Topic`, `Program`, `DbTable`, `DbRow`, `FunctionModule`,
     `401` (the GET-only 405s are method guards, not authentication);
   - cross-origin logon is rejected with `403`, invalid credentials with `401`, and
     `/api/auth/me` remains public (`200`);
-  - `/admin` redirects (`307`); `/` and `/api/health` load (`200`); health reports 3
-    users and 49 programs;
+  - `/admin` and `/api/health` load (`200`); health reports 4 users and 49 programs;
   - Vercel reports both project deployments as successful;
   - the secret-safe **Provision owner** workflow ran successfully (run
     `40106253543`, rerun `40107647554`): owner `AKASH` created/updated, email stored and
     matching the `OWNER_EMAIL` secret, **12 legacy programs claimed**, 0 unclaimed, 37
     shared examples;
-  - the read-only **Verify production** workflow confirmed owner login (`200`,
-    `role=OWNER`) but `owner=false`; `/api/admin/overview` returned `403` and `/admin`
-    returned `307`. This is a Vercel runtime environment issue, not a database
-    provisioning issue. The 12 programs are owner-assigned; `/admin` remains inaccessible
-    until `OWNER_EMAIL` (or the `OWNER_USERNAME` fallback) is set in Vercel and redeployed.
+  - the read-only **Verify production** workflow passed after the Vercel environment was
+    corrected (run `40110886829`): login `200`, `role=OWNER owner=true`,
+    `/api/admin/overview` `200`, `/admin` `200`; metrics `users=4`, `programs=49`,
+    `examples=37`, `private=12`, `unclaimed_legacy=0`.
+  - the controlled **Verify production isolation** workflow passed (run `40110813415`):
+    owner access, regular-user denial, private-program isolation, read-only examples,
+    distinct private sandboxes, session revocation, suspension/reactivation and confirmed
+    deletion all behaved correctly. Its unique temporary user and sandbox were deleted;
+    final metrics returned to `users=4`, `programs=49`.
+- The controlled production test user and its sandbox were deleted after verification;
+  final production metrics returned to `users=4`, `programs=49`.
+- Final local gate on 24.10.2026: `bun run lint` clean, `bun test` **19/19**,
+  `bun run test:api` **52/52**, and `bun run build` completed successfully.
 - The test user and its sandbox were deleted after verification; the local database
   backup was removed and the database was untracked.
 
@@ -166,13 +173,13 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 |---|---|---|---|
 | 6 | Owner questions and decisions | Ongoing | Clerk keys/migration, Modern ABAP scope, production timing and legacy-favorite policy are listed in §4. |
 | 7 | Clerk: email OTP, Google, protected routes, provisioning, webhooks, migration | **Blocked** | Interim built-in logon is secure and server-validated. No Clerk keys exist. |
-| 8 | Owner-only admin dashboard: metrics, search, suspend/reactivate, sessions, deletion, audit | **Done (code deployed; live gate pending)** | `/admin` and `/api/admin/*` implemented and verified locally; production owner role and legacy claim applied, but the Vercel owner environment still denies `/admin`. |
+| 8 | Owner-only admin dashboard: metrics, search, suspend/reactivate, sessions, deletion, audit | **Done (deployed and live gate verified)** | `/admin` and `/api/admin/*` pass in production (`owner=true`, admin API/page `200`); controlled suspend, session revocation, reactivation and deletion checks passed. |
 | 9 | Preserve and test the Standard ABAP environment | **Done (current scope)** | Screenshot fidelity preserved; automated tests execute all seeded examples. |
 | 10 | Separate Modern ABAP environment + honest capability matrix | **Missing** | Needs approved executable / validated-or-simulated / unsupported scope. |
 | 11 | Professional developer GUI | **Partial** | Standard SAP GUI is complete. Modern environment GUI and a formal accessibility audit are pending. |
-| 12 | Data ownership and isolation | **Done (code deployed)** | Server-side ownership rules + private sandbox verified; production APIs secured. Production legacy claim applied (12 programs, 0 unclaimed); live owner gate pending Vercel configuration. |
+| 12 | Data ownership and isolation | **Done (deployed and production-verified)** | Server-side ownership rules + private sandbox verified. Production legacy claim applied (12 programs, 0 unclaimed); controlled regular-user isolation, owner access, session revocation, suspension and deletion passed. |
 | 13 | Security and reliability | **Done (application layer, deployed)** | Sessions, CSRF, rate limiting, per-user execution authorization and audit trail; production anonymous APIs verified closed. Shared/distributed limiter remains future hardening. |
-| 14 | Continuous testing and completion verification | **Partial** | 19 unit tests + 52 API checks + build/lint. UI automation and final acceptance report pending. |
+| 14 | Continuous testing and completion verification | **Partial** | Lint clean, 19 unit tests, 52 API checks and production build pass; production owner/isolation workflows pass. UI automation, accessibility audit and final acceptance report pending. |
 | 15 | Phase 0 audit | **Done** | This document. |
 | 15 | Phase 1 architecture/migration design | **Partial** | Architecture and legacy ownership plan documented; Clerk migration choice pending. |
 | 15 | Phases 2–8 | **In progress / blocked** | Security/admin/ownership complete in code. Clerk and Modern ABAP not started. |
@@ -183,14 +190,14 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 - [x] Architecture and data-flow documentation — §1.5.
 - [ ] Clerk account-migration plan — blocked on owner choice.
 - [ ] Clerk authentication implementation — blocked.
-- [x] Owner-only administration dashboard — code deployed + local verification; production owner provisioning applied, live owner gate pending Vercel configuration.
+- [x] Owner-only administration dashboard — deployed; production owner gate and controlled isolation checks pass; browser sign-off pending.
 - [x] Standard ABAP automated regression tests — 19 unit tests pass.
 - [ ] Modern ABAP capability matrix and tests — pending scope approval.
 - [x] Improved Standard ABAP GUI fidelity — 24.10.2026.
 - [x] Security and authorization test coverage — 52 API checks pass.
 - [x] Environment and deployment documentation — README, DEPLOY, `.env.example`.
 - [x] Non-destructive seed/deploy path — verified locally.
-- [ ] Production migration and owner provisioning — v0.3 deployed; owner role/legacy claim applied via the GitHub Actions workflow, but the live owner gate needs the Vercel environment fixed.
+- [ ] Production migration and owner provisioning — owner role/legacy claim, live owner gate and production isolation verified; legacy favorites verified empty; final browser/UI sign-off remains.
 - [ ] Final acceptance-test report — pending.
 
 ---
@@ -235,12 +242,14 @@ The owner supplied seven screenshots of a real SAP system (`MER`, client `105`, 
 
 - Local database: 2 users (`AKASH` owner, `DEVELOPER`), 37 shared learning programs
   (36 examples + 1 INCLUDE) and 7 owner-claimed legacy programs.
-- Production database: 3 users and 49 programs (37 shared examples + 12 owner-claimed
-  legacy non-example). The v0.3 schema migration and owner provisioning are applied:
-  `AKASH` has `role = OWNER`, the stored email matches `OWNER_EMAIL`, and no legacy
-  programs are unclaimed. The 12 legacy programs are hidden from ordinary users. The
-  live `/admin` gate remains closed until the Vercel owner environment is corrected and
-  redeployed.
+- Production database at the final 16:18Z check: 4 users and 49 programs (37 shared
+  examples + 12 owner-claimed legacy non-example). The v0.3 schema migration, owner
+  provisioning and Vercel owner gate are applied and verified: `AKASH` has
+  `role = OWNER`, the stored email matches `OWNER_EMAIL`, no legacy programs are
+  unclaimed, and `/admin` returns `200` for the owner. The 12 legacy programs remain
+  hidden from ordinary users. A controlled production isolation run created, exercised
+  and deleted a temporary user; its sandbox was removed and the counts returned to
+  `users=4`, `programs=49`.
 
 ---
 
@@ -263,10 +272,10 @@ Full owner walkthrough: [`docs/CLERK-SETUP.md`](CLERK-SETUP.md).
 ### 4.2 Production owner provisioning (blocking release)
 
 The v0.3 build with the owner-email gate and secret-safe provisioning workflow is
-**deployed** as commit `46f89e5`. The additive schema migration ran against Turso and the
-anonymous API is closed: protected endpoints return `401` (including POST execute/seed),
-cross-origin mutations return `403`, and `/api/health` reports 3 users and 49 programs.
-Old session cookies are intentionally invalid.
+**deployed**. The additive schema migration ran against Turso and the anonymous API is
+closed: protected endpoints return `401` (including POST execute/seed), cross-origin
+mutations return `403`, and `/api/health` reports 4 users and 49 programs. Old session
+cookies are intentionally invalid.
 
 **Provisioning status:** applied on 24.10.2026 by the manual
 `.github/workflows/provision-owner.yml` workflow. The first run (`40106253543`) created
@@ -274,27 +283,28 @@ Old session cookies are intentionally invalid.
 (`40107647554`) reported 0 unclaimed legacy programs and 37 shared examples. No production
 data was exposed to chat and no secret was printed.
 
-**Remaining release blocker:** the Vercel runtime owner gate is not active. The read-only
-`.github/workflows/verify-production.yml` workflow logged in successfully with the owner
-password (`200`, `role=OWNER`) but `/api/auth/me` returned `owner=false`;
-`/api/admin/overview` returned `403` and `/admin` returned `307`. GitHub Actions secrets do
-not configure the Vercel runtime.
+**Live owner gate: verified.** After the Vercel environment was corrected and redeployed,
+`.github/workflows/verify-production.yml` run `40110886829` passed: owner login `200`,
+`role=OWNER owner=true`, `/api/admin/overview` `200`, `/admin` `200`; metrics
+`users=4 programs=49 examples=37 private=12 unclaimed_legacy=0`.
 
-1. In Vercel → Project → Settings → Environment Variables, set `OWNER_EMAIL` to the
-   **same** verified email stored in the GitHub `OWNER_EMAIL` secret. Alternatively set
-   `OWNER_USERNAME=AKASH` as the interim fallback. If both are set, `OWNER_EMAIL` is
-   authoritative and must match exactly.
-2. Redeploy production so the new environment is read. Setting an environment variable
-   alone does not update the running deployment.
-3. Rerun **Actions → Verify production** with `base_url=https://abap-studio-rd9d.vercel.app`
-   and `owner_username=AKASH`. It must print `owner=true`, `admin_api_http=200`,
-   `admin_page_http=200`, and the expected counts. It prints no cookie, password or email.
-4. Keep the temporary `OWNER_PASSWORD` GitHub secret until this check passes, then delete
-   it. Never paste the password in chat.
-5. Migrate legacy global favorites with `owner:favorites` (dry-run first), or explicitly
-   decide to discard them.
-6. Re-verify regular-user isolation and the owner dashboard in a browser. Do not announce
-   full acceptance until the read-only check and browser checks pass against production.
+**Production isolation: verified.** `.github/workflows/verify-isolation.yml` run
+`40110813415` passed all owner/regular-user checks: shared examples are read-only,
+owner/private programs are hidden from regular users, each user gets a distinct private
+sandbox, the owner can open user sandboxes, revoked sessions are rejected, suspended users
+cannot log in, reactivation works, and confirmed deletion removes the temporary user. The
+workflow deleted its unique temporary user and sandbox; final metrics returned to
+`users=4 programs=49`.
+
+**Remaining P0 actions (no server-side blocker):**
+1. Owner opens `/admin` in a browser and signs off the dashboard visually.
+2. Delete the temporary `OWNER_PASSWORD` GitHub secret after sign-off. Never paste the
+   password in chat.
+3. Do not announce final acceptance until the browser review, full test suite and
+   production build checks are recorded.
+
+The legacy-favorites dry-run (`40111257243`) found the old global `Favorite` table empty;
+no migration or discard decision is required.
 
 ### 4.3 Modern ABAP scope (blocking spec §10)
 
@@ -317,7 +327,7 @@ Explicit owner approval is required before implementation.
 
 ## 5. Next implementation order
 
-1. Complete the live owner gate (Vercel environment + redeploy) and the legacy-favorite migration.
+1. Complete the owner's browser sign-off of `/admin`; legacy favorites are verified empty.
 2. Re-run the full test suite and production-build verification against the deployed app.
 3. Integrate Clerk Email OTP + Google and migrate/retire built-in accounts per owner
    decision.
@@ -349,13 +359,16 @@ bun run owner:favorites      # dry-run legacy favorite migration (APPLY=YES to c
 
 - Clerk authentication is **not** implemented.
 - The Modern ABAP environment is **not** implemented.
-- The v0.3 security code **is** deployed, and production owner provisioning **has run**:
-  `AKASH` has `role = OWNER`, the owner email is stored, and the 12 legacy programs are
-  assigned. However, the live Vercel owner gate currently reports `owner=false`, so
-  `/admin` is **not yet accessible** until the Vercel environment is corrected.
+- The v0.3 security code **is** deployed, and production owner provisioning and the live
+  Vercel owner gate **are verified**: `AKASH` has `role = OWNER`, the owner email is
+  stored, the 12 legacy programs are assigned, and `/admin` returns `200` for the owner.
+- A controlled production isolation run passed; its temporary user and sandbox were
+  deleted. Final counts are `users=4`, `programs=49` (37 examples, 12 owner/private,
+  zero unclaimed legacy).
 - The password previously supplied in chat was **not** reused, stored or verified, and
   must be considered exposed. A separate fresh password is held only in the temporary
   GitHub `OWNER_PASSWORD` secret for acceptance.
-- The read-only **Verify production** check is failing at the Vercel owner gate; P0 is
-  **not complete** until it passes.
+- Final acceptance is **not complete**: the owner's browser sign-off, UI/accessibility
+  automation and the remaining type-check debt are still open. The legacy-favorites
+  dry-run found the old table empty. Clerk and Modern ABAP are not implemented.
 - The live site is the v0.3 build, not the earlier `11d2b1c` build.

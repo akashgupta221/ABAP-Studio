@@ -343,3 +343,63 @@ Stage Summary:
 - P0 is NOT complete because the live owner gate still denies `/admin`. The remaining fix is to set Vercel `OWNER_EMAIL` to the exact email stored in the GitHub secret (or set `OWNER_USERNAME=AKASH` as fallback) and redeploy.
 - Keep the temporary `OWNER_PASSWORD` secret until the read-only production check passes, then delete it.
 - Clerk and Modern ABAP remain unimplemented; no acceptance claim is made.
+
+---
+Task ID: 17
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Verify the live owner gate after the Vercel fix and add a controlled production isolation check
+
+Work Log:
+- Owner set the Vercel runtime owner environment and redeployed; no owner credential was read, printed or committed.
+- Read-only **Verify production** run `40110886829` passed: login `200`, `/api/auth/me` `200 role=OWNER owner=true`, `/api/admin/overview` `200`, `/admin` `200`.
+- Final production metrics at that check: `users=4`, `programs=49`, `examples=37`, `private=12`, `unclaimed_legacy=0`, `executions=92`.
+- Added `.github/workflows/verify-isolation.yml`, a controlled production check that creates one unique temporary regular user, exercises authorization boundaries, then deletes that user. It prints only HTTP statuses, pass/fail labels and aggregate counts.
+- First isolation run (`40110484125`) failed only because the test expected `/api/auth/me` to return `401` for a revoked session; that endpoint intentionally returns `200` with `user:null`. The test's EXIT cleanup deleted the temporary user (`cleanup_delete_http=200`).
+- Corrected the check to assert `user:null` and to require a protected API (`/api/programs`) to return `401`; the rerun (`40110592793`) passed all checks.
+- Final clean isolation run (`40110813415`) passed every check: owner login + flag, owner-only admin API, regular user denied admin, regular user sees examples only, owner/private program hidden and read-only example enforced, distinct private sandbox, owner can inspect a user sandbox, forced session revocation, suspended login denial, reactivation, confirmed deletion, and deleted-user login denial.
+- Temporary user/sandbox cleanup succeeded; final metrics returned to `users=4`, `programs=49`, `examples=37`, `private=12`, `unclaimed_legacy=0`.
+- No owner password, user password, session cookie, email or program source was printed in any workflow log.
+
+Verification:
+- Production owner gate: PASS (`Verify production` run `40110886829`)
+- Controlled production isolation: PASS (`Verify production isolation` run `40110813415`)
+- Anonymous API and CSRF checks remain covered by the 52-check local/API suite and the earlier production sweep
+- Workflow YAML parsed, shell syntax checked, and both workflows are committed
+
+Stage Summary:
+- P0 owner access and production isolation are verified. The 12 legacy programs remain owner-assigned and invisible to ordinary users.
+- Remaining P0 polish: legacy-favorites dry-run and owner decision; owner browser sign-off of `/admin`; delete the temporary `OWNER_PASSWORD` GitHub secret after sign-off.
+- Final acceptance is not claimed: UI/accessibility automation and type-check debt remain, and Clerk/Modern ABAP are not implemented.
+
+---
+Task ID: 18
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Check and, if needed, migrate legacy production favorites
+
+Work Log:
+- Added `.github/workflows/legacy-favorites.yml`: guarded DRY_RUN/APPLY workflow using the existing Turso repository secrets.
+- Ran the production dry-run with run `40111257243` and explicit `confirm=DRY_RUN`.
+- Result: `✓ Legacy Favorite table is empty — nothing to migrate.`
+- No favorite rows were copied, deleted or exposed; no credentials were printed.
+
+Stage Summary:
+- Legacy-favorites production status: verified empty; no migration or discard decision required.
+- The guarded workflow remains available for any future database that still has legacy global favorites.
+- Remaining P0 work is the owner's browser sign-off of `/admin` and deletion of the temporary `OWNER_PASSWORD` secret after sign-off.
+
+---
+Task ID: 19
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Run the final local gate and record the verified production state
+
+Work Log:
+- `bun run lint` completed without errors.
+- `bun test` passed 19/19 tests (56 assertions).
+- `bun run test:api` passed 52/52 authorization, isolation, admin and revocation checks against a disposable local database/server.
+- `bun run build` completed successfully with the Next.js production build.
+- Recorded the successful production owner gate (`40110886829`), controlled isolation (`40110813415`) and empty legacy-favorites dry-run (`40111257243`) in the master spec, README, DEPLOY and this worklog.
+
+Stage Summary:
+- P0 owner access, legacy ownership, production isolation, session revocation, suspension/deletion and legacy-favorites status are verified.
+- Remaining: owner browser sign-off of `/admin`, deletion of the temporary `OWNER_PASSWORD` GitHub secret, UI/accessibility automation and type-check debt.
+- Clerk and Modern ABAP remain unimplemented; no final acceptance or completion claim is made.
