@@ -73,10 +73,11 @@ practice sandbox**; training examples are shared and read-only.
   denied and its appeal is closed. A portfolio is live at
   <https://akashgupta221.github.io/>; the new is-a.dev root `akashgupta.is-a.dev` is
   merged and live, redirecting to the portfolio. The six nested app/Clerk records were
-  merged in PR #58363 and their DNS resolves; the Vercel custom domain/SSL and Clerk
-  production-instance move are next. The EU.org request is still awaiting approval.
-  Production Google OAuth, keys and webhooks also remain pending, so production sessions
-  are unverified. The built-in scrypt logon remains
+  merged in PR #58363 and their DNS resolves. The Clerk production instance has been moved
+  to the new hostname and its Frontend API is live with Email OTP + Google only. Vercel
+  still requires an owner-submitted `_vercel` TXT/CNAME update, and the Clerk account portal
+  is pending. The EU.org request is still awaiting approval. Production Google OAuth, keys
+  and webhooks also remain pending, so production sessions are unverified. The built-in scrypt logon remains
   a temporary fallback during cutover. Guides:
   [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md),
   [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) and
@@ -189,7 +190,8 @@ owner/non-owner mapping, admin ban/unban/revoke/delete and client sign-out were 
 with disposable test users. The original production root was denied and the appeal is
 closed; a portfolio is live at <https://akashgupta221.github.io/> and the new is-a.dev root
 `akashgupta.is-a.dev` is merged and redirects to it. The six nested app/Clerk records were
-merged in PR #58363 and now resolve in DNS; Vercel domain/SSL, the Clerk instance move, EU.org approval, Google
+merged in PR #58363 and now resolve in DNS. The Clerk production instance has been moved and
+its Frontend API is live; Vercel ownership verification, the Clerk account portal, EU.org approval, Google
 OAuth, keys and webhooks remain pending, so P1 is **not deployed or accepted**. Read
 [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) and
 [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) before the cutover. The ownership migration

@@ -71,17 +71,29 @@ in Git.
   mail are verified for that domain. Do not switch domains after production
   users start signing in without a planned cutover.
 
-Production remains **blocked**, but the DNS gate is cleared. The six nested
-records are live. The remaining blockers are the Vercel custom-domain
-assignment/SSL, moving the Clerk production instance to the live hostname, and
-the missing production Clerk keys, `OWNER_EMAIL`, `CLERK_WEBHOOK_SECRET` and
-Google production credential. No production Clerk session has been exercised.
+Production remains **blocked**, but the DNS and Clerk-domain gates are cleared. The six
+nested records are live. The Clerk production instance now serves its Frontend API on
+`clerk.abap-studio.akashgupta.is-a.dev` (HTTP 200; Email OTP + Google only). Vercel still
+requires proof that the owner controls the domain, because
+`abap-studio.akashgupta.is-a.dev` was previously linked to another Vercel account.
+The remaining blockers are the Vercel ownership TXT/unique-CNAME update, the Vercel
+certificate, the Clerk account-portal certificate, and the missing production Clerk keys,
+`OWNER_EMAIL`, `CLERK_WEBHOOK_SECRET` and Google production credential. No production
+Clerk session has been exercised.
 
-The Vercel CLI `domains add` command returned `domain_not_owned` for the nested
-hostname. Add it from the **abap-studio-rd9d** project's Domains settings in the
-Vercel dashboard. If Vercel shows a `_vercel` TXT verification record, that TXT
-record must be submitted as another is-a.dev PR by the owner before Vercel will
-issue the certificate.
+Vercel shows this required verification:
+
+| Type | Name | Value |
+|---|---|---|
+| CNAME | `abap-studio` | `e65413aa6d37f6f6.vercel-dns-017.com` |
+| TXT | `_vercel` | `vc-domain-verify=abap-studio.akashgupta.is-a.dev,7c86e8bdcf66173704fd` |
+
+The TXT record belongs at `_vercel.akashgupta.is-a.dev`, not under `abap-studio`.
+Both records require another owner-submitted is-a.dev PR. The prepared files are
+`domains/_vercel.akashgupta.json` (new) and an updated
+`domains/abap-studio.akashgupta.json` (CNAME). All 13 is-a.dev tests pass with those
+two changes. After that PR merges, Vercel can verify ownership and issue the app
+certificate.
 
 ## Verified facts
 
@@ -92,15 +104,17 @@ issue the certificate.
 | is-a.dev PR #58327 | merged 25.10.2026 13:01 UTC; one file, 9 additions; all checks passed |
 | Nested app/Clerk records | [PR #58363](https://github.com/is-a-dev/register/pull/58363) merged 25.10.2026 17:52 UTC; merge commit `bb86038f7e5004fd36e55f43b41fed286a69c707`; all checks passed |
 | Nested PR local validation | fresh is-a.dev clone + six files -> 13/13 tests; template check passed |
-| Six nested hostnames | all resolve via Cloudflare DNS to the expected Vercel/Clerk/SendGrid targets; TLS not yet provisioned |
-| `https://abap-studio.akashgupta.is-a.dev` | DNS resolves, but TLS handshake fails until the hostname is assigned to the Vercel project |
-| `https://clerk.abap-studio.akashgupta.is-a.dev` | DNS resolves, but TLS handshake fails until the Clerk production instance is moved |
+| Six nested hostnames | all resolve via Cloudflare DNS; Clerk Frontend API is live over TLS; app and account portal certificates pending |
+| `https://abap-studio.akashgupta.is-a.dev` | DNS resolves, but TLS fails until Vercel verifies the `_vercel` TXT record and assigns the domain |
+| `https://clerk.abap-studio.akashgupta.is-a.dev/v1/environment` | HTTP `200`; production instance; Email OTP + Google; password/phone/username disabled |
+| `https://accounts.abap-studio.akashgupta.is-a.dev` | DNS resolves, but TLS handshake still fails; recheck after Clerk finishes provisioning |
+| Vercel verification | TXT `_vercel.akashgupta.is-a.dev` = `vc-domain-verify=abap-studio.akashgupta.is-a.dev,7c86e8bdcf66173704fd`; CNAME `abap-studio` -> `e65413aa6d37f6f6.vercel-dns-017.com`; follow-up is-a.dev PR required |
 | `https://abap-studio.is-a.dev` | `302` to `https://is-a.dev/available?d=abap-studio` |
 | is-a.dev PR #58254 | closed, `status: denied`, `reason: not dev related`; no domain registered |
 | is-a.dev issue #58258 | closed 25.10.2026 09:29 UTC; maintainer says root is for portfolios and suggests a nested subdomain |
 | `dig NS abap-studio.eu.org` | no records |
 | `dig SOA abap-studio.eu.org` | no records |
-| Clerk production instance | `domain_pending`; still bound to the dead `abap-studio.is-a.dev`; must be moved to `abap-studio.akashgupta.is-a.dev` (choose **Secondary application**) |
+| Clerk production instance | Moved to `abap-studio.akashgupta.is-a.dev` (Secondary application); Frontend API live and correct; account-portal TLS pending |
 | Production Vercel env | has `OWNER_USERNAME`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `AUTH_SECRET`; missing `OWNER_EMAIL`, Clerk production keys and `CLERK_WEBHOOK_SECRET` |
 | Production Google OAuth | enabled in Clerk with empty production credentials |
 
@@ -462,10 +476,9 @@ production instances without a cutover plan.
 3. Once production users sign in, do not switch domains without a planned
    identity migration. Clerk identities, webhook URLs and OAuth redirect URIs
    are tied to the chosen host.
-4. The existing production instance is bound to the dead
-   `abap-studio.is-a.dev`. Change its domain or create a new production
-   instance **before** adding keys. Do not run the interactive creation wizard
-   again for `abap-studio.is-a.dev`.
+4. The production instance has been moved to
+   `abap-studio.akashgupta.is-a.dev` as a Secondary application. Do not run
+   the interactive creation wizard again for `abap-studio.is-a.dev`.
 5. Keep `abap-studio.is-a.dev` unregistered. The portfolio root is
    `akashgupta.is-a.dev`; the app is nested under it.
 
@@ -506,13 +519,21 @@ production instances without a cutover plan.
       [PR #58363](https://github.com/is-a-dev/register/pull/58363): six files,
       54 additions; all checks passed; merged 25.10.2026 at 17:52 UTC.
 - [x] Confirm the six nested hostnames resolve through DNS.
-- [ ] In the **abap-studio-rd9d** Vercel project, add
-      `abap-studio.akashgupta.is-a.dev` as a custom domain and complete any
-      `_vercel` TXT verification Vercel requests.
-- [ ] Move the Clerk production instance to
+- [x] In the **abap-studio-rd9d** Vercel project, add
+      `abap-studio.akashgupta.is-a.dev` as a custom domain. Vercel requires
+      ownership verification because the hostname was previously linked to
+      another Vercel account.
+- [ ] Submit the prepared follow-up is-a.dev PR that adds
+      `domains/_vercel.akashgupta.json` and updates the app CNAME to
+      `e65413aa6d37f6f6.vercel-dns-017.com`; wait for it to merge, then verify
+      the Vercel domain and certificate.
+- [x] Move the Clerk production instance to
       `https://abap-studio.akashgupta.is-a.dev`, choosing **Secondary
-      application**; verify its five CNAME targets and wait for green
-      `clerk deploy status`.
+      application**. The Frontend API is live and returns the correct Email
+      OTP + Google configuration.
+- [ ] Recheck the Clerk account-portal TLS at
+      `https://accounts.abap-studio.akashgupta.is-a.dev` and run
+      `clerk deploy status` until green.
 - [ ] Monitor the EU.org contact inbox (non-Gmail) and the Cloudflare zone.
 - [ ] Choose the first fully verified domain.
 - [ ] Add production keys, webhook, `OWNER_EMAIL` and Google OAuth.

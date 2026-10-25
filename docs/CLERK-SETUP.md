@@ -12,7 +12,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 |---|---|
 | Clerk application | Owner-selected **ABAP Studio** app, id `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
 | Development instance | Configured; local `.env` has development keys |
-| Production instance | **Needs domain change** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` is still bound to the denied `abap-studio.is-a.dev` and remains `domain_pending`. The original root PR #58254 was **denied**; appeal #58258 is **closed**. The portfolio root `akashgupta.is-a.dev` is live. The six nested app/Clerk records were merged in is-a.dev PR #58363 on 25.10.2026 at 17:52 UTC, and all six hostnames now resolve. Move the instance to `https://abap-studio.akashgupta.is-a.dev` (choose **Secondary application**) before adding keys. The EU.org request is still awaiting approval. |
+| Production instance | **Moved** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` now targets `https://abap-studio.akashgupta.is-a.dev` as a **Secondary application**. The Frontend API is live at `https://clerk.abap-studio.akashgupta.is-a.dev` and returns HTTP `200` with Email OTP + Google only. The account portal hostname still fails TLS and must be rechecked. Vercel still requires an owner-submitted is-a.dev TXT/CNAME update because the app hostname was previously linked to another Vercel account. The EU.org request is still awaiting approval. |
 | Sign-in methods | Email OTP + Google enabled; password, phone, username, Facebook and GitHub disabled |
 | P1 code | Implemented on `clerk-migration`; not merged or deployed |
 | Local gates | `lint`, 26 unit tests, 52 API checks and `build` pass |
@@ -112,21 +112,25 @@ non-Gmail contact address and may take days to months.
 
 Before deploying, complete these two dashboard steps:
 
-1. **Vercel:** open the `abap-studio-rd9d` project → **Settings → Domains** → **Add**,
-   and enter `abap-studio.akashgupta.is-a.dev`. The six DNS records are already live.
-   If Vercel requests a `_vercel` TXT record, submit it as a separate is-a.dev PR manually
-   and wait for that PR to merge. Do not use the team-level `vercel domains add` command;
-   it returns `domain_not_owned` for this nested hostname.
-2. **Clerk:** open the production instance → **Domains → Configure** → **Danger zone →
-   Change domain**. Enter `abap-studio.akashgupta.is-a.dev` and choose **Secondary
-   application** because Clerk lives at `clerk.abap-studio.akashgupta.is-a.dev`. This
-   changes the publishable key. Confirm the CNAME targets shown by Clerk; if any mail/DKIM
-   target changed, update the is-a.dev files with another owner-submitted PR. Wait for
-   SSL/email to become green before setting production keys.
+1. **Vercel:** the domain has been added to the `abap-studio-rd9d` project, but
+   Vercel marks it **Verification Required** because it was previously linked to another
+   Vercel account. Submit this follow-up is-a.dev change manually:
+   - Add TXT `_vercel.akashgupta.is-a.dev` =
+     `vc-domain-verify=abap-studio.akashgupta.is-a.dev,7c86e8bdcf66173704fd`.
+   - Change CNAME `abap-studio.akashgupta.is-a.dev` from `cname.vercel-dns.com` to
+     `e65413aa6d37f6f6.vercel-dns-017.com`.
+   The prepared files are `domains/_vercel.akashgupta.json` (new) and the updated
+   `domains/abap-studio.akashgupta.json`; all 13 is-a.dev tests pass. After that PR
+   merges, return to Vercel and wait for **Valid Configuration** / certificate issuance.
+2. **Clerk:** the production instance has already been moved to
+   `abap-studio.akashgupta.is-a.dev` with **Secondary application**. The Frontend API is
+   live and reports Email OTP + Google only. Recheck
+   `https://accounts.abap-studio.akashgupta.is-a.dev` for the account-portal certificate
+   and run `bunx clerk deploy status --wait` until green.
 
-Do not add production keys while the instance is still bound to
-`abap-studio.is-a.dev`. The five CNAMEs shown by `bunx clerk deploy status` must be
-verified for the final domain.
+Do not add production keys while the Vercel certificate or Clerk account portal is still
+pending. The five CNAMEs shown by `bunx clerk deploy status` must be verified for the final
+domain.
 
 Before deploying, confirm the production instance uses **only Email OTP and Google**.
 Phone sign-up/sign-in and username sign-up/sign-in were disabled in the development
