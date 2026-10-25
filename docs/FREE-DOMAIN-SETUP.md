@@ -45,9 +45,11 @@ The owner posted the appeal as
 25.10.2026. It is open and awaiting a maintainer response. Do not submit a
 second root PR while the appeal is open.
 
-The remaining backup action is to start EU.org with a **non-Gmail** contact
-address, because EU.org explicitly warns that Gmail rejects its validation
-mail.
+The owner submitted the EU.org request for `abap-studio.eu.org` on
+25.10.2026. It is awaiting human approval. No nameserver delegation is live yet,
+so Cloudflare remains pending and no DNS records can be verified. EU.org
+requires a **non-Gmail** contact address because it warns that Gmail rejects its
+validation mail.
 
 ## Appeal text for is-a.dev (posted as #58258)
 
@@ -260,6 +262,12 @@ EU.org has provided free domain delegations since 1996. It is slower but more
 durable than a volunteer subdomain service. A direct `abap-studio.eu.org`
 registration is possible; EU.org only delegates nameservers for direct
 registrations, so Cloudflare's free DNS can host the records.
+
+> **Status (25.10.2026):** the owner submitted the `abap-studio.eu.org` request.
+> It is awaiting human approval. `dig NS abap-studio.eu.org` and
+> `dig SOA abap-studio.eu.org` currently return no delegation. The Cloudflare
+> zone will remain **Pending Nameserver Update** until EU.org publishes the
+> delegation. Do not add production Clerk keys or switch the Clerk domain yet.
 
 > **Do not use a Gmail address for the EU.org contact.** EU.org warns that
 > Gmail refuses its validation messages as spam. Use a non-Gmail mailbox you

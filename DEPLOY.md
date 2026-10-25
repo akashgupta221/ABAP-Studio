@@ -19,9 +19,9 @@ Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 > gates. Development Email OTP, owner/non-owner mapping, admin ban/unban/revoke/delete,
 > audit and client sign-out were verified with disposable test users (removed). A
 > production Clerk instance exists for `abap-studio.is-a.dev`, but the root is-a.dev
-> registration was denied; the free-domain appeal/EU.org backup, DNS, Google OAuth, keys
-> and webhooks remain pending; production sessions are unverified, so P1 is not deployed
-> or accepted.** See §1.6 and §4 of
+> registration was denied; the free-domain appeal and EU.org approval, DNS, Google OAuth,
+> keys and webhooks remain pending; production sessions are unverified, so P1 is not
+> deployed or accepted.** See §1.6 and §4 of
 > [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md) and the owner guide
 > [`docs/CLERK-SETUP.md`](CLERK-SETUP.md).
 

@@ -555,3 +555,29 @@ Stage Summary:
 - The owner's remaining backup action is to start the EU.org application with a non-Gmail address.
 - P1 remains **not accepted**; its production cutover is still blocked on a verified domain, Google OAuth, keys and webhook. P0 remains deployed and accepted.
 - Modern ABAP remains paused.
+
+---
+Task ID: 25
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Record the EU.org request submission and re-check both free-domain paths
+
+Work Log:
+- The owner confirmed that the EU.org request for `abap-studio.eu.org` was submitted on 25.10.2026.
+- EU.org has not published a delegation yet: `dig NS abap-studio.eu.org` and `dig SOA abap-studio.eu.org` return no records. The Cloudflare zone therefore remains pending and no application/Clerk CNAMEs can be verified.
+- The is-a.dev appeal issue #58258 remains open with the `support` label and no maintainer response.
+- `abap-studio.is-a.dev` still redirects to the is-a.dev availability page; no app/Clerk/DKIM hostname exists.
+- The Clerk production instance remains `domain_pending`; no production key, webhook, DNS or Vercel environment change was made.
+- Updated the free-domain guide, master spec, Clerk setup guide, README, DEPLOY and this worklog to show that the EU.org request is awaiting approval rather than not started.
+- The owner must monitor the EU.org contact mailbox (non-Gmail and spam folder). Once EU.org delegates the domain, the Cloudflare zone should become active and the DNS records can be added.
+
+Verification:
+- `gh issue view 58258` -> state `OPEN`, label `support`, no comments
+- `dig NS abap-studio.eu.org` -> empty
+- `dig SOA abap-studio.eu.org` -> empty
+- `https://abap-studio.is-a.dev` -> `302` to `https://is-a.dev/available?d=abap-studio`
+- `git status` before docs update -> clean; `bun run lint` -> pass
+
+Stage Summary:
+- Both free-domain paths are pending: is-a.dev appeal #58258 awaits a maintainer, and the EU.org request awaits human approval/delegation.
+- No production cutover action is possible until one domain resolves. P1 remains **not accepted**; P0 remains deployed and accepted.
+- Modern ABAP remains paused.
