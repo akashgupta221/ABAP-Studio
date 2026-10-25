@@ -90,11 +90,11 @@ Vercel shows this required verification:
 | TXT | `_vercel` | `vc-domain-verify=abap-studio.akashgupta.is-a.dev,7c86e8bdcf66173704fd` |
 
 The TXT record belongs at `_vercel.akashgupta.is-a.dev`, not under `abap-studio`.
-Both records require another owner-submitted is-a.dev PR. The prepared files are
-`domains/_vercel.akashgupta.json` (new) and an updated
-`domains/abap-studio.akashgupta.json` (CNAME). All 13 is-a.dev tests pass with those
-two changes. After that PR merges, Vercel can verify ownership and issue the app
-certificate.
+Both records require another owner-submitted is-a.dev PR. The owner submitted
+[PR #58410](https://github.com/is-a-dev/register/pull/58410) on 25.10.2026. It changes exactly two
+files: the new TXT file and the updated CNAME. `Template`, `Tests` and `Label` all pass;
+`mergeable` is `MERGEABLE` and the only remaining gate is code-owner review. Do not comment
+or ping. After that PR merges, Vercel can verify ownership and issue the app certificate.
 
 ## Verified facts
 
@@ -109,7 +109,7 @@ certificate.
 | `https://abap-studio.akashgupta.is-a.dev` | DNS resolves, but TLS fails until Vercel verifies the `_vercel` TXT record and assigns the domain |
 | `https://clerk.abap-studio.akashgupta.is-a.dev/v1/environment` | HTTP `200`; production instance; Email OTP + Google; password/phone/username disabled |
 | `https://accounts.abap-studio.akashgupta.is-a.dev` | Valid TLS certificate; HTTP `403` Cloudflare challenge to curl (expected); browser login not yet re-exercised |
-| Vercel verification | TXT `_vercel.akashgupta.is-a.dev` = `vc-domain-verify=abap-studio.akashgupta.is-a.dev,7c86e8bdcf66173704fd`; CNAME `abap-studio` -> `e65413aa6d37f6f6.vercel-dns-017.com`; follow-up is-a.dev PR required |
+| Vercel verification | [PR #58410](https://github.com/is-a-dev/register/pull/58410) open; exactly two files; all checks pass; `MERGEABLE`; awaiting code-owner review. TXT `_vercel.akashgupta.is-a.dev` = `vc-domain-verify=abap-studio.akashgupta.is-a.dev,7c86e8bdcf66173704fd`; CNAME `abap-studio` -> `e65413aa6d37f6f6.vercel-dns-017.com` |
 | `https://abap-studio.is-a.dev` | `302` to `https://is-a.dev/available?d=abap-studio` |
 | is-a.dev PR #58254 | closed, `status: denied`, `reason: not dev related`; no domain registered |
 | is-a.dev issue #58258 | closed 25.10.2026 09:29 UTC; maintainer says root is for portfolios and suggests a nested subdomain |
@@ -524,10 +524,10 @@ production instances without a cutover plan.
       `abap-studio.akashgupta.is-a.dev` as a custom domain. Vercel requires
       ownership verification because the hostname was previously linked to
       another Vercel account.
-- [ ] Submit the prepared follow-up is-a.dev PR that adds
-      `domains/_vercel.akashgupta.json` and updates the app CNAME to
-      `e65413aa6d37f6f6.vercel-dns-017.com`; wait for it to merge, then verify
-      the Vercel domain and certificate.
+- [x] Submit the follow-up is-a.dev PR for the Vercel TXT/CNAME:
+      [PR #58410](https://github.com/is-a-dev/register/pull/58410). It changes
+      exactly two files; all checks pass; it is waiting on code-owner review.
+- [ ] Wait for PR #58410 to merge, then verify the Vercel domain and certificate.
 - [x] Move the Clerk production instance to
       `https://abap-studio.akashgupta.is-a.dev`, choosing **Secondary
       application**. The Frontend API is live, returns the correct Email OTP +

@@ -120,8 +120,10 @@ Before deploying, complete these two dashboard steps:
    - Change CNAME `abap-studio.akashgupta.is-a.dev` from `cname.vercel-dns.com` to
      `e65413aa6d37f6f6.vercel-dns-017.com`.
    The prepared files are `domains/_vercel.akashgupta.json` (new) and the updated
-   `domains/abap-studio.akashgupta.json`; all 13 is-a.dev tests pass. After that PR
-   merges, return to Vercel and wait for **Valid Configuration** / certificate issuance.
+   `domains/abap-studio.akashgupta.json`; all 13 is-a.dev tests pass. The owner submitted
+   them as [PR #58410](https://github.com/is-a-dev/register/pull/58410); all checks pass and
+   it is waiting on code-owner review. After that PR merges, return to Vercel and wait for
+   **Valid Configuration** / certificate issuance.
 2. **Clerk:** the production instance has already been moved to
    `abap-studio.akashgupta.is-a.dev` with **Secondary application**. The Frontend API is
    live and reports Email OTP + Google only. The account portal has a valid TLS

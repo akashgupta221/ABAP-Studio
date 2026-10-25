@@ -801,3 +801,35 @@ Stage Summary:
 - Vercel requires one more owner-submitted is-a.dev PR for the `_vercel` TXT and project-specific CNAME; files and PR body are prepared.
 - After that PR merges, verify Vercel's domain, wait for the app certificate, complete a real browser sign-in test, then set production keys/webhook/OWNER_EMAIL.
 - P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
+
+---
+
+Task ID: 32
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Verify the Vercel ownership-verification PR
+
+Work Log:
+- The owner submitted the follow-up is-a.dev PR as [PR #58410](https://github.com/is-a-dev/register/pull/58410), titled `Verify ABAP Studio domain with Vercel`.
+- The PR changes exactly two files:
+  - added `domains/_vercel.akashgupta.json` (9 additions)
+  - modified `domains/abap-studio.akashgupta.json` (1 addition, 1 deletion) to `e65413aa6d37f6f6.vercel-dns-017.com`
+- All checks pass: `Template`, `Tests` and `Label`. GitHub reports `mergeable: MERGEABLE` and `mergeStateStatus: BLOCKED`; the only remaining gate is required code-owner review.
+- The TXT value in the diff exactly matches Vercel's challenge:
+  `vc-domain-verify=abap-studio.akashgupta.is-a.dev,7c86e8bdcf66173704fd`.
+- The PR description currently uses the older nested-domain body. The prepared Vercel-specific body is in `is-a-dev-akashgupta/nested/VERCEL-PR-BODY.md`; updating it is optional but recommended. Do not comment or ping maintainers.
+- No DNS change is live yet. The `_vercel` TXT record is absent and the app CNAME still points to `cname.vercel-dns.com`.
+- Updated `docs/FREE-DOMAIN-SETUP.md` and `docs/CLERK-SETUP.md` with the PR number and current status.
+
+Verification:
+- `gh pr list --repo is-a-dev/register --author akashgupta221 --state open` -> PR #58410, `OPEN`
+- `gh pr checks 58410` -> Template pass, Tests pass, Label pass
+- `gh pr view 58410 --json mergeable,mergeStateStatus` -> `MERGEABLE`, `BLOCKED` (code-owner review)
+- `gh pr diff 58410 --name-only` -> exactly `domains/_vercel.akashgupta.json` and `domains/abap-studio.akashgupta.json`
+- `dig _vercel.akashgupta.is-a.dev TXT` -> no record yet
+- `dig abap-studio.akashgupta.is-a.dev CNAME` -> still `cname.vercel-dns.com`
+- No comment, ping, review, DNS change, Vercel setting, Clerk key or app code change was made.
+
+Stage Summary:
+- PR #58410 is technically correct and ready for maintainer review.
+- Do not comment or ping. Wait for the merge, then Vercel can verify the domain and issue the app certificate.
+- P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
