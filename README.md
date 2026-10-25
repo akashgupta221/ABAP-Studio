@@ -72,10 +72,11 @@ practice sandbox**; training examples are shared and read-only.
   username sign-in are disabled. The original production root `abap-studio.is-a.dev` was
   denied and its appeal is closed. A portfolio is live at
   <https://akashgupta221.github.io/>; the new is-a.dev root `akashgupta.is-a.dev` is
-  merged and live, redirecting to the portfolio. The six nested app/Clerk records are in
-  open PR #58363, with all checks passing and waiting on code-owner review. The EU.org
-  request is still awaiting approval. DNS, production Google OAuth, keys and webhooks also
-  remain pending, so production sessions are unverified. The built-in scrypt logon remains
+  merged and live, redirecting to the portfolio. The six nested app/Clerk records were
+  merged in PR #58363 and their DNS resolves; the Vercel custom domain/SSL and Clerk
+  production-instance move are next. The EU.org request is still awaiting approval.
+  Production Google OAuth, keys and webhooks also remain pending, so production sessions
+  are unverified. The built-in scrypt logon remains
   a temporary fallback during cutover. Guides:
   [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md),
   [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) and
@@ -187,8 +188,8 @@ implemented on `clerk-migration` and passes the local gates; development Email O
 owner/non-owner mapping, admin ban/unban/revoke/delete and client sign-out were verified
 with disposable test users. The original production root was denied and the appeal is
 closed; a portfolio is live at <https://akashgupta221.github.io/> and the new is-a.dev root
-`akashgupta.is-a.dev` is merged and redirects to it. The six nested app/Clerk records are in
-open PR #58363, with all checks passing and waiting on review; EU.org approval, DNS, Google
+`akashgupta.is-a.dev` is merged and redirects to it. The six nested app/Clerk records were
+merged in PR #58363 and now resolve in DNS; Vercel domain/SSL, the Clerk instance move, EU.org approval, Google
 OAuth, keys and webhooks remain pending, so P1 is **not deployed or accepted**. Read
 [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) and
 [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) before the cutover. The ownership migration

@@ -12,7 +12,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 |---|---|
 | Clerk application | Owner-selected **ABAP Studio** app, id `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
 | Development instance | Configured; local `.env` has development keys |
-| Production instance | **Created but unusable** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` is bound to the denied `abap-studio.is-a.dev` and remains `domain_pending`. The original root PR #58254 was **denied**; appeal #58258 is now **closed**. The owner-approved parallel path is a portfolio root at `akashgupta.is-a.dev` plus the nested app `abap-studio.akashgupta.is-a.dev`; the root PR #58327 was merged and the root is live (`301` to the portfolio, final `200`). The six nested app/Clerk files are in open PR #58363; all checks pass, waiting on code-owner review. The EU.org request is still awaiting approval. Move the instance or create a new one for the final domain before adding keys. |
+| Production instance | **Needs domain change** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` is still bound to the denied `abap-studio.is-a.dev` and remains `domain_pending`. The original root PR #58254 was **denied**; appeal #58258 is **closed**. The portfolio root `akashgupta.is-a.dev` is live. The six nested app/Clerk records were merged in is-a.dev PR #58363 on 25.10.2026 at 17:52 UTC, and all six hostnames now resolve. Move the instance to `https://abap-studio.akashgupta.is-a.dev` (choose **Secondary application**) before adding keys. The EU.org request is still awaiting approval. |
 | Sign-in methods | Email OTP + Google enabled; password, phone, username, Facebook and GitHub disabled |
 | P1 code | Implemented on `clerk-migration`; not merged or deployed |
 | Local gates | `lint`, 26 unit tests, 52 API checks and `build` pass |
@@ -21,7 +21,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 | Google OAuth | Production config has Google enabled with empty production credentials; real Google sign-in is **pending** |
 | Webhook | Route and signature verification are implemented; no Clerk endpoint/signing secret is configured |
 | Production keys | Generated in the production instance; **not set** in Vercel yet and not printed |
-| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — original is-a.dev root denied; appeal #58258 closed; root `akashgupta.is-a.dev` merged and live; nested PR #58363 open with all checks passing, waiting on review; EU.org awaiting approval |
+| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — original is-a.dev root denied; appeal #58258 closed; root `akashgupta.is-a.dev` merged and live; nested PR #58363 merged and DNS live; Vercel domain/SSL and Clerk domain move are next; EU.org awaiting approval |
 
 The selected Clerk application must not be replaced. Production setup resumes the same
 application.
@@ -92,13 +92,14 @@ Frontend API, commonly a subdomain such as `clerk.example.com`.
 
 A production instance has already been created for `abap-studio.is-a.dev` and cloned from
 the development instance, so Email OTP is the only email strategy and Google is enabled.
-That domain was **denied**, so the instance is not usable as-is. The owner has two
-parallel free-domain paths:
+That domain was **denied**, so the instance is not usable as-is. The current free-domain
+path is:
 
-- **is-a.dev (new path):** the portfolio root `akashgupta.is-a.dev` is merged and live,
+- **is-a.dev (current):** the portfolio root `akashgupta.is-a.dev` is merged and live,
   redirecting to <https://akashgupta221.github.io/>. The nested application
-  `abap-studio.akashgupta.is-a.dev` and its Clerk subdomains are in open PR #58363; all
-  checks pass and it is waiting on code-owner review.
+  `abap-studio.akashgupta.is-a.dev` and its Clerk subdomains were merged in is-a.dev
+  PR #58363 on 25.10.2026 at 17:52 UTC. All six hostnames resolve through DNS; TLS is
+  not provisioned yet.
 - **EU.org:** `abap-studio.eu.org` is awaiting human approval; no nameserver delegation is
   live yet.
 
@@ -109,8 +110,21 @@ because the preview showed only the SAP-style logon screen. Appeal issue #58258 
 is-a.dev submissions; its terms prohibit AI-created pull requests. EU.org requires a
 non-Gmail contact address and may take days to months.
 
-Before deploying, move the production Clerk instance to the chosen domain or create a new
-production instance. Do not add production keys while the instance is still bound to
+Before deploying, complete these two dashboard steps:
+
+1. **Vercel:** open the `abap-studio-rd9d` project → **Settings → Domains** → **Add**,
+   and enter `abap-studio.akashgupta.is-a.dev`. The six DNS records are already live.
+   If Vercel requests a `_vercel` TXT record, submit it as a separate is-a.dev PR manually
+   and wait for that PR to merge. Do not use the team-level `vercel domains add` command;
+   it returns `domain_not_owned` for this nested hostname.
+2. **Clerk:** open the production instance → **Domains → Configure** → **Danger zone →
+   Change domain**. Enter `abap-studio.akashgupta.is-a.dev` and choose **Secondary
+   application** because Clerk lives at `clerk.abap-studio.akashgupta.is-a.dev`. This
+   changes the publishable key. Confirm the CNAME targets shown by Clerk; if any mail/DKIM
+   target changed, update the is-a.dev files with another owner-submitted PR. Wait for
+   SSL/email to become green before setting production keys.
+
+Do not add production keys while the instance is still bound to
 `abap-studio.is-a.dev`. The five CNAMEs shown by `bunx clerk deploy status` must be
 verified for the final domain.
 
@@ -120,7 +134,7 @@ instance on 25.10.2026 after they unexpectedly appeared as required sign-up fiel
 production config was checked and has the same restrictions; do not let a copied legacy
 phone/username field reappear.
 
-Once DNS is live, run:
+Once the domain change is saved and DNS is live, run:
 
 ```bash
 bunx clerk deploy status --wait

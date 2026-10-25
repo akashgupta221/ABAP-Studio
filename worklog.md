@@ -729,3 +729,36 @@ Stage Summary:
 - Root domain is live. Nested PR #58363 is submitted and all automated checks pass; it is waiting on a maintainer.
 - Do not comment or ping. Wait for the merge, then add the Vercel domain and move/create the Clerk production instance.
 - P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
+
+---
+
+Task ID: 30
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Confirm the merged nested domains and start the Vercel/Clerk production cutover
+
+Work Log:
+- Confirmed is-a.dev PR #58363 is **merged** (`mergedAt: 2026-10-25T17:52:34Z`, merge commit `bb86038f7e5004fd36e55f43b41fed286a69c707`). `Template`, `Tests` and `Label` all passed.
+- Verified all six nested hostnames now resolve through Cloudflare DNS:
+  - `abap-studio.akashgupta.is-a.dev` -> `cname.vercel-dns.com` (A `66.33.60.129`)
+  - `clerk.abap-studio.akashgupta.is-a.dev` -> `frontend-api.clerk.services`
+  - `accounts.abap-studio.akashgupta.is-a.dev` -> `accounts.clerk.services`
+  - `clkmail.abap-studio.akashgupta.is-a.dev` -> `mail.vedhnrhsrdju.clerk.services`
+  - `clk._domainkey.abap-studio.akashgupta.is-a.dev` -> `dkim1.vedhnrhsrdju.clerk.services`
+  - `clk2._domainkey.abap-studio.akashgupta.is-a.dev` -> `dkim2.vedhnrhsrdju.clerk.services`
+- TLS is not live yet. `https://abap-studio.akashgupta.is-a.dev` fails the TLS handshake until Vercel assigns the hostname and issues its certificate. The Clerk hostnames likewise fail until the production instance is moved. The existing `https://abap-studio-rd9d.vercel.app/` still returns `200`.
+- Tried the team-level `npx vercel domains add abap-studio.akashgupta.is-a.dev abap-studio-rd9d`; Vercel returned `domain_not_owned`. The nested domain must be added from the **abap-studio-rd9d** project's **Settings → Domains** dashboard. If Vercel shows a `_vercel` TXT challenge, the owner must submit it in a separate is-a.dev PR.
+- Did not change the Vercel project, Clerk instance, production environment variables, DNS or application code.
+- Updated `docs/FREE-DOMAIN-SETUP.md`, `docs/CLERK-SETUP.md`, `docs/MASTER-PROJECT-SPEC.md`, `README.md` and `DEPLOY.md` to reflect the merged PR and live DNS.
+
+Verification:
+- `gh pr view 58363` -> `state: MERGED`, `mergedAt: 2026-10-25T17:52:34Z`, merge commit `bb86038f7e5004fd36e55f43b41fed286a69c707`
+- `gh pr checks 58363` -> Template pass, Tests pass, Label pass
+- `dig @1.1.1.1` -> all six nested CNAMEs resolve
+- `curl -I https://abap-studio-rd9d.vercel.app/` -> `200`
+- `curl -I https://abap-studio.akashgupta.is-a.dev/` -> TLS handshake failure (expected before Vercel domain assignment)
+- No production keys, Clerk settings, Vercel environment variables, DNS records or application code changed
+
+Stage Summary:
+- Nested is-a.dev records are merged and DNS is live. The DNS gate is cleared.
+- Next: add `abap-studio.akashgupta.is-a.dev` in the Vercel project dashboard, handle any `_vercel` TXT challenge, then move the Clerk production instance (choose **Secondary application**) and wait for green `clerk deploy status`.
+- P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.

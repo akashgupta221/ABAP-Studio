@@ -20,10 +20,10 @@ Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 > audit and client sign-out were verified with disposable test users (removed). The
 > original production root `abap-studio.is-a.dev` was denied and its appeal is closed. A
 > portfolio is live at <https://akashgupta221.github.io/>; the new is-a.dev root
-> `akashgupta.is-a.dev` is merged and redirects to it. The six nested app/Clerk records are
-> in open PR #58363, with all checks passing and waiting on review; EU.org approval, DNS,
-> Google OAuth, keys and webhooks remain pending; production sessions are unverified, so P1
-> is not deployed or accepted.** See §1.6 and §4 of
+> `akashgupta.is-a.dev` is merged and redirects to it. The six nested app/Clerk records were
+> merged in PR #58363 and now resolve in DNS; Vercel domain/SSL, the Clerk instance move,
+> EU.org approval, Google OAuth, keys and webhooks remain pending; production sessions are
+> unverified, so P1 is not deployed or accepted.** See §1.6 and §4 of
 > [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md) and the owner guide
 > [`docs/CLERK-SETUP.md`](CLERK-SETUP.md).
 
