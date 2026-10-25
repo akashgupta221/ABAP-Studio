@@ -872,3 +872,45 @@ Stage Summary:
 - Vercel domain ownership is fully verified; the new hostname is live over HTTPS.
 - The next gate is configuring production Clerk env/webhook and deploying P1. Do not test Clerk sign-in until P1 is deployed.
 - P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
+
+---
+
+Task ID: 34
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Deploy the P1 Clerk build to production and verify the configuration surface
+
+Work Log:
+- The owner added the production Clerk publishable key, secret key, webhook secret, `OWNER_EMAIL` and the two fallback flags. Values were never read, printed or committed. The publishable key is stored as **Config** because it is intentionally browser-visible; the secret key and webhook secret are **Sensitive**.
+- The Vercel production variable list initially lacked `LEGACY_AUTH_MODE` and `NEXT_PUBLIC_LEGACY_AUTH_MODE`. Added both as `fallback` (Config).
+- Deployed `clerk-migration` to Vercel production with `npx vercel --prod --yes`:
+  - deployment `dpl_GLQLQvazo3cYfWdBV5KmjM6U4ujb`
+  - `https://abap-studio-rd9d-iklme47ce-akash-kumar-gupta-s-projects.vercel.app`
+  - aliased to `https://abap-studio.akashgupta.is-a.dev` and `https://abap-studio-rd9d.vercel.app`
+- `/api/health` reports:
+  - `ok: true`
+  - `dbTarget: turso`, production Turso host, token present
+  - `hasClerkSecret: true`, `hasClerkPublishableKey: true`, `hasClerkWebhookSecret: true`
+  - `clerkConfigured: true`
+  - `legacyAuthMode: "fallback"`
+  - 4 users, 50 programs
+- `/sign-in` and `/sign-up` return HTTP `200`; the sign-in HTML loads Clerk from `clerk.abap-studio.akashgupta.is-a.dev` and contains the Google option.
+- The webhook route is deployed; an unsigned POST returns HTTP `400 Invalid webhook signature`, confirming signature verification is active.
+- `/api/auth/me` returns `{"user":null}` for an anonymous request. `/api/admin/overview` returns HTTP `401` without a session. Unauthenticated `/admin` returns HTTP `404` with `x-clerk-auth-reason: protect-rewrite`; this is Clerk protecting the page before the app gate, not a missing route.
+- Production owner Email OTP/Google sign-in, authenticated `/admin`, non-owner isolation, a real Clerk webhook event, Google production OAuth and legacy account mapping are still pending. The branch has not been merged into `main`; production runs the branch build.
+- Updated the docs and this worklog with the deployed P1 state.
+
+Verification:
+- `npx vercel --prod --yes` -> `readyState: READY`, production deployment `dpl_GLQLQvazo3cYfWdBV5KmjM6U4ujb`
+- `npx vercel inspect` -> custom domain alias present
+- `curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/api/health` -> `clerkConfigured: true`, `legacyAuthMode: "fallback"`, 4 users, 50 programs
+- `curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/sign-in` -> HTTP `200`
+- `curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/sign-up` -> HTTP `200`
+- `curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/api/webhooks/clerk -X POST -d '{}'` -> HTTP `400` (invalid signature)
+- `curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/api/auth/me` -> HTTP `200`, `user: null`
+- `curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/api/admin/overview` -> HTTP `401`
+- No secret value was printed or committed
+
+Stage Summary:
+- P1 is deployed and the public Clerk configuration surface is healthy.
+- The next gate is a real production owner Email OTP sign-in plus `/admin`, non-owner isolation, webhook delivery and Google OAuth.
+- P1 remains **not accepted**; `main` remains at P0 until the production checks pass. Modern ABAP remains paused.

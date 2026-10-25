@@ -1,10 +1,10 @@
 # Clerk setup and cutover guide
 
 This is the owner-action guide for the P1 Clerk migration. The P1 code is implemented
-on the `clerk-migration` branch and passes the local gates, but **production Clerk is not
-configured and P1 is not accepted yet**. Do not paste publishable/secret keys into chat,
-screenshots, issues or Git. Set them directly in Vercel (and locally in the git-ignored
-`.env`).
+on the `clerk-migration` branch, deployed to the production hostname, and passes the local
+gates. **Production interactive verification and P1 acceptance are still pending.** Do not
+paste publishable/secret keys into chat, screenshots, issues or Git. Set them directly in
+Vercel (and locally in the git-ignored `.env`).
 
 ## Current status
 
@@ -12,16 +12,16 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 |---|---|
 | Clerk application | Owner-selected **ABAP Studio** app, id `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
 | Development instance | Configured; local `.env` has development keys |
-| Production instance | **Moved** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` now targets `https://abap-studio.akashgupta.is-a.dev` as a **Secondary application**. The Frontend API is live at `https://clerk.abap-studio.akashgupta.is-a.dev` and returns HTTP `200` with Email OTP + Google only. The account portal has a valid TLS certificate and returns a Cloudflare browser challenge to curl. The Vercel hostname is verified (`configured-correctly`) and returns HTTP `200`, but the live deployment is still P0. The EU.org request is still awaiting approval. |
+| Production instance | **Moved** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` now targets `https://abap-studio.akashgupta.is-a.dev` as a **Secondary application**. The Frontend API is live at `https://clerk.abap-studio.akashgupta.is-a.dev` and returns HTTP `200` with Email OTP + Google only. The account portal has a valid TLS certificate and returns a Cloudflare browser challenge to curl. The Vercel hostname is verified (`configured-correctly`) and the P1 build is deployed (`dpl_GLQLQvazo3cYfWdBV5KmjM6U4ujb`); `/sign-in` and `/sign-up` return `200`. The EU.org request is still awaiting approval. |
 | Sign-in methods | Email OTP + Google enabled; password, phone, username, Facebook and GitHub disabled |
-| P1 code | Implemented on `clerk-migration`; not merged or deployed |
+| P1 code | Implemented on `clerk-migration`; deployed to production from that branch; **not merged into `main` yet** |
 | Local gates | `lint`, 26 unit tests, 52 API checks and `build` pass |
 | Interactive Clerk sign-in | **Development verified** with disposable test users; production not verified |
 | Local Clerk integration | Owner mapping, non-owner isolation, ban/unban, force logout, deletion, audit and client sign-out verified on a throwaway DB; test users removed |
 | Google OAuth | Production config has Google enabled with empty production credentials; real Google sign-in is **pending** |
-| Webhook | Route and signature verification are implemented; no Clerk endpoint/signing secret is configured |
-| Production keys | Generated in the production instance; **not set** in Vercel yet and not printed |
-| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — original is-a.dev root denied; appeal #58258 closed; root `akashgupta.is-a.dev` merged and live; nested PR #58363 merged and DNS live; Vercel domain/SSL and Clerk domain move are next; EU.org awaiting approval |
+| Webhook | Route and signature verification deployed; signing secret is set in Vercel; a real Clerk test event is still pending |
+| Production keys | Publishable key and secret key are set in Vercel production; values were not printed |
+| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — original is-a.dev root denied; appeal #58258 closed; root `akashgupta.is-a.dev` merged and live; nested PR #58363 merged and DNS live; Vercel domain/SSL verified; Clerk domain moved; P1 deployed; production sign-in pending; EU.org awaiting approval |
 
 The selected Clerk application must not be replaced. Production setup resumes the same
 application.
@@ -190,26 +190,14 @@ cutover unless you deliberately want to invalidate every legacy session.
 
 ### Deploy the P1 build
 
-The public hostname currently serves the old P0 deployment, so `/sign-in` and
-`/sign-up` return `404`. After the production variables and webhook secret are
-saved in Vercel, deploy the `clerk-migration` build to production from the
-repository root:
-
-```bash
-npx vercel --prod
-```
-
-Vercel aliases the verified custom domain to the new deployment. Confirm:
-
-```bash
-curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/sign-in
-curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/api/health
-```
-
-`/sign-in` must return `200`, and `/api/health` must report the Clerk flags as
-configured. If the deployment fails, redeploy the last `main` production
-deployment from the Vercel dashboard to roll back to P0; the legacy fallback and
-database are unchanged.
+The P1 build was deployed from `clerk-migration` on 25.10.2026 as
+`dpl_GLQLQvazo3cYfWdBV5KmjM6U4ujb` and aliased to the verified custom domain.
+`/sign-in` and `/sign-up` return `200`; `/api/health` reports the Clerk keys as
+configured and `legacyAuthMode: "fallback"`. The webhook route returns `400` for
+an unsigned request, proving signature verification is active. If a later
+deployment fails, redeploy the last known-good production deployment from the
+Vercel dashboard; the legacy fallback and database are unchanged. Do not merge
+`clerk-migration` into `main` until the production browser checks pass.
 
 ## 3. Create the webhook
 
