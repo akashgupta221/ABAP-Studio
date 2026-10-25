@@ -17,11 +17,13 @@ Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 > isolation** checks pass; the production legacy-favorites table is verified empty. P0 is
 > accepted. **P1 Clerk code is implemented on `clerk-migration` and passes the local
 > gates. Development Email OTP, owner/non-owner mapping, admin ban/unban/revoke/delete,
-> audit and client sign-out were verified with disposable test users (removed). A
-> production Clerk instance exists for `abap-studio.is-a.dev`, but the root is-a.dev
-> registration was denied; the free-domain appeal and EU.org approval, DNS, Google OAuth,
-> keys and webhooks remain pending; production sessions are unverified, so P1 is not
-> deployed or accepted.** See §1.6 and §4 of
+> audit and client sign-out were verified with disposable test users (removed). The
+> original production root `abap-studio.is-a.dev` was denied and its appeal is closed. A
+> portfolio is live at <https://akashgupta221.github.io/>; the new is-a.dev path is a
+> portfolio root at `akashgupta.is-a.dev` plus the nested app
+> `abap-studio.akashgupta.is-a.dev`. The root/nested PRs, EU.org approval, DNS, Google
+> OAuth, keys and webhooks remain pending; production sessions are unverified, so P1 is
+> not deployed or accepted.** See §1.6 and §4 of
 > [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md) and the owner guide
 > [`docs/CLERK-SETUP.md`](CLERK-SETUP.md).
 

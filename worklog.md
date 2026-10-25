@@ -581,3 +581,40 @@ Stage Summary:
 - Both free-domain paths are pending: is-a.dev appeal #58258 awaits a maintainer, and the EU.org request awaits human approval/delegation.
 - No production cutover action is possible until one domain resolves. P1 remains **not accepted**; P0 remains deployed and accepted.
 - Modern ABAP remains paused.
+
+---
+
+Task ID: 26
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Record the closed is-a.dev appeal and start the portfolio-root + nested-app path
+
+Work Log:
+- Maintainer `linuskang` responded to appeal issue #58258 on 25.10.2026 at 09:29 UTC and closed it: “Nope. Still doesn't count as dev-related, as we typically only allow portfolios on root subdomains. Create a nested subdomain if you want to add this.”
+- The original `abap-studio.is-a.dev` root is therefore dead. A nested subdomain cannot be created under a root that is not registered, so the new is-a.dev path needs a separate portfolio root.
+- The owner chose to run both remaining paths in parallel: a personal is-a.dev portfolio root plus a nested app, while the EU.org request stays pending.
+- Selected `akashgupta.is-a.dev` as the portfolio root and `abap-studio.akashgupta.is-a.dev` as the application. Clerk hostnames will be nested under the application: `clerk`, `accounts`, `clkmail`, `clk._domainkey` and `clk2._domainkey`.
+- Built a static portfolio in a separate project at `/Volumes/drive-E/Abap Editor/akash-portfolio`. It includes the owner introduction, six public projects (ABAP Studio, Sprint, Currency Converter, Pac-Man, Spotify Clone, Pseudocode Basics), tool list and GitHub links. It is responsive and uses no build step or secrets.
+- Published the portfolio as a public GitHub Pages repository: <https://github.com/akashgupta221/akashgupta221.github.io>. GitHub Pages built commit `77113bf` and serves <https://akashgupta221.github.io/> with HTTP `200`.
+- Verified every external portfolio link returns `200`; Lighthouse on the live site reports 100 accessibility, 100 best practices and 100 SEO, with no console errors.
+- Prepared the exact is-a.dev portfolio-root JSON and PR text in `docs/FREE-DOMAIN-SETUP.md`, with copy-paste owner files also saved in `/Volumes/drive-E/Abap Editor/is-a-dev-akashgupta`. The root PR is **not submitted**: is-a.dev prohibits AI-created PRs, so the owner must review and submit it from `akashgupta221` manually.
+- Prepared the post-merge nested app/Clerk JSON layout, DNS values, Vercel/Clerk cutover values and the EU.org alternatives in `docs/FREE-DOMAIN-SETUP.md`.
+- Re-checked EU.org: the request remains pending, with no `NS` or `SOA` delegation. The Cloudflare zone cannot become active yet.
+- The production Clerk instance is still bound to the denied `abap-studio.is-a.dev` and remains `domain_pending`. No production keys, webhook, DNS or Vercel environment changes were made. It must be moved to the chosen domain or replaced before the cutover.
+- Updated `docs/FREE-DOMAIN-SETUP.md`, `docs/MASTER-PROJECT-SPEC.md`, `docs/CLERK-SETUP.md`, `docs/GOOGLE-OAUTH-SETUP.md`, `README.md`, `DEPLOY.md` and this worklog.
+
+Verification:
+- `gh issue view 58258` -> state `CLOSED`, label `support`, maintainer comment at 25.10.2026 09:29:51 UTC; no further maintainer action requested
+- `gh repo view akashgupta221/akashgupta221.github.io` -> public repository on `main`
+- `gh api repos/akashgupta221/akashgupta221.github.io/pages/builds/latest` -> `built` for commit `77113bf`
+- `curl https://akashgupta221.github.io/` -> `200`; title “Akash Gupta — Developer”; 6 project cards; no console errors
+- Lighthouse (live GitHub Pages) -> accessibility 100, best practices 100, SEO 100; no failures
+- External portfolio links -> all `200`
+- `dig NS abap-studio.eu.org` -> empty; `dig SOA abap-studio.eu.org` -> empty
+- `https://abap-studio.is-a.dev` -> `302` to `https://is-a.dev/available?d=abap-studio`
+- No production Clerk key, webhook secret, DNS record, Clerk domain or Vercel environment was changed
+
+Stage Summary:
+- The is-a.dev root appeal is closed and the old domain is unavailable. The new is-a.dev path is a portfolio root at `akashgupta.is-a.dev`; the portfolio is live and the root PR is ready for the owner to submit.
+- The nested app and Clerk records cannot be submitted until the portfolio root is merged. EU.org remains pending.
+- P1 remains **not accepted**; production cutover is still blocked on a verified domain, Clerk instance move/create, Google OAuth, keys and webhook. P0 remains deployed and accepted.
+- Modern ABAP remains paused.

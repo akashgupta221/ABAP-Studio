@@ -83,7 +83,7 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 
 | Gap | Evidence | Impact / next action |
 |---|---|---|
-| **Clerk production cutover not complete** | P1 code is implemented on `clerk-migration`; local lint/26 unit/52 API/build gates pass. The selected “ABAP Studio” app has Email OTP + Google enabled and password/phone/username/Facebook/GitHub disabled. Email OTP, owner/non-owner mapping, admin ban/unban/revoke/delete, audit and client sign-out were verified with disposable development test users on a throwaway database. A production instance (`ins_3LAf6uu766aoTCwlI8nX5faMFQA`) now exists for `abap-studio.is-a.dev`, cloned from development. The owner's root is-a.dev PR #58254 passed the template and CI checks but was **denied** (`reason: not dev related`) after the preview showed only the SAP-style logon screen; the domain was not registered. `clerk deploy status` remains `domain_pending`: all five CNAMEs, SSL and email DNS are missing; Google OAuth has no production credentials; production keys are not in Vercel; `CLERK_WEBHOOK_SECRET` is absent. No production Clerk session has been exercised. | The owner posted the appeal as is-a.dev issue #58258; it is open and awaiting a maintainer response. The free EU.org request for `abap-studio.eu.org` was submitted on 25.10.2026 and is awaiting approval; no NS delegation is live yet. EU.org requires a non-Gmail contact and may take days to months. After a domain is approved, add DNS, configure Google OAuth, set production keys/webhook secret, map non-owner accounts, and complete the browser checks in `docs/CLERK-SETUP.md`. P1 is **not accepted**. |
+| **Clerk production cutover not complete** | P1 code is implemented on `clerk-migration`; local lint/26 unit/52 API/build gates pass. The selected “ABAP Studio” app has Email OTP + Google enabled and password/phone/username/Facebook/GitHub disabled. Email OTP, owner/non-owner mapping, admin ban/unban/revoke/delete, audit and client sign-out were verified with disposable development test users on a throwaway database. A production instance (`ins_3LAf6uu766aoTCwlI8nX5faMFQA`) exists but is bound to the **denied** `abap-studio.is-a.dev`; `clerk deploy status` remains `domain_pending`, with all five CNAMEs, SSL and email DNS missing. The root is-a.dev PR #58254 was **denied** (`reason: not dev related`) after the preview showed only the SAP-style logon screen. Appeal issue #58258 was **closed** on 25.10.2026 at 09:29 UTC; the maintainer said root subdomains are only for portfolios and told the owner to create a nested subdomain. Production keys are not in Vercel; `OWNER_EMAIL`, `CLERK_WEBHOOK_SECRET` and Google production credentials are absent. No production Clerk session has been exercised. | The owner approved a parallel free-domain path. The portfolio is published at <https://akashgupta221.github.io/>; the new is-a.dev plan is a portfolio root at `akashgupta.is-a.dev`, then the nested app `abap-studio.akashgupta.is-a.dev` and its Clerk subdomains. The owner must submit the new root PR and nested PR manually; the is-a.dev terms prohibit AI-created PRs. The free EU.org request for `abap-studio.eu.org` was submitted on 25.10.2026 and is awaiting approval; no NS delegation is live yet. EU.org requires a non-Gmail contact and may take days to months. The first fully verified domain wins. After a domain is approved, move/create the Clerk production instance, add DNS, configure Google OAuth, set production keys/webhook secret, map non-owner accounts, and complete the browser checks in `docs/CLERK-SETUP.md`. P1 is **not accepted**. |
 | **Modern ABAP environment not implemented** | No environment switch, CDS/RAP/AMDP runtime or capability matrix | Specification §10 is not started. Scope needs owner approval. |
 | **Legacy production favorites: verified empty** | Dry-run run `40111257243` found the old global `Favorite` table empty. | No migration is needed. The guarded workflow is retained for future databases; no data was copied or deleted. |
 | **`AUTH_SECRET` rotation optional** | Production health reports `hasAuthSecret: true`; the signer fails closed if it is missing | The existing secret is working. Rotation is optional and invalidates all sessions (expected). |
@@ -206,9 +206,11 @@ obsolete global `Favorite` model is no longer used.
 - All disposable Clerk test users and the throwaway database were deleted after testing.
 - Clerk config still reports Google enabled/authenticatable, but a real Google sign-in has
   not been exercised. At the end of the local verification, `clerk deploy status` was
-  `not_started`. A production instance was then created for `abap-studio.is-a.dev` and the
-  status is now `domain_pending`; DNS, production Google credentials, keys, webhook
-  delivery and a production Clerk session remain unverified.
+  `not_started`. A production instance was then created for `abap-studio.is-a.dev`; that
+  root was denied and the appeal was closed, so the instance remains `domain_pending` and
+  is not usable. A portfolio root/nested-domain replacement is prepared; DNS, production
+  Google credentials, keys, webhook delivery and a production Clerk session remain
+  unverified.
 
 ---
 
@@ -220,7 +222,7 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 | Owner spec § | Requirement | Status | Evidence / remaining work |
 |---|---|---|---|
 | 6 | Owner questions and decisions | Ongoing | Clerk production domain/keys, Modern ABAP scope, production timing and legacy-favorite policy are listed in §4. |
-| 7 | Clerk: email OTP, Google, protected routes, provisioning, webhooks, migration | **Partial (development verified; production domain denied, appeal open, EU.org awaiting approval)** | Clerk pages, provider, session resolution, verified-email linking, owner gate integration, admin ban/unban/revoke/delete, signed webhook and legacy cutover modes are implemented on `clerk-migration`. Local lint/26 unit/52 API/build gates pass. Development Email OTP, owner/non-owner mapping, admin actions, audit and client sign-out were verified with disposable test users, then removed. A cloned production instance now exists for `abap-studio.is-a.dev`, but the root is-a.dev PR #58254 was denied as not dev-related; no domain is registered. Appeal issue #58258 is open and awaiting a response; the EU.org request was submitted and is awaiting approval. DNS, production Google OAuth, Vercel keys/webhook and production interactive sign-in are still missing; legacy fallback remains active. **P1 not accepted.** |
+| 7 | Clerk: email OTP, Google, protected routes, provisioning, webhooks, migration | **Partial (development verified; production domain denied, appeal closed, new portfolio/nested path prepared, EU.org awaiting approval)** | Clerk pages, provider, session resolution, verified-email linking, owner gate integration, admin ban/unban/revoke/delete, signed webhook and legacy cutover modes are implemented on `clerk-migration`. Local lint/26 unit/52 API/build gates pass. Development Email OTP, owner/non-owner mapping, admin actions, audit and client sign-out were verified with disposable test users, then removed. A production instance exists but is bound to the denied `abap-studio.is-a.dev`; the root PR #58254 was denied and appeal #58258 is closed. A portfolio is published at <https://akashgupta221.github.io/>; the new is-a.dev path is `akashgupta.is-a.dev` portfolio root + `abap-studio.akashgupta.is-a.dev` nested app. The root and nested PRs are not yet submitted. The EU.org request was submitted and is awaiting approval. DNS, production Google OAuth, Vercel keys/webhook and production interactive sign-in are still missing; legacy fallback remains active. **P1 not accepted.** |
 | 8 | Owner-only admin dashboard: metrics, search, suspend/reactivate, sessions, deletion, audit | **Done (deployed and live gate verified)** | `/admin` and `/api/admin/*` pass in production (`owner=true`, admin API/page `200`); controlled suspend, session revocation, reactivation and deletion checks passed. |
 | 9 | Preserve and test the Standard ABAP environment | **Done (current scope)** | Screenshot fidelity preserved; automated tests execute all seeded examples. |
 | 10 | Separate Modern ABAP environment + honest capability matrix | **Missing** | Needs approved executable / validated-or-simulated / unsupported scope. |
@@ -353,32 +355,46 @@ the local gates. A production instance
 production is still blocked on the domain, Google OAuth, keys and webhook:
 
 1. **Production domain + DNS.** Production Clerk requires a domain whose DNS records the
-   owner controls; the current `*.vercel.app` address is not sufficient. The selected
-   zero-cost path is `abap-studio.is-a.dev`, with `abap-studio.eu.org` as the backup. The
-   root is-a.dev PR #58254 was denied as not dev-related because the preview showed only
-   the SAP-style logon screen; the domain is not registered. Appeal issue #58258 is open
-   and awaiting a maintainer response. The EU.org request for `abap-studio.eu.org` was
-   submitted on 25.10.2026 and is awaiting approval; no NS delegation is live yet. EU.org
-   requires a **non-Gmail** contact address and may take days to months. Do not submit a
-   second is-a.dev root PR while the appeal is open. Exact text, files and DNS values are
-   in `docs/FREE-DOMAIN-SETUP.md`. The production instance is already created for
-   `abap-studio.is-a.dev`; if the EU.org backup becomes primary, plan a Clerk
-   production-domain change or a new production instance before adding keys. Do not run
-   the interactive creation wizard again for the is-a.dev path; use
-   `bunx clerk deploy status --wait` after DNS.
-2. **Google OAuth.** Create a free Google Cloud OAuth client for
-   `https://clerk.abap-studio.is-a.dev/v1/oauth_callback` and install the client ID and
-   secret in the Clerk production instance. The production config currently has Google
-   enabled with empty credentials. Exact steps are in `docs/GOOGLE-OAUTH-SETUP.md`.
+   owner controls; the current `*.vercel.app` address is not sufficient. The original
+   zero-cost root `abap-studio.is-a.dev` is **dead**: PR #58254 was denied as not
+   dev-related because the preview showed only the SAP-style logon screen, and appeal
+   issue #58258 was **closed** on 25.10.2026. The maintainer said root subdomains are only
+   for portfolios and told the owner to create a nested subdomain. The owner approved a
+   parallel path:
+   - **is-a.dev:** a portfolio root at `akashgupta.is-a.dev`, then the nested app
+     `abap-studio.akashgupta.is-a.dev`. The portfolio is already published at
+     <https://akashgupta221.github.io/>. The owner must submit the root PR and nested PR
+     manually; do not automate them, because is-a.dev prohibits AI-created PRs.
+   - **EU.org:** `abap-studio.eu.org` was submitted on 25.10.2026 and is awaiting
+     approval; no NS delegation is live yet. EU.org requires a **non-Gmail** contact
+     address and may take days to months.
+   The first fully verified domain wins. The existing production instance is bound to the
+   dead `abap-studio.is-a.dev`; move it to the chosen domain or create a new production
+   instance before adding keys. Exact JSON, PR text and DNS values are in
+   `docs/FREE-DOMAIN-SETUP.md`. Use `bunx clerk deploy status --wait` only after DNS for
+   the chosen domain resolves.
+2. **Google OAuth.** Create a free Google Cloud OAuth client for the chosen domain:
+   - Path A: `https://clerk.abap-studio.akashgupta.is-a.dev/v1/oauth_callback`
+   - Path B: `https://clerk.abap-studio.eu.org/v1/oauth_callback`
+
+   Install the client ID and secret in the Clerk production instance. The production
+   config currently has Google enabled with empty credentials. Exact steps are in
+   `docs/GOOGLE-OAUTH-SETUP.md`.
 3. **Vercel production environment.** Add the production
    `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`,
    `OWNER_EMAIL`, and the existing `AUTH_SECRET`; set `LEGACY_AUTH_MODE=fallback` and
    `NEXT_PUBLIC_LEGACY_AUTH_MODE=fallback` for the first cutover. Never use development
-   keys in production. Add `app.abap-studio.is-a.dev` to the Vercel project and verify its
-   certificate.
-4. **Webhook.** Create `https://app.abap-studio.is-a.dev/api/webhooks/clerk` for
-   `user.created`, `user.updated` and `user.deleted`, then copy the signing secret into
-   Vercel and redeploy. Until then `/api/webhooks/clerk` returns `503`.
+   keys in production. Add the chosen application hostname to the Vercel project and
+   verify its certificate:
+   - Path A: `abap-studio.akashgupta.is-a.dev`
+   - Path B: `abap-studio.eu.org`
+4. **Webhook.** Create the endpoint for the chosen domain and subscribe to `user.created`,
+   `user.updated` and `user.deleted`, then copy the signing secret into Vercel and
+   redeploy:
+   - Path A: `https://abap-studio.akashgupta.is-a.dev/api/webhooks/clerk`
+   - Path B: `https://abap-studio.eu.org/api/webhooks/clerk`
+
+   Until then `/api/webhooks/clerk` returns `503`.
 5. **Account mapping.** The owner row already matches the production owner email. Set
    `OWNER_EMAIL` in Vercel to that verified address. For each non-owner account without a
    verified email on file, attach the owner-verified address with `bun run user:email`

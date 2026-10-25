@@ -69,11 +69,14 @@ practice sandbox**; training examples are shared and read-only.
 - **Clerk Email OTP + Google** is implemented on `clerk-migration`, with verified-email
   account linking and database-authoritative roles. Development Email OTP and the
   owner/non-owner admin flows are verified with disposable test users; password, phone and
-  username sign-in are disabled. A production instance exists for `abap-studio.is-a.dev`,
-  but the root is-a.dev registration was denied; the free-domain appeal is open and the
-  EU.org request is awaiting approval. DNS, production Google OAuth, keys and webhooks
-  also remain pending, so production sessions are unverified. The built-in scrypt logon remains a temporary
-  fallback during cutover. Guides: [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md),
+  username sign-in are disabled. The original production root `abap-studio.is-a.dev` was
+  denied and its appeal is closed. A portfolio is live at
+  <https://akashgupta221.github.io/>; the new is-a.dev path is a portfolio root at
+  `akashgupta.is-a.dev` plus the nested app `abap-studio.akashgupta.is-a.dev`. The EU.org
+  request is still awaiting approval. DNS, production Google OAuth, keys and webhooks also
+  remain pending, so production sessions are unverified. The built-in scrypt logon remains
+  a temporary fallback during cutover. Guides:
+  [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md),
   [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) and
   [`docs/GOOGLE-OAUTH-SETUP.md`](docs/GOOGLE-OAUTH-SETUP.md).
 
@@ -181,9 +184,11 @@ Every `git push` rebuilds and redeploys the live app. The v0.3 security build is
 isolation run passed, and the owner reviewed `/admin` (**P0 accepted**). P1 Clerk code is
 implemented on `clerk-migration` and passes the local gates; development Email OTP,
 owner/non-owner mapping, admin ban/unban/revoke/delete and client sign-out were verified
-with disposable test users. A production instance exists, but the root is-a.dev
-registration was denied; the appeal and EU.org approval, DNS, Google OAuth, keys and
-webhooks remain pending, so P1 is **not deployed or accepted**. Read
+with disposable test users. The original production root was denied and the appeal is
+closed; a portfolio is live at <https://akashgupta221.github.io/> and the new is-a.dev path
+is a portfolio root at `akashgupta.is-a.dev` plus the nested app
+`abap-studio.akashgupta.is-a.dev`. The root and nested PRs, EU.org approval, DNS, Google
+OAuth, keys and webhooks remain pending, so P1 is **not deployed or accepted**. Read
 [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) and
 [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) before the cutover. The ownership migration
 changes who can see legacy programs and invalidates old sessions; the production

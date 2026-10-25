@@ -12,7 +12,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 |---|---|
 | Clerk application | Owner-selected **ABAP Studio** app, id `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
 | Development instance | Configured; local `.env` has development keys |
-| Production instance | **Created** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA`; domain `abap-studio.is-a.dev` is `domain_pending` (DNS, SSL and email DNS pending). The root is-a.dev PR #58254 was **denied** as not dev-related; appeal issue #58258 is open and the EU.org request is awaiting approval. |
+| Production instance | **Created but unusable** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` is bound to the denied `abap-studio.is-a.dev` and remains `domain_pending`. The original root PR #58254 was **denied**; appeal #58258 is now **closed**. The owner-approved parallel path is a portfolio root at `akashgupta.is-a.dev` plus the nested app `abap-studio.akashgupta.is-a.dev`; the EU.org request is still awaiting approval. Move the instance or create a new one for the final domain before adding keys. |
 | Sign-in methods | Email OTP + Google enabled; password, phone, username, Facebook and GitHub disabled |
 | P1 code | Implemented on `clerk-migration`; not merged or deployed |
 | Local gates | `lint`, 26 unit tests, 52 API checks and `build` pass |
@@ -21,7 +21,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 | Google OAuth | Production config has Google enabled with empty production credentials; real Google sign-in is **pending** |
 | Webhook | Route and signature verification are implemented; no Clerk endpoint/signing secret is configured |
 | Production keys | Generated in the production instance; **not set** in Vercel yet and not printed |
-| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — is-a.dev root denied; appeal #58258 open; EU.org awaiting approval |
+| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — original is-a.dev root denied; appeal #58258 closed; new portfolio root + nested app path prepared; EU.org awaiting approval |
 
 The selected Clerk application must not be replaced. Production setup resumes the same
 application.
@@ -92,21 +92,27 @@ Frontend API, commonly a subdomain such as `clerk.example.com`.
 
 A production instance has already been created for `abap-studio.is-a.dev` and cloned from
 the development instance, so Email OTP is the only email strategy and Google is enabled.
-The remaining owner action is to add the five CNAME records shown by:
+That domain was **denied**, so the instance is not usable as-is. The owner has two
+parallel free-domain paths:
 
-```bash
-bunx clerk deploy status
-```
+- **is-a.dev (new path):** publish the portfolio root `akashgupta.is-a.dev`, then register
+  the nested application `abap-studio.akashgupta.is-a.dev` and its Clerk subdomains. The
+  portfolio is already live at <https://akashgupta221.github.io/>. The root and nested
+  registrations require the owner to submit is-a.dev PRs manually.
+- **EU.org:** `abap-studio.eu.org` is awaiting human approval; no nameserver delegation is
+  live yet.
 
-The exact free-domain registration files, appeal text and DNS plan are in
-`docs/FREE-DOMAIN-SETUP.md`. The owner's root is-a.dev PR #58254 passed the template and
-CI checks but was denied as not dev-related because the preview showed only the SAP-style
-logon screen. The domain is not registered. The owner posted appeal issue #58258, which
-is open and awaiting a maintainer response. The EU.org request was submitted and is
-awaiting approval; no nameserver delegation is live yet. Do not submit a second root PR
-while the appeal is open, and do not automate the submission; the is-a.dev terms prohibit
-AI-created pull requests. EU.org requires a non-Gmail contact address and may take days
-to months.
+The exact registration JSON, PR text, DNS layout and current status are in
+`docs/FREE-DOMAIN-SETUP.md`. The original root PR #58254 was denied as not dev-related
+because the preview showed only the SAP-style logon screen. Appeal issue #58258 is now
+**closed**; do not submit another `abap-studio.is-a.dev` root PR. Do not automate the
+is-a.dev submissions; its terms prohibit AI-created pull requests. EU.org requires a
+non-Gmail contact address and may take days to months.
+
+Before deploying, move the production Clerk instance to the chosen domain or create a new
+production instance. Do not add production keys while the instance is still bound to
+`abap-studio.is-a.dev`. The five CNAMEs shown by `bunx clerk deploy status` must be
+verified for the final domain.
 
 Before deploying, confirm the production instance uses **only Email OTP and Google**.
 Phone sign-up/sign-in and username sign-up/sign-in were disabled in the development
@@ -122,8 +128,10 @@ bunx clerk deploy status --wait
 
 The Google connection still needs a production OAuth client. Follow
 `docs/GOOGLE-OAUTH-SETUP.md`; do not reuse development credentials in production. The
-production redirect URI for this instance is
-`https://clerk.abap-studio.is-a.dev/v1/oauth_callback`.
+redirect URI must match the final domain:
+
+- Path A: `https://clerk.abap-studio.akashgupta.is-a.dev/v1/oauth_callback`
+- Path B: `https://clerk.abap-studio.eu.org/v1/oauth_callback`
 
 ## 2. Set production environment variables
 
@@ -164,7 +172,8 @@ cutover unless you deliberately want to invalidate every legacy session.
 
 In the Clerk dashboard for the production instance, create an endpoint:
 
-- URL: `https://app.abap-studio.is-a.dev/api/webhooks/clerk`
+- Path A URL: `https://abap-studio.akashgupta.is-a.dev/api/webhooks/clerk`
+- Path B URL: `https://abap-studio.eu.org/api/webhooks/clerk`
 - Events: `user.created`, `user.updated`, `user.deleted`
 
 Copy the signing secret into Vercel as `CLERK_WEBHOOK_SECRET` and redeploy. The endpoint

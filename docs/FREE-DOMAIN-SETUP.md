@@ -2,60 +2,88 @@
 
 Clerk production requires a domain with DNS records that we control. A
 `*.vercel.app` hostname cannot be used for the production Clerk domain. This
-document records the two zero-cost paths under consideration.
+document records the zero-cost domain paths, the current blockers and the exact
+owner actions.
 
-The production Clerk instance has already been created for
-`abap-studio.is-a.dev`:
+The production Clerk instance was created for `abap-studio.is-a.dev`:
 
 - Instance: `ins_3LAf6uu766aoTCwlI8nX5faMFQA`
-- Clerk Frontend API: `https://clerk.abap-studio.is-a.dev`
-- Clerk Accounts portal: `https://accounts.abap-studio.is-a.dev`
-- Status: `domain_pending` — all DNS and email DNS records are still missing
+- Status: `domain_pending`
+- The `abap-studio.is-a.dev` domain was **denied** and is not registered
+- The instance therefore must be moved to the final domain, or replaced with a
+  new production instance, before any production keys are added
 
 No production key, webhook secret, password or OTP belongs in this document or
 in Git.
 
-## Current status — is-a.dev root PR denied
+## Current status — 25.10.2026
 
-On 25.10.2026 the owner submitted the root registration as
-[is-a.dev PR #58254](https://github.com/is-a-dev/register/pull/58254). The PR
-template was corrected and all CI checks passed, but maintainer `linuskang`
-closed the PR with `status: denied` and `reason: not dev related`:
+- The root registration `abap-studio.is-a.dev` is dead. The is-a.dev PR #58254
+  was denied as `not dev related`; appeal issue #58258 was **closed** on
+  25.10.2026 at 09:29 UTC.
+- Maintainer `linuskang` closed the appeal with:
 
-> is-a.dev subdomains are only for **software development** related websites
-> (portfolios, projects, dev tools, etc.). Your website doesn't appear to meet
-> this requirement...
+  > Nope. Still doesn't count as dev-related, as we typically only allow
+  > portfolios on root subdomains.
+  >
+  > Create a nested subdomain if you want to add this.
 
-The domain was **not registered**:
+- A nested subdomain needs an owned root. The owner approved a new parallel
+  is-a.dev path:
+  - **Portfolio root:** `akashgupta.is-a.dev`
+  - **Nested application:** `abap-studio.akashgupta.is-a.dev`
+  - **Clerk hostnames:** `clerk.`, `accounts.`, `clkmail.`,
+    `clk._domainkey.` and `clk2._domainkey.` under
+    `abap-studio.akashgupta.is-a.dev`
+- The portfolio is published at <https://akashgupta221.github.io/> and is
+  reachable. It is a completed, responsive developer portfolio with public
+  project links, including ABAP Studio. The root is-a.dev record will redirect
+  to it.
+- The is-a.dev root PR has **not** been submitted yet. The owner must review and
+  submit it manually; the is-a.dev terms prohibit AI-created pull requests.
+- The EU.org request for `abap-studio.eu.org` was submitted on 25.10.2026 and
+  is still awaiting human approval. No nameserver delegation is live:
+  `dig NS abap-studio.eu.org` and `dig SOA abap-studio.eu.org` return no
+  records, so Cloudflare remains pending.
+- **The first fully verified domain wins.** Do not add production Clerk keys,
+  create the webhook or switch the Clerk production domain until DNS, SSL and
+  mail are verified for that domain. Do not switch domains after production
+  users start signing in without a planned cutover.
 
-- `abap-studio.is-a.dev` still redirects to the is-a.dev availability page.
-- No `app` / Clerk / DKIM DNS record exists.
-- The production Clerk instance remains `domain_pending`.
-- No production Clerk key has been added to Vercel.
+Production remains **blocked**. No production Clerk key, `OWNER_EMAIL`,
+`CLERK_WEBHOOK_SECRET` or Google production credential is configured, and no
+production Clerk session has been exercised.
 
-The likely cause is that the PR preview opened the SAP-style logon screen
-(`https://abap-studio-rd9d.vercel.app`), which requires an account and does not
-show the ABAP editor. The root record is a **public redirect to the GitHub
-repository**, not the login-gated app. The project also includes sample
-programs for learning ABAP, which can read as a course even though the product
-is a developer workbench.
+## Verified facts
 
-The owner posted the appeal as
-[issue #58258](https://github.com/is-a-dev/register/issues/58258) on
-25.10.2026. It is open and awaiting a maintainer response. Do not submit a
-second root PR while the appeal is open.
+| Check | Result |
+|---|---|
+| `https://akashgupta221.github.io/` | `200`; title “Akash Gupta — Developer”; 6 project cards; Lighthouse 100 accessibility / 100 best practices / 100 SEO |
+| `https://abap-studio.is-a.dev` | `302` to `https://is-a.dev/available?d=abap-studio` |
+| is-a.dev PR #58254 | closed, `status: denied`, `reason: not dev related`; no domain registered |
+| is-a.dev issue #58258 | closed 25.10.2026 09:29 UTC; maintainer says root is for portfolios and suggests a nested subdomain |
+| `dig NS abap-studio.eu.org` | no records |
+| `dig SOA abap-studio.eu.org` | no records |
+| Clerk production instance | `domain_pending`; bound to the dead `abap-studio.is-a.dev` |
+| Production Vercel env | has `OWNER_USERNAME`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `AUTH_SECRET`; missing `OWNER_EMAIL`, Clerk production keys and `CLERK_WEBHOOK_SECRET` |
+| Production Google OAuth | enabled in Clerk with empty production credentials |
 
-The owner submitted the EU.org request for `abap-studio.eu.org` on
-25.10.2026. It is awaiting human approval. No nameserver delegation is live yet,
-so Cloudflare remains pending and no DNS records can be verified. EU.org
-requires a **non-Gmail** contact address because it warns that Gmail rejects its
-validation mail.
+## Why the first is-a.dev root was denied
 
-## Appeal text for is-a.dev (posted as #58258)
+The root PR preview opened the SAP-style logon screen, which requires an
+account. It did not show the ABAP editor, so the reviewer did not see a
+software-development website. The root record was also a redirect to the GitHub
+repository, not a portfolio.
 
-The owner posted the following text in issue #58258. It is retained here for
-reference in case a maintainer asks for a fresh issue or a corrected PR. Do not
-claim anything that is not true.
+The new root is deliberately **a portfolio**, not the application. The app is a
+nested subdomain. Do not describe the root as an ABAP course or as the login
+page. Do not point the root preview at the Vercel app.
+
+## Denied appeal record
+
+The owner posted the following text in issue #58258. It is retained for history.
+The issue is closed; do not post it again or open another root PR for
+`abap-studio.is-a.dev`.
 
 ```markdown
 ### Your subdomain
@@ -89,65 +117,108 @@ decision and use another provider.
 Thank you.
 ```
 
-If a maintainer asks for a new PR, use the public repository or a public
-project page as the Website Preview, and describe the project as an open-source
-ABAP IDE/dev tool. Do not point the preview only at the SAP logon screen.
+The maintainer's final response is quoted in the status section above. The
+appeal did not change the root policy.
 
-## Recommended: is-a.dev
+## Path A — is-a.dev portfolio root + nested application
 
-`is-a.dev` is a free subdomain service for software projects. It supports the
-CNAME records Clerk needs. The planned layout is:
+### A1. Portfolio site — published
 
-| Hostname | Purpose | Record |
-|---|---|---|
-| `abap-studio.is-a.dev` | Public project redirect | `URL` → GitHub repository |
-| `app.abap-studio.is-a.dev` | ABAP-Studio application | `CNAME` → Vercel |
-| `clerk.abap-studio.is-a.dev` | Clerk Frontend API | `CNAME` → `frontend-api.clerk.services` |
-| `accounts.abap-studio.is-a.dev` | Clerk Accounts portal | `CNAME` → `accounts.clerk.services` |
-| `clkmail.abap-studio.is-a.dev` | Clerk email | `CNAME` → `mail.vedhnrhsrdju.clerk.services` |
-| `clk._domainkey.abap-studio.is-a.dev` | Clerk DKIM | `CNAME` → `dkim1.vedhnrhsrdju.clerk.services` |
-| `clk2._domainkey.abap-studio.is-a.dev` | Clerk DKIM | `CNAME` → `dkim2.vedhnrhsrdju.clerk.services` |
+The portfolio is live at:
 
-The root redirect keeps the root hostname public; the authenticated application
-is on the nested `app` hostname.
+- **URL:** <https://akashgupta221.github.io/>
+- **Repository:** <https://github.com/akashgupta221/akashgupta221.github.io>
+- **Source:** `index.html`, `styles.css` and `favicon.svg`, served directly by
+  GitHub Pages from `main`; no build step or environment variables
 
-### Important is-a.dev rules
+It is a genuine portfolio: it introduces the owner, links to public projects
+(ABAP Studio, Sprint, Currency Converter, Pac-Man, Spotify Clone and Pseudocode
+Basics), lists the tools used, and links back to GitHub. All external links were
+checked and returned `200`.
 
-- The root subdomain must be submitted first. Nested subdomains are only
-  accepted after the root is owned.
-- The service is volunteer-run and is not a permanent registrar. It can revoke
-  a subdomain at any time.
-- The is-a.dev terms explicitly prohibit AI-created pull requests and
-  login-gated **root** hostnames. **Do not submit these files automatically.**
-  The owner must review and submit the pull requests from the
-  `akashgupta221` GitHub account. This document only prepares the content.
+Before submitting the root PR:
 
-### Step 1 — register the root subdomain
+1. Open <https://akashgupta221.github.io/> and confirm it loads without a
+   placeholder.
+2. Do not add a password, login wall or under-construction page.
+3. Keep the ABAP Studio live-app link on the portfolio; that is a project link,
+   not the root preview.
 
-Fork <https://github.com/is-a-dev/register>, create
-`domains/abap-studio.json` with:
+### A2. Register the portfolio root — owner submits manually
+
+Fork <https://github.com/is-a-dev/register> from `akashgupta221` and create
+`domains/akashgupta.json`:
 
 ```json
 {
-  "description": "ABAP Studio - open-source SAP ABAP workbench",
+  "description": "Akash Gupta - developer portfolio",
   "owner": {
     "username": "akashgupta221"
   },
   "records": {
-    "URL": "https://github.com/akashgupta221/ABAP-Studio"
+    "URL": "https://akashgupta221.github.io/"
   }
 }
 ```
 
-Commit it, open a pull request titled `Register abap-studio.is-a.dev`, and wait
-for the maintainers to merge it. Check the pull request for requested changes.
+Commit the file and open a pull request titled:
 
-### Step 2 — add the application and Clerk records
+```text
+Register akashgupta.is-a.dev
+```
 
-After the root pull request is merged, create these files in the same fork and
-submit one pull request. Each file is a separate is-a.dev domain record.
+Use the repository's pull-request template exactly. Keep the template comments;
+check every requirement box and fill the two marked sections:
 
-`domains/app.abap-studio.json`:
+```markdown
+# Website Preview
+
+<!-- WEBSITE_PREVIEW_START -->
+https://akashgupta221.github.io/
+<!-- WEBSITE_PREVIEW_END -->
+
+# Website Purpose
+
+<!-- WEBSITE_PURPOSE_START -->
+Personal developer portfolio for Akash Gupta. It showcases public software
+projects and experiments, including ABAP Studio, a browser-based ABAP
+development tool. The root domain is a public redirect to this portfolio.
+<!-- WEBSITE_PURPOSE_END -->
+```
+
+Important:
+
+- The root purpose is the **portfolio**. Do not submit the app as the root
+  purpose and do not use the login-gated app as the preview.
+- The root must be merged before any nested `akashgupta.is-a.dev` record is
+  submitted.
+- Do not submit a second `abap-studio.is-a.dev` root PR. That name is closed.
+- Do not automate or bulk-submit the PR. The is-a.dev terms prohibit AI-created
+  pull requests; the owner must review and submit it.
+
+If the maintainer asks for a different root name, use the same portfolio and
+change only the JSON filename/domain. Do not reopen the old appeal.
+
+### A3. Register the nested app and Clerk records — after the root merge
+
+After `akashgupta.is-a.dev` is merged, create these files in the same fork and
+submit **one** pull request. The application is the nested domain itself; there
+is no extra `app.` label.
+
+| File | Hostname | Record |
+|---|---|---|
+| `domains/abap-studio.akashgupta.json` | `abap-studio.akashgupta.is-a.dev` | `CNAME` → `cname.vercel-dns.com` |
+| `domains/clerk.abap-studio.akashgupta.json` | `clerk.abap-studio.akashgupta.is-a.dev` | `CNAME` → `frontend-api.clerk.services` |
+| `domains/accounts.abap-studio.akashgupta.json` | `accounts.abap-studio.akashgupta.is-a.dev` | `CNAME` → `accounts.clerk.services` |
+| `domains/clkmail.abap-studio.akashgupta.json` | `clkmail.abap-studio.akashgupta.is-a.dev` | `CNAME` → `mail.vedhnrhsrdju.clerk.services` |
+| `domains/clk._domainkey.abap-studio.akashgupta.json` | `clk._domainkey.abap-studio.akashgupta.is-a.dev` | `CNAME` → `dkim1.vedhnrhsrdju.clerk.services` |
+| `domains/clk2._domainkey.abap-studio.akashgupta.json` | `clk2._domainkey.abap-studio.akashgupta.is-a.dev` | `CNAME` → `dkim2.vedhnrhsrdju.clerk.services` |
+
+The Clerk targets above are the current values for instance
+`ins_3LAf6uu766aoTCwlI8nX5faMFQA`. Re-check them in the Clerk dashboard before
+submitting; a new production instance can have different targets.
+
+Example JSON for the application domain:
 
 ```json
 {
@@ -161,7 +232,7 @@ submit one pull request. Each file is a separate is-a.dev domain record.
 }
 ```
 
-`domains/clerk.abap-studio.json`:
+Example JSON for the Clerk Frontend API:
 
 ```json
 {
@@ -175,79 +246,29 @@ submit one pull request. Each file is a separate is-a.dev domain record.
 }
 ```
 
-`domains/accounts.abap-studio.json`:
+Use the same shape for the other four records. Suggested PR title:
 
-```json
-{
-  "description": "ABAP Studio Clerk accounts",
-  "owner": {
-    "username": "akashgupta221"
-  },
-  "records": {
-    "CNAME": "accounts.clerk.services"
-  }
-}
+```text
+Register ABAP Studio and Clerk records under akashgupta.is-a.dev
 ```
 
-`domains/clkmail.abap-studio.json`:
+If Vercel asks for a `_vercel` TXT record after the application domain is added,
+add it as a separate nested file using the exact name and value shown by Vercel.
 
-```json
-{
-  "description": "ABAP Studio Clerk mail",
-  "owner": {
-    "username": "akashgupta221"
-  },
-  "records": {
-    "CNAME": "mail.vedhnrhsrdju.clerk.services"
-  }
-}
-```
-
-`domains/clk._domainkey.abap-studio.json`:
-
-```json
-{
-  "description": "ABAP Studio Clerk DKIM 1",
-  "owner": {
-    "username": "akashgupta221"
-  },
-  "records": {
-    "CNAME": "dkim1.vedhnrhsrdju.clerk.services"
-  }
-}
-```
-
-`domains/clk2._domainkey.abap-studio.json`:
-
-```json
-{
-  "description": "ABAP Studio Clerk DKIM 2",
-  "owner": {
-    "username": "akashgupta221"
-  },
-  "records": {
-    "CNAME": "dkim2.vedhnrhsrdju.clerk.services"
-  }
-}
-```
-
-If Vercel asks for a `_vercel` TXT record after the application domain is
-added, add it as a separate nested file using the exact name and value shown by
-Vercel.
-
-### Step 3 — verify DNS
-
-After the records are published:
+After the records are published, verify:
 
 ```bash
-dig +short clerk.abap-studio.is-a.dev CNAME
-dig +short accounts.abap-studio.is-a.dev CNAME
-dig +short clkmail.abap-studio.is-a.dev CNAME
-dig +short clk._domainkey.abap-studio.is-a.dev CNAME
-dig +short clk2._domainkey.abap-studio.is-a.dev CNAME
+dig +short abap-studio.akashgupta.is-a.dev CNAME
+dig +short clerk.abap-studio.akashgupta.is-a.dev CNAME
+dig +short accounts.abap-studio.akashgupta.is-a.dev CNAME
+dig +short clkmail.abap-studio.akashgupta.is-a.dev CNAME
+dig +short clk._domainkey.abap-studio.akashgupta.is-a.dev CNAME
+dig +short clk2._domainkey.abap-studio.akashgupta.is-a.dev CNAME
 ```
 
-Then run:
+Then point the Clerk production instance at `abap-studio.akashgupta.is-a.dev`
+(change the domain if Clerk permits it, otherwise create a new production
+instance) and run:
 
 ```bash
 bunx clerk deploy status --wait
@@ -256,7 +277,18 @@ bunx clerk deploy status --wait
 Do not add production Clerk keys to Vercel until the domain reports `dns`,
 `ssl` and `mail` as verified.
 
-## Backup: EU.org
+### A4. Values for Path A
+
+| Item | Value |
+|---|---|
+| Application origin | `https://abap-studio.akashgupta.is-a.dev` |
+| Vercel domain | `abap-studio.akashgupta.is-a.dev` |
+| Clerk Frontend API | `https://clerk.abap-studio.akashgupta.is-a.dev` |
+| Clerk Accounts portal | `https://accounts.abap-studio.akashgupta.is-a.dev` |
+| Webhook | `https://abap-studio.akashgupta.is-a.dev/api/webhooks/clerk` |
+| Google OAuth redirect URI | `https://clerk.abap-studio.akashgupta.is-a.dev/v1/oauth_callback` |
+
+## Path B — EU.org
 
 EU.org has provided free domain delegations since 1996. It is slower but more
 durable than a volunteer subdomain service. A direct `abap-studio.eu.org`
@@ -299,26 +331,82 @@ registrations, so Cloudflare's free DNS can host the records.
    Check the non-Gmail inbox and spam folder. A second identical request that
    reports “request already exists” means the first one is still pending.
 6. After approval, confirm the Cloudflare zone becomes **Active**. Then create
-   the same application and Clerk CNAME records listed above, plus any Vercel
+   the application and Clerk CNAME records listed below, plus any Vercel
    verification TXT record.
 7. Run `bunx clerk deploy status --wait` only after the records resolve.
 
-EU.org should remain a backup until the is-a.dev path is either verified or
-exhausted. The existing Clerk production instance is configured for
-`abap-studio.is-a.dev`; switching to `abap-studio.eu.org` is not automatic and
-may require a Clerk production-domain change or a new production instance. Do
-not add production keys or switch the domain after users have started signing
-in without a planned cutover.
+### Path B DNS layout
+
+| Hostname | Purpose | Record |
+|---|---|---|
+| `abap-studio.eu.org` | ABAP Studio application | `CNAME` → `cname.vercel-dns.com` |
+| `clerk.abap-studio.eu.org` | Clerk Frontend API | `CNAME` → `frontend-api.clerk.services` |
+| `accounts.abap-studio.eu.org` | Clerk Accounts portal | `CNAME` → `accounts.clerk.services` |
+| `clkmail.abap-studio.eu.org` | Clerk email | `CNAME` → `mail.vedhnrhsrdju.clerk.services` |
+| `clk._domainkey.abap-studio.eu.org` | Clerk DKIM | `CNAME` → `dkim1.vedhnrhsrdju.clerk.services` |
+| `clk2._domainkey.abap-studio.eu.org` | Clerk DKIM | `CNAME` → `dkim2.vedhnrhsrdju.clerk.services` |
+
+### Path B values
+
+| Item | Value |
+|---|---|
+| Application origin | `https://abap-studio.eu.org` |
+| Vercel domain | `abap-studio.eu.org` |
+| Clerk Frontend API | `https://clerk.abap-studio.eu.org` |
+| Clerk Accounts portal | `https://accounts.abap-studio.eu.org` |
+| Webhook | `https://abap-studio.eu.org/api/webhooks/clerk` |
+| Google OAuth redirect URI | `https://clerk.abap-studio.eu.org/v1/oauth_callback` |
+
+EU.org remains a parallel path, not an automatic fallback. If it is approved,
+confirm the Cloudflare zone and DNS first; then decide whether to move the
+Clerk production instance or create a new one. Do not add keys to two live
+production instances without a cutover plan.
+
+## Choosing the final domain
+
+1. **First fully verified domain wins.** A domain is ready only when its
+   application CNAME resolves, Vercel has issued the certificate, and Clerk
+   reports `dns`, `ssl` and `mail` verified.
+2. If both become ready before any production users sign in, ask the owner to
+   choose. `abap-studio.eu.org` is shorter and cleaner; the nested
+   `abap-studio.akashgupta.is-a.dev` is the faster is-a.dev path.
+3. Once production users sign in, do not switch domains without a planned
+   identity migration. Clerk identities, webhook URLs and OAuth redirect URIs
+   are tied to the chosen host.
+4. The existing production instance is bound to the dead
+   `abap-studio.is-a.dev`. Change its domain or create a new production
+   instance **before** adding keys. Do not run the interactive creation wizard
+   again for `abap-studio.is-a.dev`.
+5. Keep `abap-studio.is-a.dev` unregistered. The portfolio root is
+   `akashgupta.is-a.dev`; the app is nested under it.
 
 ## After DNS is live
 
-1. Add `app.abap-studio.is-a.dev` to the `abap-studio-rd9d` Vercel project and
-   verify its certificate.
-2. Add the production Clerk keys, `CLERK_WEBHOOK_SECRET`, `OWNER_EMAIL`,
+1. Add the chosen application hostname to the `abap-studio-rd9d` Vercel project
+   and verify its certificate:
+   - Path A: `abap-studio.akashgupta.is-a.dev`
+   - Path B: `abap-studio.eu.org`
+2. Move/create the Clerk production instance for that hostname. Confirm its
+   five CNAME targets in the Clerk dashboard; do not reuse stale targets.
+3. Add the production Clerk keys, `CLERK_WEBHOOK_SECRET`, `OWNER_EMAIL`,
    `AUTH_SECRET` and the fallback flags to Vercel production.
-3. Create the Clerk webhook at
-   `https://app.abap-studio.is-a.dev/api/webhooks/clerk`.
-4. Configure the production Google OAuth client with the redirect URI
-   `https://clerk.abap-studio.is-a.dev/v1/oauth_callback`.
-5. Set Clerk paths to `/sign-in`, `/sign-up`, `/` and `/`.
-6. Complete the checks in `docs/CLERK-SETUP.md` before merging or accepting P1.
+4. Create the Clerk webhook:
+   - Path A: `https://abap-studio.akashgupta.is-a.dev/api/webhooks/clerk`
+   - Path B: `https://abap-studio.eu.org/api/webhooks/clerk`
+5. Configure the production Google OAuth client with the matching redirect URI:
+   - Path A: `https://clerk.abap-studio.akashgupta.is-a.dev/v1/oauth_callback`
+   - Path B: `https://clerk.abap-studio.eu.org/v1/oauth_callback`
+6. Set Clerk paths to `/sign-in`, `/sign-up`, `/` and `/`.
+7. Complete the checks in `docs/CLERK-SETUP.md` before merging or accepting P1.
+
+## Owner action checklist
+
+- [x] Publish the portfolio at <https://akashgupta221.github.io/> (verified).
+- [ ] Submit the root PR `Register akashgupta.is-a.dev` from
+      `akashgupta221`; use the portfolio preview and purpose above.
+- [ ] After the root merges, submit the nested app/Clerk PR.
+- [ ] Monitor the EU.org contact inbox (non-Gmail) and the Cloudflare zone.
+- [ ] Choose the first fully verified domain.
+- [ ] Move/create the Clerk production instance for that domain.
+- [ ] Add production keys, webhook, `OWNER_EMAIL` and Google OAuth.
+- [ ] Complete the production verification checklist and only then accept P1.
