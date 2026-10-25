@@ -40,15 +40,22 @@ in Git.
   project links, including ABAP Studio. The root is-a.dev record will redirect
   to it.
 - The owner fixed the root PR
-  [is-a.dev PR #58327](https://github.com/is-a-dev/register/pull/58327). It now
-  changes exactly one file, `domains/akashgupta.json` (9 additions), with no
-  blank placeholder files and no nested `domains/domains` directory. The
-  `Template`, `Tests`, `Label` and AI-honeypot checks all pass, and the
-  `reason: incomplete pr` label is gone. GitHub reports `MERGEABLE`; the only
-  remaining gate is the required code-owner review, which is normal. Do not
-  comment or ping maintainers; wait for review.
-- The is-a.dev terms prohibit AI-created pull requests. The owner made the fix;
-  this assistant did not edit the fork or the PR.
+  [is-a.dev PR #58327](https://github.com/is-a-dev/register/pull/58327). It
+  changed exactly one file, `domains/akashgupta.json` (9 additions), with no
+  blank placeholder files and no nested `domains/domains` directory. All checks
+  passed and the PR was **merged** on 25.10.2026 at 13:01 UTC. The root is live:
+  `https://akashgupta.is-a.dev` returns `301` to
+  `https://akashgupta221.github.io/`, which returns `200`.
+- The is-a.dev reviewbot sends a generic GitHub Pages message after every merge.
+  It does **not** apply to this root: `akashgupta.json` uses a `URL` record, not
+  a GitHub Pages CNAME. Do not add `akashgupta.is-a.dev` as a GitHub Pages custom
+  domain; the root redirect already works.
+- The six nested records for the app and Clerk are prepared in
+  `is-a-dev-akashgupta/nested/domains/`. They passed the local is-a.dev test
+  suite (13/13) and the PR template check. The owner must submit the nested PR
+  manually because is-a.dev prohibits AI-created pull requests.
+- The is-a.dev terms prohibit AI-created pull requests. The owner made the root
+  fix; this assistant did not edit the fork or the PR.
 - The EU.org request for `abap-studio.eu.org` was submitted on 25.10.2026 and
   is still awaiting human approval. No nameserver delegation is live:
   `dig NS abap-studio.eu.org` and `dig SOA abap-studio.eu.org` return no
@@ -67,6 +74,9 @@ production Clerk session has been exercised.
 | Check | Result |
 |---|---|
 | `https://akashgupta221.github.io/` | `200`; title “Akash Gupta — Developer”; 6 project cards; Lighthouse 100 accessibility / 100 best practices / 100 SEO |
+| `https://akashgupta.is-a.dev` | `301` to `https://akashgupta221.github.io/`; final response `200` |
+| is-a.dev PR #58327 | merged 25.10.2026 13:01 UTC; one file, 9 additions; all checks passed |
+| Nested app/Clerk records | six files prepared in `is-a-dev-akashgupta/nested/domains/`; local tests 13/13 and template check pass; PR not submitted |
 | `https://abap-studio.is-a.dev` | `302` to `https://is-a.dev/available?d=abap-studio` |
 | is-a.dev PR #58254 | closed, `status: denied`, `reason: not dev related`; no domain registered |
 | is-a.dev issue #58258 | closed 25.10.2026 09:29 UTC; maintainer says root is for portfolios and suggests a nested subdomain |
@@ -207,19 +217,19 @@ Important:
 If the maintainer asks for a different root name, use the same portfolio and
 change only the JSON filename/domain. Do not reopen the old appeal.
 
-### PR #58327 is ready for review
+### PR #58327 is merged
 
-The root PR now changes exactly one file:
+The root PR changed exactly one file:
 
 ```text
 domains/akashgupta.json
 ```
 
-It contains 9 additions and no blank placeholder files, no nested
-`domains/domains` directory and no denied `abap-studio.json`. The PR template is
+It contained 9 additions and no blank placeholder files, no nested
+`domains/domains` directory and no denied `abap-studio.json`. The PR template was
 restored.
 
-Latest checks for head
+Final checks for head
 `55db8a1c78e7495cc097584562bd61387f279479`:
 
 | Check | Result |
@@ -229,23 +239,28 @@ Latest checks for head
 | `PR / Label` | success |
 | `Filter out AI-generated PRs` | success |
 
-The `reason: incomplete pr` label has been removed; only the normal `domain`
-label remains. GitHub reports `mergeable: MERGEABLE` and
-`mergeStateStatus: BLOCKED`; the only remaining gate is the required code-owner
-review. Do not comment or ping maintainers. Wait for review.
+The PR was merged on 25.10.2026 at 13:01 UTC. The root is live:
+`https://akashgupta.is-a.dev` returns `301` to
+`https://akashgupta221.github.io/`, which returns `200`.
+
+The reviewbot's GitHub Pages instructions are generic. Do **not** add
+`akashgupta.is-a.dev` as a GitHub Pages custom domain; the root JSON uses a
+`URL` record and the redirect already works.
 
 The one-file tree and the restored template were also verified locally against
 the is-a.dev repository: all 13 tests passed and
 `util/check-pr-template.cjs` reported `PR template validation passed`.
 
-If the PR is edited again, keep exactly one file (`domains/akashgupta.json`) and
-restore the full template from `PR-BODY.md` if necessary.
+### A3. Register the nested app and Clerk records — root merged
 
-### A3. Register the nested app and Clerk records — after the root merge
+`akashgupta.is-a.dev` is merged and live. The six nested files are prepared in
+`is-a-dev-akashgupta/nested/domains/` and the matching PR body is in
+`is-a-dev-akashgupta/nested/PR-BODY.md`. Submit **one** pull request. The
+application is the nested domain itself; there is no extra `app.` label.
 
-After `akashgupta.is-a.dev` is merged, create these files in the same fork and
-submit **one** pull request. The application is the nested domain itself; there
-is no extra `app.` label.
+The prepared files passed the local is-a.dev suite (13/13) and the template
+check. The owner must submit the PR manually because is-a.dev prohibits
+AI-created pull requests.
 
 | File | Hostname | Record |
 |---|---|---|
@@ -291,8 +306,17 @@ Example JSON for the Clerk Frontend API:
 Use the same shape for the other four records. Suggested PR title:
 
 ```text
-Register ABAP Studio and Clerk records under akashgupta.is-a.dev
+Register ABAP Studio nested domains
 ```
+
+The exact submission commands and compare link are in
+`is-a-dev-akashgupta/nested/README.md`. The PR must show exactly six added
+files.
+
+The nested preview is `https://abap-studio-rd9d.vercel.app/`. It opens on the
+SAP-style logon screen; the PR purpose explains that registration opens the SE38
+workbench. The root is the approved portfolio, so the software-related root
+requirement is already satisfied.
 
 If Vercel asks for a `_vercel` TXT record after the application domain is added,
 add it as a separate nested file using the exact name and value shown by Vercel.
@@ -444,11 +468,12 @@ production instances without a cutover plan.
 ## Owner action checklist
 
 - [x] Publish the portfolio at <https://akashgupta221.github.io/> (verified).
-- [x] Fix open root PR #58327: the correct file is at
-      `domains/akashgupta.json`, the blank placeholder files and
-      `domains/domains` directory are gone, and all checks pass. Wait for the
-      code-owner review.
-- [ ] After the root merges, submit the nested app/Clerk PR.
+- [x] Fix and merge root PR #58327 (verified: one file, all checks passed,
+      merged 25.10.2026; `https://akashgupta.is-a.dev` redirects to the portfolio
+      and returns `200`).
+- [ ] Submit the prepared nested app/Clerk PR (six files in
+      `is-a-dev-akashgupta/nested/domains/`; use `nested/PR-BODY.md`; the owner
+      must submit it manually).
 - [ ] Monitor the EU.org contact inbox (non-Gmail) and the Cloudflare zone.
 - [ ] Choose the first fully verified domain.
 - [ ] Move/create the Clerk production instance for that domain.

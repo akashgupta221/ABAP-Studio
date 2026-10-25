@@ -71,11 +71,12 @@ practice sandbox**; training examples are shared and read-only.
   owner/non-owner admin flows are verified with disposable test users; password, phone and
   username sign-in are disabled. The original production root `abap-studio.is-a.dev` was
   denied and its appeal is closed. A portfolio is live at
-  <https://akashgupta221.github.io/>; the new is-a.dev path is a portfolio root at
-  `akashgupta.is-a.dev` plus the nested app `abap-studio.akashgupta.is-a.dev`. The EU.org
-  request is still awaiting approval. DNS, production Google OAuth, keys and webhooks also
-  remain pending, so production sessions are unverified. The built-in scrypt logon remains
-  a temporary fallback during cutover. Guides:
+  <https://akashgupta221.github.io/>; the new is-a.dev root `akashgupta.is-a.dev` is
+  merged and live, redirecting to the portfolio. The six nested app/Clerk records are
+  prepared and locally validated, but the nested PR is not submitted. The EU.org request
+  is still awaiting approval. DNS, production Google OAuth, keys and webhooks also remain
+  pending, so production sessions are unverified. The built-in scrypt logon remains a
+  temporary fallback during cutover. Guides:
   [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md),
   [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) and
   [`docs/GOOGLE-OAUTH-SETUP.md`](docs/GOOGLE-OAUTH-SETUP.md).
@@ -185,10 +186,10 @@ isolation run passed, and the owner reviewed `/admin` (**P0 accepted**). P1 Cler
 implemented on `clerk-migration` and passes the local gates; development Email OTP,
 owner/non-owner mapping, admin ban/unban/revoke/delete and client sign-out were verified
 with disposable test users. The original production root was denied and the appeal is
-closed; a portfolio is live at <https://akashgupta221.github.io/> and the new is-a.dev path
-is a portfolio root at `akashgupta.is-a.dev` plus the nested app
-`abap-studio.akashgupta.is-a.dev`. The root and nested PRs, EU.org approval, DNS, Google
-OAuth, keys and webhooks remain pending, so P1 is **not deployed or accepted**. Read
+closed; a portfolio is live at <https://akashgupta221.github.io/> and the new is-a.dev root
+`akashgupta.is-a.dev` is merged and redirects to it. The six nested app/Clerk records are
+prepared and locally validated; the nested PR, EU.org approval, DNS, Google OAuth, keys and
+webhooks remain pending, so P1 is **not deployed or accepted**. Read
 [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) and
 [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) before the cutover. The ownership migration
 changes who can see legacy programs and invalidates old sessions; the production

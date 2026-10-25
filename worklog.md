@@ -668,3 +668,39 @@ Stage Summary:
 - The only remaining gate is the required code-owner review. Do not comment or ping maintainers.
 - The nested app/Clerk PR remains blocked until the root PR is merged. EU.org remains pending.
 - P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
+
+---
+
+Task ID: 28
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Confirm the merged root and prepare the nested is-a.dev app/Clerk PR
+
+Work Log:
+- Confirmed is-a.dev PR #58327 is **merged** (`mergedAt: 2026-10-25T13:01:33Z`, merge commit `72f47c1ab38e9af9a7e6138730afb915d468aed8`). The merged tree contains only `domains/akashgupta.json`.
+- Verified `https://akashgupta.is-a.dev` resolves; it returns `301` to `https://akashgupta221.github.io/`, which returns `200`.
+- The reviewbot sends a generic GitHub Pages message after every merge. It does not apply to this root: `akashgupta.json` uses a `URL` record. Do not add `akashgupta.is-a.dev` as a GitHub Pages custom domain.
+- Prepared the six nested records in `is-a-dev-akashgupta/nested/domains/`:
+  - `abap-studio.akashgupta.json` -> `cname.vercel-dns.com`
+  - `clerk.abap-studio.akashgupta.json` -> `frontend-api.clerk.services`
+  - `accounts.abap-studio.akashgupta.json` -> `accounts.clerk.services`
+  - `clkmail.abap-studio.akashgupta.json` -> `mail.vedhnrhsrdju.clerk.services`
+  - `clk._domainkey.abap-studio.akashgupta.json` -> `dkim1.vedhnrhsrdju.clerk.services`
+  - `clk2._domainkey.abap-studio.akashgupta.json` -> `dkim2.vedhnrhsrdju.clerk.services`
+- Prepared `is-a-dev-akashgupta/nested/PR-BODY.md` with the full is-a.dev template and `is-a-dev-akashgupta/nested/README.md` with exact submission commands.
+- The preview is `https://abap-studio-rd9d.vercel.app/`; it opens on the SAP-style logon screen. The PR purpose explains that registration opens the SE38 workbench, and the approved root is the portfolio, so the software-related root requirement is already satisfied.
+- The owner must confirm the three Clerk mail/DKIM targets in the production instance dashboard before submitting; the app, Clerk frontend and accounts targets are stable.
+- The owner must submit the nested PR manually because is-a.dev prohibits AI-created PRs. No fork branch, PR, DNS record, Clerk setting or Vercel environment was changed.
+
+Verification:
+- `gh pr view 58327` -> `state: MERGED`, `mergedAt: 2026-10-25T13:01:33Z`
+- `curl -I https://akashgupta.is-a.dev` -> `301` to `https://akashgupta221.github.io/`; final `200`
+- `dig @1.1.1.1 akashgupta.is-a.dev` -> Cloudflare A records; DNS propagated
+- Fresh is-a.dev clone + six nested files -> 13/13 tests passed
+- `util/check-pr-template.cjs` with `nested/PR-BODY.md` -> `PR template validation passed`
+- No production Clerk key, DNS record, Vercel env or Clerk domain was changed
+
+Stage Summary:
+- Root domain `akashgupta.is-a.dev` is registered, live and redirecting to the portfolio.
+- The nested app/Clerk PR is prepared and locally validated, but **not submitted**. The owner must submit it manually.
+- After the nested PR merges: add the Vercel domain, move/create the Clerk production instance, verify all five Clerk CNAMEs, set production env/webhook/OWNER_EMAIL, configure Google OAuth, and run the production checks.
+- P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
