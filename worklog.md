@@ -648,8 +648,16 @@ Verification:
 - Local `util/check-pr-template.cjs` with the corrected PR body -> `PR template validation passed`
 - No fork branch, PR body, domain DNS, Clerk setting or Vercel environment was changed
 
+Follow-up (same day, after the owner edited the PR):
+- New head `296f17cc3036d0be4c1bde8872eea13d94d6af9f`. The correct file now exists at `domains/akashgupta.json`, and the PR description is restored.
+- The latest `Template` check is **success** at `2026-10-25T11:37:44Z`. The PR body is no longer the blocker.
+- The two wrong files were **emptied, not deleted**. Both `domains/abap-studio.json` and `domains/domains/akashgupta.json` are 1-byte files containing only a newline (`sha 8b137891791fe96927ad78e64b0aad7bded08bdc`).
+- `Tests` still fail because `domains` is a directory (`File does not have .json extension` / `EISDIR`). `Label` fails at `Check for NS records` with `SyntaxError: Unexpected end of JSON input` when it parses the blank placeholder file.
+- The PR diff still shows three added files. It must show only `domains/akashgupta.json` (9 additions). The owner must use the GitHub **trash-can/Delete file** action or `git rm`; using the editor to delete the contents leaves an empty file.
+- The one-file tree and the restored template were verified locally: 13 is-a.dev tests pass and `util/check-pr-template.cjs` reports `PR template validation passed`.
+
 Stage Summary:
-- PR #58327 is open but not mergeable. The fix is mechanical: correct the file path, remove the stale denied domain, and restore the full PR template.
-- After the fix, the `Template` and `Tests` checks should re-run automatically. Do not comment or ping maintainers.
+- PR #58327 is open but not mergeable. The template is fixed; the only remaining blocker is that the two wrong files are blank placeholders instead of being deleted.
+- After deleting the two files (trash-can or `git rm`) and committing, `Tests` and `Label` should pass. Do not comment or ping maintainers.
 - The nested app/Clerk PR remains blocked until the root PR is merged. EU.org remains pending.
 - P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
