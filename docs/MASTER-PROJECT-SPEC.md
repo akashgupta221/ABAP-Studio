@@ -22,7 +22,7 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 | Styling | Tailwind CSS 4 + SAP GUI-inspired CSS |
 | Database | Prisma 6.19; SQLite locally; Turso/libSQL when `TURSO_DATABASE_URL` is set |
 | ABAP engine | Custom tokenizer, parser and interpreter in `src/lib/abap/` |
-| Authentication | **P1 Clerk code** (Email OTP + Google) with verified-email account linking and database-authoritative roles; production Clerk is **not configured**. Legacy scrypt/HMAC fallback remains during cutover. |
+| Authentication | **P1 Clerk code** (Email OTP + Google) with verified-email account linking and database-authoritative roles. A production instance exists; DNS, Google OAuth and production keys remain pending. Legacy scrypt/HMAC fallback remains during cutover. |
 | Authorization | Server-side `OWNER` / `USER` roles, per-program ownership, per-user favorites/sandbox |
 | Administration | Owner-only `/admin` dashboard and `/api/admin/*` |
 | Deployment | Vercel Hobby + Turso free; `git push` deploys; additive schema migration at runtime |
@@ -83,7 +83,7 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 
 | Gap | Evidence | Impact / next action |
 |---|---|---|
-| **Clerk production cutover not complete** | P1 code is implemented on `clerk-migration`; local lint/26 unit/52 API/build gates pass. The selected “ABAP Studio” app has Email OTP + Google enabled and password/phone/username/Facebook/GitHub disabled. Email OTP, owner/non-owner mapping, admin ban/unban/revoke/delete, audit and client sign-out were verified with disposable development test users on a throwaway database. `clerk deploy status` reports `not_started`; there is no production instance/domain, production keys are not in Vercel, `CLERK_WEBHOOK_SECRET` is absent, and Google OAuth, webhook delivery and a production Clerk session remain unexercised. | Owner must run the interactive `clerk deploy` with a DNS-controlled domain, set production keys and webhook secret, map the non-owner accounts, and complete the browser checks in `docs/CLERK-SETUP.md`. P1 is **not accepted**. |
+| **Clerk production cutover not complete** | P1 code is implemented on `clerk-migration`; local lint/26 unit/52 API/build gates pass. The selected “ABAP Studio” app has Email OTP + Google enabled and password/phone/username/Facebook/GitHub disabled. Email OTP, owner/non-owner mapping, admin ban/unban/revoke/delete, audit and client sign-out were verified with disposable development test users on a throwaway database. A production instance (`ins_3LAf6uu766aoTCwlI8nX5faMFQA`) now exists for `abap-studio.is-a.dev`, cloned from development. `clerk deploy status` reports `domain_pending`: all five CNAMEs, SSL and email DNS are missing; Google OAuth has no production credentials; production keys are not in Vercel; `CLERK_WEBHOOK_SECRET` is absent. No production Clerk session has been exercised. | The owner must submit the is-a.dev root and nested registration PRs manually (the free-domain plan and exact files are in `docs/FREE-DOMAIN-SETUP.md`), add DNS, configure Google OAuth, set production keys/webhook secret, map non-owner accounts, and complete the browser checks in `docs/CLERK-SETUP.md`. P1 is **not accepted**. |
 | **Modern ABAP environment not implemented** | No environment switch, CDS/RAP/AMDP runtime or capability matrix | Specification §10 is not started. Scope needs owner approval. |
 | **Legacy production favorites: verified empty** | Dry-run run `40111257243` found the old global `Favorite` table empty. | No migration is needed. The guarded workflow is retained for future databases; no data was copied or deleted. |
 | **`AUTH_SECRET` rotation optional** | Production health reports `hasAuthSecret: true`; the signer fails closed if it is missing | The existing secret is working. Rotation is optional and invalidates all sessions (expected). |
@@ -218,7 +218,7 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 | Owner spec § | Requirement | Status | Evidence / remaining work |
 |---|---|---|---|
 | 6 | Owner questions and decisions | Ongoing | Clerk production domain/keys, Modern ABAP scope, production timing and legacy-favorite policy are listed in §4. |
-| 7 | Clerk: email OTP, Google, protected routes, provisioning, webhooks, migration | **Partial (development verified; production blocked)** | Clerk pages, provider, session resolution, verified-email linking, owner gate integration, admin ban/unban/revoke/delete, signed webhook and legacy cutover modes are implemented on `clerk-migration`. Local lint/26 unit/52 API/build gates pass. Development Email OTP, owner/non-owner mapping, admin actions, audit and client sign-out were verified with disposable test users, then removed. Google OAuth, webhook delivery, production instance/domain/keys and production interactive sign-in are still missing; legacy fallback remains active. **P1 not accepted.** |
+| 7 | Clerk: email OTP, Google, protected routes, provisioning, webhooks, migration | **Partial (development verified; production domain pending)** | Clerk pages, provider, session resolution, verified-email linking, owner gate integration, admin ban/unban/revoke/delete, signed webhook and legacy cutover modes are implemented on `clerk-migration`. Local lint/26 unit/52 API/build gates pass. Development Email OTP, owner/non-owner mapping, admin actions, audit and client sign-out were verified with disposable test users, then removed. A cloned production instance now exists for `abap-studio.is-a.dev`; DNS, production Google OAuth, Vercel keys/webhook and production interactive sign-in are still missing; legacy fallback remains active. **P1 not accepted.** |
 | 8 | Owner-only admin dashboard: metrics, search, suspend/reactivate, sessions, deletion, audit | **Done (deployed and live gate verified)** | `/admin` and `/api/admin/*` pass in production (`owner=true`, admin API/page `200`); controlled suspend, session revocation, reactivation and deletion checks passed. |
 | 9 | Preserve and test the Standard ABAP environment | **Done (current scope)** | Screenshot fidelity preserved; automated tests execute all seeded examples. |
 | 10 | Separate Modern ABAP environment + honest capability matrix | **Missing** | Needs approved executable / validated-or-simulated / unsupported scope. |
@@ -346,37 +346,46 @@ The owner selected the **ABAP Studio** Clerk application
 (`app_3Ks7MMboysX2gIBJhfURlf16Pwq`) and approved verified-email mapping with a phased
 cutover. The development instance has Email OTP and Google enabled; password, phone,
 username, Facebook and GitHub are disabled. P1 code is on `clerk-migration` and passes
-the local gates, but none of the following production steps is complete:
+the local gates. A production instance
+(`ins_3LAf6uu766aoTCwlI8nX5faMFQA`) has been created and cloned from development, but
+production is still blocked on the domain, Google OAuth, keys and webhook:
 
-1. **Production domain + Clerk instance.** Production Clerk requires a domain whose DNS
-   records the owner controls; the current `*.vercel.app` address is not sufficient.
-   Run `npx clerk@latest deploy` in a normal interactive terminal, add the displayed DNS
-   records, configure production Google OAuth credentials, and resume until
-   `clerk deploy status` reports the production instance/domain ready. This step cannot be
-   completed by the agent because it needs a human terminal and DNS access.
-2. **Vercel production environment.** Add the production
+1. **Production domain + DNS.** Production Clerk requires a domain whose DNS records the
+   owner controls; the current `*.vercel.app` address is not sufficient. The selected
+   zero-cost path is `abap-studio.is-a.dev` (EU.org is the slower backup). The owner must
+   submit the root and nested is-a.dev pull requests manually because is-a.dev prohibits
+   AI-created pull requests. Exact files and DNS values are in
+   `docs/FREE-DOMAIN-SETUP.md`. The production instance is already created, so do not run
+   the interactive creation wizard again; use `bunx clerk deploy status --wait` after DNS.
+2. **Google OAuth.** Create a free Google Cloud OAuth client for
+   `https://clerk.abap-studio.is-a.dev/v1/oauth_callback` and install the client ID and
+   secret in the Clerk production instance. The production config currently has Google
+   enabled with empty credentials.
+3. **Vercel production environment.** Add the production
    `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`,
    `OWNER_EMAIL`, and the existing `AUTH_SECRET`; set `LEGACY_AUTH_MODE=fallback` and
    `NEXT_PUBLIC_LEGACY_AUTH_MODE=fallback` for the first cutover. Never use development
-   keys in production.
-3. **Webhook.** Create `https://<production-domain>/api/webhooks/clerk` for
+   keys in production. Add `app.abap-studio.is-a.dev` to the Vercel project and verify its
+   certificate.
+4. **Webhook.** Create `https://app.abap-studio.is-a.dev/api/webhooks/clerk` for
    `user.created`, `user.updated` and `user.deleted`, then copy the signing secret into
    Vercel and redeploy. Until then `/api/webhooks/clerk` returns `503`.
-4. **Account mapping.** The owner row already matches `OWNER_EMAIL`. For each non-owner
-   account without a verified email on file, attach the owner-verified address with
-   `bun run user:email` (see the guide). Do not import scrypt hashes or send passwords.
-   Unmapped accounts remain on legacy fallback.
-5. **Interactive verification.** Complete Email OTP and Google sign-in against production;
+5. **Account mapping.** The owner row already matches the production owner email. Set
+   `OWNER_EMAIL` in Vercel to that verified address. For each non-owner account without a
+   verified email on file, attach the owner-verified address with `bun run user:email`
+   (see the guide). Do not import scrypt hashes or send passwords. Unmapped accounts
+   remain on legacy fallback.
+6. **Interactive verification.** Complete Email OTP and Google sign-in against production;
    verify owner `/admin`, a mapped non-owner, a new `USER`, suspension/ban, force logout,
    deletion and webhook sync. Email OTP, owner/non-owner mapping, admin actions and client
    sign-out were exercised in development with disposable test users, but Google,
    webhook delivery, production accounts and an active second-browser force logout remain
    untested.
-6. **Retire the fallback.** After every account is mapped and production passes, set
+7. **Retire the fallback.** After every account is mapped and production passes, set
    `LEGACY_AUTH_MODE=off` and `NEXT_PUBLIC_LEGACY_AUTH_MODE=off`; remove the scrypt/HMAC
    code and `AUTH_SECRET` dependency in a later cleanup.
 
-P1 is **not accepted** until steps 1–5 pass against production.
+P1 is **not accepted** until steps 1–6 pass against production.
 
 ### 4.2 P0 production owner provisioning (accepted)
 
@@ -468,9 +477,9 @@ bun run owner:favorites      # dry-run legacy favorite migration (APPLY=YES to c
 
 - Clerk authentication **code is implemented** on `clerk-migration`; development Email
   OTP, owner/non-owner mapping, admin ban/unban/revoke/delete, audit and client sign-out
-  were verified with disposable test users. Production Clerk is **not configured**, and
-  Google OAuth, webhook delivery and P1 production isolation remain unverified. P1 is
-  **not accepted**.
+  were verified with disposable test users. A production instance exists, but its
+  domain/DNS, production Google OAuth, Vercel keys, webhook delivery and P1 production
+  isolation remain unverified. P1 is **not accepted**.
 - The Modern ABAP environment is **not** implemented.
 - The v0.3 security code **is** deployed, and production owner provisioning and the live
   Vercel owner gate **are verified**: `AKASH` has `role = OWNER`, the owner email is

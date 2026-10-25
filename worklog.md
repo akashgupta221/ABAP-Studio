@@ -491,3 +491,36 @@ Stage Summary:
 - The development Clerk instance is now limited to the approved Email OTP + Google methods.
 - Remaining owner actions: deploy production Clerk on a DNS-controlled domain, set production keys and webhook secret, map non-owner accounts, then complete production owner/non-owner/Google/webhook checks.
 - P0 remains deployed and accepted. Modern ABAP remains paused.
+
+---
+Task ID: 23
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Start the zero-cost production Clerk domain cutover without purchasing a domain
+
+Work Log:
+- Confirmed `abap-studio.com` is available for $11.25/year, but the owner cannot purchase a domain yet and asked for free options.
+- Verified Clerk production cannot use a `*.vercel.app` hostname. Found a free path on `is-a.dev`, including an existing Clerk deployment at `clerk.jigarbhoye.is-a.dev` with the same required CNAME pattern.
+- Chose `abap-studio.is-a.dev` as the primary free domain and `abap-studio.eu.org` as the slower backup. Planned layout:
+  - `abap-studio.is-a.dev` → public `URL` redirect to the GitHub repository
+  - `app.abap-studio.is-a.dev` → Vercel application
+  - `clerk` / `accounts` / `clkmail` / DKIM hosts → Clerk production CNAMEs
+- Created the Clerk production instance `ins_3LAf6uu766aoTCwlI8nX5faMFQA` for `abap-studio.is-a.dev` via the Clerk Platform API, cloning the development instance configuration.
+- Verified the production config has Email OTP as the only email strategy, Google enabled, and password/phone/username disabled. Google has empty production credentials and is the only pending OAuth provider.
+- `bunx clerk deploy status` now reports `state: domain_pending`; the five required CNAMEs, SSL and email DNS are pending. It is no longer `not_started`.
+- Added `docs/FREE-DOMAIN-SETUP.md` with the exact root and nested is-a.dev JSON files, the Clerk DNS values, the EU.org backup plan and the post-DNS cutover steps.
+- Updated `docs/CLERK-SETUP.md` and `docs/MASTER-PROJECT-SPEC.md` to reflect the created production instance and the remaining domain/Google/key/webhook work.
+- Did not submit the is-a.dev pull requests. Its terms explicitly prohibit AI-created pull requests and login-gated root hostnames; the owner must review and submit them manually from `akashgupta221`.
+- Did not add production Clerk keys to Vercel. They remain in the production instance and a temporary git-ignored file; no key or secret was printed or committed.
+- Vercel project `akash-kumar-gupta-s-projects/abap-studio-rd9d` is linked locally. Production env currently has `OWNER_USERNAME`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` and `AUTH_SECRET`; Clerk keys, webhook secret and `OWNER_EMAIL` are still missing.
+- `app.abap-studio.is-a.dev` cannot be added to Vercel until its CNAME exists (`domain_not_owned`).
+
+Verification:
+- `bunx clerk deploy status --mode agent` → `domain_pending`, production instance present, five CNAMEs pending, Google pending
+- `bunx clerk config pull --instance prod` → Email OTP only; Google enabled; phone/username/password disabled
+- `bunx clerk api --platform /platform/applications/.../instances` → production instance present alongside development
+- No production Clerk sign-in, Google OAuth, webhook delivery, DNS validation or Vercel redeploy has been performed
+
+Stage Summary:
+- The production Clerk instance now exists; the free-domain DNS registration is the active blocker.
+- The owner must submit the is-a.dev root PR first, then the nested app/Clerk PRs, and add the DNS records. EU.org is the backup.
+- P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.

@@ -12,15 +12,16 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 |---|---|
 | Clerk application | Owner-selected **ABAP Studio** app, id `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
 | Development instance | Configured; local `.env` has development keys |
-| Production instance | **Not configured** — `clerk deploy status` reports `not_started`; there is no production domain |
+| Production instance | **Created** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA`; domain `abap-studio.is-a.dev` is `domain_pending` (DNS, SSL and email DNS pending) |
 | Sign-in methods | Email OTP + Google enabled; password, phone, username, Facebook and GitHub disabled |
 | P1 code | Implemented on `clerk-migration`; not merged or deployed |
 | Local gates | `lint`, 26 unit tests, 52 API checks and `build` pass |
 | Interactive Clerk sign-in | **Development verified** with disposable test users; production not verified |
 | Local Clerk integration | Owner mapping, non-owner isolation, ban/unban, force logout, deletion, audit and client sign-out verified on a throwaway DB; test users removed |
-| Google OAuth | Enabled in config, but a real Google sign-in has **not** been exercised |
+| Google OAuth | Production config has Google enabled with empty production credentials; real Google sign-in is **pending** |
 | Webhook | Route and signature verification are implemented; no Clerk endpoint/signing secret is configured |
-| Production keys | **Not set** in Vercel; only development keys exist locally |
+| Production keys | Generated in the production instance; **not set** in Vercel yet and not printed |
+| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — is-a.dev primary, EU.org backup |
 
 The selected Clerk application must not be replaced. Production setup resumes the same
 application.
@@ -82,37 +83,42 @@ public values consistently. Production defaults to `fallback` even if Clerk keys
 temporarily missing, so a missing key cannot silently reopen public password
 registration.
 
-## 1. Configure the production Clerk instance (owner, interactive)
+## 1. Finish the production Clerk domain
 
 Production Clerk needs a domain whose DNS records you control. A bare
 `*.vercel.app` address cannot be used for the production Clerk domain. The app itself can
 remain on its Vercel hostname; the DNS-controlled domain is for Clerk's production
-Frontend API, commonly a subdomain such as `clerk.example.com`. The repository does not
-currently have a custom domain, so this is the main blocker.
+Frontend API, commonly a subdomain such as `clerk.example.com`.
+
+A production instance has already been created for `abap-studio.is-a.dev` and cloned from
+the development instance, so Email OTP is the only email strategy and Google is enabled.
+The remaining owner action is to add the five CNAME records shown by:
+
+```bash
+bunx clerk deploy status
+```
+
+The exact free-domain registration files and the DNS plan are in
+`docs/FREE-DOMAIN-SETUP.md`. The root is-a.dev record and the nested records must be
+submitted as separate pull requests, and the owner must submit them manually because the
+is-a.dev terms prohibit AI-created pull requests. Do not automate that submission.
 
 Before deploying, confirm the production instance uses **only Email OTP and Google**.
 Phone sign-up/sign-in and username sign-up/sign-in were disabled in the development
-instance on 25.10.2026 after they unexpectedly appeared as required sign-up fields.
-Recheck the same settings in production; do not let a copied legacy phone/username field
-reappear.
+instance on 25.10.2026 after they unexpectedly appeared as required sign-up fields. The
+production config was checked and has the same restrictions; do not let a copied legacy
+phone/username field reappear.
 
-In a normal terminal (not through the agent), run:
+Once DNS is live, run:
 
 ```bash
-npx clerk@latest deploy
+bunx clerk deploy status --wait
 ```
 
-The command is interactive. It will:
-
-1. create the production instance for the selected ABAP Studio application;
-2. print the DNS records to add at your domain registrar;
-3. collect production OAuth credentials (including Google);
-4. verify the domain, SSL and email DNS.
-
-Add the displayed DNS records, then re-run the command to resume until
-`clerk deploy status` reports the production instance and domain as ready. If Google
-asks for an OAuth client, follow Clerk’s current redirect URI instructions; do not reuse
-development credentials in production.
+The Google connection still needs a production OAuth client. Follow Clerk's current
+redirect URI instructions; do not reuse development credentials in production. The
+production redirect URI for this instance is
+`https://clerk.abap-studio.is-a.dev/v1/oauth_callback`.
 
 ## 2. Set production environment variables
 
@@ -153,7 +159,7 @@ cutover unless you deliberately want to invalidate every legacy session.
 
 In the Clerk dashboard for the production instance, create an endpoint:
 
-- URL: `https://<your-production-domain>/api/webhooks/clerk`
+- URL: `https://app.abap-studio.is-a.dev/api/webhooks/clerk`
 - Events: `user.created`, `user.updated`, `user.deleted`
 
 Copy the signing secret into Vercel as `CLERK_WEBHOOK_SECRET` and redeploy. The endpoint
