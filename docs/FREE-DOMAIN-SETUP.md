@@ -40,19 +40,20 @@ repository**, not the login-gated app. The project also includes sample
 programs for learning ABAP, which can read as a course even though the product
 is a developer workbench.
 
-The owner's next actions are:
+The owner posted the appeal as
+[issue #58258](https://github.com/is-a-dev/register/issues/58258) on
+25.10.2026. It is open and awaiting a maintainer response. Do not submit a
+second root PR while the appeal is open.
 
-1. Post the appeal below from the `akashgupta221` GitHub account. Do not submit
-   a second root PR while the appeal is open.
-2. Start the EU.org backup with a **non-Gmail** contact address, because EU.org
-   explicitly warns that Gmail rejects its validation mail.
+The remaining backup action is to start EU.org with a **non-Gmail** contact
+address, because EU.org explicitly warns that Gmail rejects its validation
+mail.
 
-## Appeal text for is-a.dev
+## Appeal text for is-a.dev (posted as #58258)
 
-Create an issue at
-<https://github.com/is-a-dev/register/issues/new?template=support.md> and use
-the following as a starting point. Edit it into your own words; do not claim
-anything that is not true.
+The owner posted the following text in issue #58258. It is retained here for
+reference in case a maintainer asks for a fresh issue or a corrected PR. Do not
+claim anything that is not true.
 
 ```markdown
 ### Your subdomain
