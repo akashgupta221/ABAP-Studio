@@ -70,9 +70,10 @@ practice sandbox**; training examples are shared and read-only.
   account linking and database-authoritative roles. Development Email OTP and the
   owner/non-owner admin flows are verified with disposable test users; password, phone and
   username sign-in are disabled. A production instance exists for `abap-studio.is-a.dev`,
-  but DNS, production Google OAuth, keys and webhooks remain pending, so production
-  sessions are unverified. The built-in scrypt logon remains a temporary fallback during
-  cutover. Guides: [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md),
+  but the root is-a.dev registration was denied and the free-domain appeal/EU.org backup
+  are pending; DNS, production Google OAuth, keys and webhooks also remain pending, so
+  production sessions are unverified. The built-in scrypt logon remains a temporary
+  fallback during cutover. Guides: [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md),
   [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) and
   [`docs/GOOGLE-OAUTH-SETUP.md`](docs/GOOGLE-OAUTH-SETUP.md).
 
@@ -180,8 +181,9 @@ Every `git push` rebuilds and redeploys the live app. The v0.3 security build is
 isolation run passed, and the owner reviewed `/admin` (**P0 accepted**). P1 Clerk code is
 implemented on `clerk-migration` and passes the local gates; development Email OTP,
 owner/non-owner mapping, admin ban/unban/revoke/delete and client sign-out were verified
-with disposable test users. A production instance exists, but its DNS, Google OAuth,
-keys and webhooks remain pending, so P1 is **not deployed or accepted**. Read
+with disposable test users. A production instance exists, but the root is-a.dev
+registration was denied; the appeal/EU.org backup, DNS, Google OAuth, keys and webhooks
+remain pending, so P1 is **not deployed or accepted**. Read
 [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) and
 [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) before the cutover. The ownership migration
 changes who can see legacy programs and invalidates old sessions; the production

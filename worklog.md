@@ -525,3 +525,31 @@ Stage Summary:
 - The production Clerk instance now exists; the free-domain DNS registration is the active blocker.
 - The owner must submit the is-a.dev root PR first, then the nested app/Clerk PRs, and add the DNS records. EU.org is the backup.
 - P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
+
+---
+Task ID: 24
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Record the is-a.dev denial and prepare the free-domain appeal plus EU.org backup
+
+Work Log:
+- The owner submitted the root registration as is-a.dev PR #58254 (`Register abap-studio.is-a.dev`). The first template run failed because the Website Preview and Website Purpose sections were empty; the owner corrected the PR body, after which the Template, Label, Tests and AI-generated-PR checks passed.
+- Maintainer `linuskang` closed PR #58254 on 25.10.2026 at 05:10 UTC with labels `status: denied` and `reason: not dev related`. The denial said root subdomains must be software-development related (portfolios, projects, dev tools) and the website did not appear to meet that rule.
+- The likely cause is that the Website Preview opened the SAP-style logon screen at `https://abap-studio-rd9d.vercel.app`, which requires an account and does not show the ABAP editor. The root record is a public redirect to the GitHub repository, but the reviewer saw only the login page and the purpose described learning.
+- Confirmed `abap-studio.is-a.dev` was not registered: DNS still redirects to the is-a.dev availability page, no app/Clerk/DKIM records exist, and the Clerk production instance remains `domain_pending`.
+- Reviewed recent is-a.dev appeals. Maintainers usually allow portfolios and open-source developer projects on root subdomains, but commonly reject apps that are not clearly development-related and suggest nested subdomains for them.
+- Chose the owner-approved path: appeal the denial with the public GitHub repository and ABAP IDE evidence, and start the free EU.org backup in parallel. Do not submit a second is-a.dev root PR while the appeal is open.
+- Added the exact appeal issue text to `docs/FREE-DOMAIN-SETUP.md`. The owner must post it from `akashgupta221`; it must not be automated.
+- Expanded the EU.org backup instructions. EU.org only delegates nameservers, so Cloudflare free DNS must be configured first. EU.org explicitly warns that Gmail rejects its validation email; the owner must use a long-term non-Gmail address. Approval has historically ranged from days to several months, so it is not an immediate fix.
+- Updated the master spec, Clerk setup guide, README, DEPLOY and this worklog to show the denied domain, the pending appeal/EU.org backup and the unchanged P1 blocker.
+- Did not add production Clerk keys to Vercel, did not create DNS records, did not switch the Clerk domain and did not create or replace the selected Clerk application.
+
+Verification:
+- `gh pr view 58254` -> state `CLOSED`, `mergedAt: null`, labels `status: denied`, `reason: not dev related`, `domain`; latest Template check `SUCCESS`
+- `dig` / HTTPS check -> `abap-studio.is-a.dev` still returns the is-a.dev availability redirect; no Clerk/app DNS is live
+- `bunx clerk deploy status` was not re-run because no domain or Clerk configuration changed; the last verified state remains `domain_pending`
+- No production sign-in, Google OAuth, webhook, Vercel environment or DNS change was made
+
+Stage Summary:
+- The is-a.dev root request is denied and the domain is not live. The owner's next actions are to post the prepared appeal and start the EU.org application with a non-Gmail address.
+- P1 remains **not accepted**; its production cutover is still blocked on a verified domain, Google OAuth, keys and webhook. P0 remains deployed and accepted.
+- Modern ABAP remains paused.

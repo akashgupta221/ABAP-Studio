@@ -12,7 +12,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 |---|---|
 | Clerk application | Owner-selected **ABAP Studio** app, id `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
 | Development instance | Configured; local `.env` has development keys |
-| Production instance | **Created** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA`; domain `abap-studio.is-a.dev` is `domain_pending` (DNS, SSL and email DNS pending) |
+| Production instance | **Created** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA`; domain `abap-studio.is-a.dev` is `domain_pending` (DNS, SSL and email DNS pending). The root is-a.dev PR #58254 was **denied** as not dev-related; appeal and EU.org backup are pending. |
 | Sign-in methods | Email OTP + Google enabled; password, phone, username, Facebook and GitHub disabled |
 | P1 code | Implemented on `clerk-migration`; not merged or deployed |
 | Local gates | `lint`, 26 unit tests, 52 API checks and `build` pass |
@@ -21,7 +21,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 | Google OAuth | Production config has Google enabled with empty production credentials; real Google sign-in is **pending** |
 | Webhook | Route and signature verification are implemented; no Clerk endpoint/signing secret is configured |
 | Production keys | Generated in the production instance; **not set** in Vercel yet and not printed |
-| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — is-a.dev primary, EU.org backup |
+| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — is-a.dev root denied; appeal + EU.org backup pending |
 
 The selected Clerk application must not be replaced. Production setup resumes the same
 application.
@@ -98,10 +98,14 @@ The remaining owner action is to add the five CNAME records shown by:
 bunx clerk deploy status
 ```
 
-The exact free-domain registration files and the DNS plan are in
-`docs/FREE-DOMAIN-SETUP.md`. The root is-a.dev record and the nested records must be
-submitted as separate pull requests, and the owner must submit them manually because the
-is-a.dev terms prohibit AI-created pull requests. Do not automate that submission.
+The exact free-domain registration files, appeal text and DNS plan are in
+`docs/FREE-DOMAIN-SETUP.md`. The owner's root is-a.dev PR #58254 passed the template and
+CI checks but was denied as not dev-related because the preview showed only the SAP-style
+logon screen. The domain is not registered. The next owner actions are to post the
+prepared appeal with the public GitHub repository as project evidence and start the
+EU.org backup. Do not submit a second root PR while the appeal is open, and do not
+automate the submission; the is-a.dev terms prohibit AI-created pull requests. EU.org
+requires a non-Gmail contact address and may take days to months.
 
 Before deploying, confirm the production instance uses **only Email OTP and Google**.
 Phone sign-up/sign-in and username sign-up/sign-in were disabled in the development
