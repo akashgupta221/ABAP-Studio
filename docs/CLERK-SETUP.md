@@ -12,7 +12,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 |---|---|
 | Clerk application | Owner-selected **ABAP Studio** app, id `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
 | Development instance | Configured; local `.env` has development keys |
-| Production instance | **Moved** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` now targets `https://abap-studio.akashgupta.is-a.dev` as a **Secondary application**. The Frontend API is live at `https://clerk.abap-studio.akashgupta.is-a.dev` and returns HTTP `200` with Email OTP + Google only. The account portal has a valid TLS certificate and returns a Cloudflare browser challenge to curl. Vercel still requires an owner-submitted is-a.dev TXT/CNAME update because the app hostname was previously linked to another Vercel account. The EU.org request is still awaiting approval. |
+| Production instance | **Moved** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` now targets `https://abap-studio.akashgupta.is-a.dev` as a **Secondary application**. The Frontend API is live at `https://clerk.abap-studio.akashgupta.is-a.dev` and returns HTTP `200` with Email OTP + Google only. The account portal has a valid TLS certificate and returns a Cloudflare browser challenge to curl. The Vercel hostname is verified (`configured-correctly`) and returns HTTP `200`, but the live deployment is still P0. The EU.org request is still awaiting approval. |
 | Sign-in methods | Email OTP + Google enabled; password, phone, username, Facebook and GitHub disabled |
 | P1 code | Implemented on `clerk-migration`; not merged or deployed |
 | Local gates | `lint`, 26 unit tests, 52 API checks and `build` pass |
@@ -121,9 +121,9 @@ Before deploying, complete these two dashboard steps:
      `e65413aa6d37f6f6.vercel-dns-017.com`.
    The prepared files are `domains/_vercel.akashgupta.json` (new) and the updated
    `domains/abap-studio.akashgupta.json`; all 13 is-a.dev tests pass. The owner submitted
-   them as [PR #58410](https://github.com/is-a-dev/register/pull/58410); all checks pass and
-   it is waiting on code-owner review. After that PR merges, return to Vercel and wait for
-   **Valid Configuration** / certificate issuance.
+   them as [PR #58410](https://github.com/is-a-dev/register/pull/58410); it was merged on
+   25.10.2026, the TXT/CNAME records are live, and Vercel reports the hostname as
+   `configured-correctly`. The app returns HTTP `200` at the new hostname.
 2. **Clerk:** the production instance has already been moved to
    `abap-studio.akashgupta.is-a.dev` with **Secondary application**. The Frontend API is
    live and reports Email OTP + Google only. The account portal has a valid TLS

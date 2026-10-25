@@ -833,3 +833,42 @@ Stage Summary:
 - PR #58410 is technically correct and ready for maintainer review.
 - Do not comment or ping. Wait for the merge, then Vercel can verify the domain and issue the app certificate.
 - P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
+
+---
+
+Task ID: 33
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Verify the merged Vercel proof and inspect the P1 production deployment gap
+
+Work Log:
+- Confirmed is-a.dev PR #58410 is **merged** (`mergedAt: 2026-10-25T18:42:02Z`, merge commit `5950e202c6134f95ba69bfe2fe5287c98fd61a8c`). All checks passed.
+- Verified the DNS proof is live:
+  - `_vercel.akashgupta.is-a.dev TXT` -> `vc-domain-verify=abap-studio.akashgupta.is-a.dev,7c86e8bdcf66173704fd`
+  - `abap-studio.akashgupta.is-a.dev CNAME` -> `e65413aa6d37f6f6.vercel-dns-017.com`
+- `npx vercel domains verify abap-studio.akashgupta.is-a.dev` reports:
+  - `status: ok`
+  - `domainStatus: configured-correctly`
+  - `configurationStatus: configured-correctly`
+  - `project.attached: true`
+  - `project.verified: true`
+- The app hostname returns HTTP `200` through Vercel. The valid certificate is Let's Encrypt for `CN=abap-studio.akashgupta.is-a.dev`.
+- The default `curl` on this macOS host fails with a LibreSSL TLS 1.3 error, but `curl --tlsv1.2`, `curl --http1.1` and Node `fetch` all return HTTP `200`. This is a local curl/TLS quirk, not an app outage.
+- **Important:** the live production deployment is still P0. `/sign-in` and `/sign-up` return `404`, and the deployed code has no Clerk routes. The P1 code exists only on `clerk-migration`; it has not been deployed to production.
+- `npx vercel env ls production` shows only `OWNER_USERNAME`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` and `AUTH_SECRET`. Production is missing `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`, `OWNER_EMAIL`, `LEGACY_AUTH_MODE` and `NEXT_PUBLIC_LEGACY_AUTH_MODE`.
+- `/api/health` reports `ok: true`, Turso, 4 users and 50 programs. The app was not modified.
+- Updated the docs and this worklog with the verified Vercel status and the P1 deployment gap.
+
+Verification:
+- `gh pr view 58410` -> `state: MERGED`, `mergedAt: 2026-10-25T18:42:02Z`
+- `dig _vercel.akashgupta.is-a.dev TXT` -> verification value present
+- `dig abap-studio.akashgupta.is-a.dev CNAME` -> `e65413aa6d37f6f6.vercel-dns-017.com`
+- `npx vercel domains verify abap-studio.akashgupta.is-a.dev` -> `configured-correctly`, project verified
+- `curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/` -> HTTP `200`
+- `curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/sign-in` -> HTTP `404` (P0 deployment)
+- `npx vercel env ls production` -> Clerk keys, `OWNER_EMAIL`, webhook secret and fallback flags absent
+- No production env value, Clerk key, webhook, DNS record, deployment or app code was changed
+
+Stage Summary:
+- Vercel domain ownership is fully verified; the new hostname is live over HTTPS.
+- The next gate is configuring production Clerk env/webhook and deploying P1. Do not test Clerk sign-in until P1 is deployed.
+- P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
