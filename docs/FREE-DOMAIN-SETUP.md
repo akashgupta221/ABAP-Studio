@@ -39,20 +39,16 @@ in Git.
   reachable. It is a completed, responsive developer portfolio with public
   project links, including ABAP Studio. The root is-a.dev record will redirect
   to it.
-- The owner opened the root PR as
-  [is-a.dev PR #58327](https://github.com/is-a-dev/register/pull/58327). The PR
-  description is now correct and the latest `Template` check passes. The PR is
-  still **not ready** because the two wrong files were emptied rather than
-  deleted: `domains/abap-studio.json` and `domains/domains/akashgupta.json` each
-  contain only a newline. CI still sees them as files, `JSON.parse` fails with
-  `Unexpected end of JSON input`, and the `domains/domains` directory fails the
-  filename test. Use the trash-can/Delete file action or `git rm`; clearing the
-  file contents is not a deletion. The `Tests` and `Label` checks then rerun.
-  Follow the correction steps in §A2 before waiting for review. Do not close and
-  reopen the PR; update it.
-- The is-a.dev terms prohibit AI-created pull requests. The owner must make the
-  correction and submit/review the PR; this assistant does not edit the fork or
-  the PR.
+- The owner fixed the root PR
+  [is-a.dev PR #58327](https://github.com/is-a-dev/register/pull/58327). It now
+  changes exactly one file, `domains/akashgupta.json` (9 additions), with no
+  blank placeholder files and no nested `domains/domains` directory. The
+  `Template`, `Tests`, `Label` and AI-honeypot checks all pass, and the
+  `reason: incomplete pr` label is gone. GitHub reports `MERGEABLE`; the only
+  remaining gate is the required code-owner review, which is normal. Do not
+  comment or ping maintainers; wait for review.
+- The is-a.dev terms prohibit AI-created pull requests. The owner made the fix;
+  this assistant did not edit the fork or the PR.
 - The EU.org request for `abap-studio.eu.org` was submitted on 25.10.2026 and
   is still awaiting human approval. No nameserver delegation is live:
   `dig NS abap-studio.eu.org` and `dig SOA abap-studio.eu.org` return no
@@ -211,94 +207,39 @@ Important:
 If the maintainer asks for a different root name, use the same portfolio and
 change only the JSON filename/domain. Do not reopen the old appeal.
 
-### Correcting PR #58327 (current state)
+### PR #58327 is ready for review
 
-The PR originally had three independent mistakes:
-
-1. The portfolio file was created at `domains/domains/akashgupta.json`. It is
-   now at the correct path, `domains/akashgupta.json`.
-2. The old `domains/abap-studio.json` was still in the branch. That root was
-   denied and must not be part of this PR.
-3. The PR description replaced the repository template. It has now been
-   restored, and the latest `Template` check passes.
-
-The remaining failure is that the two wrong files were **emptied, not deleted**.
-They still exist and each contains only a newline:
-
-```text
-domains/abap-studio.json
-domains/domains/akashgupta.json
-```
-
-Clearing a file's contents in the GitHub editor leaves an empty file. CI still
-sees that file, and `JSON.parse` fails with `Unexpected end of JSON input`.
-The `domains/domains` directory also fails the filename test. Delete the files
-with the **trash-can / Delete file** action; do not edit them down to an empty
-file. Deleting `domains/domains/akashgupta.json` also removes the empty
-`domains/domains` directory.
-
-The cleanest fix is still to reset the fork's `main` to upstream and add only
-the one correct file. This rewrites only the owner's fork branch; the open PR
-updates automatically. Do not close and reopen the PR.
-
-```bash
-git clone https://github.com/akashgupta221/register.git
-cd register
-git remote add upstream https://github.com/is-a-dev/register.git
-git fetch upstream
-git checkout main
-git reset --hard upstream/main
-mkdir -p domains
-cp "/Volumes/drive-E/Abap Editor/is-a-dev-akashgupta/akashgupta.json" domains/akashgupta.json
-git add domains/akashgupta.json
-git commit -m "Add akashgupta.is-a.dev"
-git push --force-with-lease origin main
-```
-
-If a force push is not acceptable, use the GitHub web UI instead:
-
-1. Open
-   <https://github.com/akashgupta221/register/blob/main/domains/abap-studio.json>
-   and click the **trash-can** icon (or the `...` menu → **Delete file**). Commit.
-2. Open
-   <https://github.com/akashgupta221/register/blob/main/domains/domains/akashgupta.json>
-   and delete it the same way. Commit.
-3. Open
-   <https://github.com/akashgupta221/register/blob/main/domains/akashgupta.json>
-   and remove the blank first line. The file must start with `{` and end with
-   `}`. Commit.
-
-The correct file is:
-
-```json
-{
-  "description": "Akash Gupta - developer portfolio",
-  "owner": {
-    "username": "akashgupta221"
-  },
-  "records": {
-    "URL": "https://akashgupta221.github.io/"
-  }
-}
-```
-
-The PR description is already correct; no further edit is needed. If it is
-changed again, keep the full template from `PR-BODY.md` and click
-**Update comment**.
-
-The corrected PR must show exactly one added file:
+The root PR now changes exactly one file:
 
 ```text
 domains/akashgupta.json
 ```
 
-After deleting the two placeholder files, the `Tests` and `Label` checks rerun.
-The `reason: incomplete pr` label should clear when the template passes; the
-`domain` label and code-owner review are normal.
+It contains 9 additions and no blank placeholder files, no nested
+`domains/domains` directory and no denied `abap-studio.json`. The PR template is
+restored.
 
-The corrected one-file tree and the corrected PR body were tested locally
-against the is-a.dev repository: all 13 tests passed and
+Latest checks for head
+`55db8a1c78e7495cc097584562bd61387f279479`:
+
+| Check | Result |
+|---|---|
+| `PR / Template` | success |
+| `CI / Tests` | success |
+| `PR / Label` | success |
+| `Filter out AI-generated PRs` | success |
+
+The `reason: incomplete pr` label has been removed; only the normal `domain`
+label remains. GitHub reports `mergeable: MERGEABLE` and
+`mergeStateStatus: BLOCKED`; the only remaining gate is the required code-owner
+review. Do not comment or ping maintainers. Wait for review.
+
+The one-file tree and the restored template were also verified locally against
+the is-a.dev repository: all 13 tests passed and
 `util/check-pr-template.cjs` reported `PR template validation passed`.
+
+If the PR is edited again, keep exactly one file (`domains/akashgupta.json`) and
+restore the full template from `PR-BODY.md` if necessary.
 
 ### A3. Register the nested app and Clerk records — after the root merge
 
@@ -503,10 +444,10 @@ production instances without a cutover plan.
 ## Owner action checklist
 
 - [x] Publish the portfolio at <https://akashgupta221.github.io/> (verified).
-- [ ] Fix open root PR #58327: the template is restored and the correct file
-      is at `domains/akashgupta.json`; delete the two blank placeholder files
-      (`domains/abap-studio.json` and `domains/domains/akashgupta.json`) using
-      the trash-can action, then wait for checks.
+- [x] Fix open root PR #58327: the correct file is at
+      `domains/akashgupta.json`, the blank placeholder files and
+      `domains/domains` directory are gone, and all checks pass. Wait for the
+      code-owner review.
 - [ ] After the root merges, submit the nested app/Clerk PR.
 - [ ] Monitor the EU.org contact inbox (non-Gmail) and the Cloudflare zone.
 - [ ] Choose the first fully verified domain.

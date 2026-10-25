@@ -656,8 +656,15 @@ Follow-up (same day, after the owner edited the PR):
 - The PR diff still shows three added files. It must show only `domains/akashgupta.json` (9 additions). The owner must use the GitHub **trash-can/Delete file** action or `git rm`; using the editor to delete the contents leaves an empty file.
 - The one-file tree and the restored template were verified locally: 13 is-a.dev tests pass and `util/check-pr-template.cjs` reports `PR template validation passed`.
 
+Second follow-up (same day, after the owner deleted the placeholders):
+- New head `55db8a1c78e7495cc097584562bd61387f279479`. The PR now changes exactly one file, `domains/akashgupta.json` (9 additions). The blank `domains/abap-studio.json` and `domains/domains/akashgupta.json` files and the nested `domains/domains` directory are gone. The correct file has no leading blank line.
+- Latest checks are all **success**: `Template` at `11:48:09Z`, `Label` at `11:48:13Z`, `Tests` at `11:48:21Z`, and `Filter out AI-generated PRs` also success.
+- The `reason: incomplete pr` label has been removed. Only the normal `domain` label remains.
+- GitHub reports `mergeable: MERGEABLE` and `mergeStateStatus: BLOCKED`; the only remaining gate is the required code-owner review.
+- No further owner action is needed. Do not comment or ping maintainers; wait for review.
+
 Stage Summary:
-- PR #58327 is open but not mergeable. The template is fixed; the only remaining blocker is that the two wrong files are blank placeholders instead of being deleted.
-- After deleting the two files (trash-can or `git rm`) and committing, `Tests` and `Label` should pass. Do not comment or ping maintainers.
+- PR #58327 is correct and ready for maintainer review: one file, 9 additions, all checks green.
+- The only remaining gate is the required code-owner review. Do not comment or ping maintainers.
 - The nested app/Clerk PR remains blocked until the root PR is merged. EU.org remains pending.
 - P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.

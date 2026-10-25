@@ -12,7 +12,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 |---|---|
 | Clerk application | Owner-selected **ABAP Studio** app, id `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
 | Development instance | Configured; local `.env` has development keys |
-| Production instance | **Created but unusable** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` is bound to the denied `abap-studio.is-a.dev` and remains `domain_pending`. The original root PR #58254 was **denied**; appeal #58258 is now **closed**. The owner-approved parallel path is a portfolio root at `akashgupta.is-a.dev` plus the nested app `abap-studio.akashgupta.is-a.dev`; root PR #58327 is open. The correct file is at `domains/akashgupta.json` and the latest `Template` check passes; the `Tests`/`Label` checks still fail because the two wrong files were emptied rather than deleted. The EU.org request is still awaiting approval. Move the instance or create a new one for the final domain before adding keys. |
+| Production instance | **Created but unusable** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` is bound to the denied `abap-studio.is-a.dev` and remains `domain_pending`. The original root PR #58254 was **denied**; appeal #58258 is now **closed**. The owner-approved parallel path is a portfolio root at `akashgupta.is-a.dev` plus the nested app `abap-studio.akashgupta.is-a.dev`; root PR #58327 is open with exactly one file and all checks green, waiting on code-owner review. The EU.org request is still awaiting approval. Move the instance or create a new one for the final domain before adding keys. |
 | Sign-in methods | Email OTP + Google enabled; password, phone, username, Facebook and GitHub disabled |
 | P1 code | Implemented on `clerk-migration`; not merged or deployed |
 | Local gates | `lint`, 26 unit tests, 52 API checks and `build` pass |
@@ -21,7 +21,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 | Google OAuth | Production config has Google enabled with empty production credentials; real Google sign-in is **pending** |
 | Webhook | Route and signature verification are implemented; no Clerk endpoint/signing secret is configured |
 | Production keys | Generated in the production instance; **not set** in Vercel yet and not printed |
-| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — original is-a.dev root denied; appeal #58258 closed; root PR #58327 open, template green, two blank placeholder files still to delete; EU.org awaiting approval |
+| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — original is-a.dev root denied; appeal #58258 closed; root PR #58327 open with one file and all checks green, waiting on code-owner review; EU.org awaiting approval |
 
 The selected Clerk application must not be replaced. Production setup resumes the same
 application.
