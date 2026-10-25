@@ -12,7 +12,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 |---|---|
 | Clerk application | Owner-selected **ABAP Studio** app, id `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
 | Development instance | Configured; local `.env` has development keys |
-| Production instance | **Created but unusable** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` is bound to the denied `abap-studio.is-a.dev` and remains `domain_pending`. The original root PR #58254 was **denied**; appeal #58258 is now **closed**. The owner-approved parallel path is a portfolio root at `akashgupta.is-a.dev` plus the nested app `abap-studio.akashgupta.is-a.dev`; the root PR #58327 was merged and the root is live (`301` to the portfolio, final `200`). The six nested app/Clerk files are prepared and locally validated; the nested PR is not submitted. The EU.org request is still awaiting approval. Move the instance or create a new one for the final domain before adding keys. |
+| Production instance | **Created but unusable** — `ins_3LAf6uu766aoTCwlI8nX5faMFQA` is bound to the denied `abap-studio.is-a.dev` and remains `domain_pending`. The original root PR #58254 was **denied**; appeal #58258 is now **closed**. The owner-approved parallel path is a portfolio root at `akashgupta.is-a.dev` plus the nested app `abap-studio.akashgupta.is-a.dev`; the root PR #58327 was merged and the root is live (`301` to the portfolio, final `200`). The six nested app/Clerk files are in open PR #58363; all checks pass, waiting on code-owner review. The EU.org request is still awaiting approval. Move the instance or create a new one for the final domain before adding keys. |
 | Sign-in methods | Email OTP + Google enabled; password, phone, username, Facebook and GitHub disabled |
 | P1 code | Implemented on `clerk-migration`; not merged or deployed |
 | Local gates | `lint`, 26 unit tests, 52 API checks and `build` pass |
@@ -21,7 +21,7 @@ screenshots, issues or Git. Set them directly in Vercel (and locally in the git-
 | Google OAuth | Production config has Google enabled with empty production credentials; real Google sign-in is **pending** |
 | Webhook | Route and signature verification are implemented; no Clerk endpoint/signing secret is configured |
 | Production keys | Generated in the production instance; **not set** in Vercel yet and not printed |
-| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — original is-a.dev root denied; appeal #58258 closed; root `akashgupta.is-a.dev` merged and live; six nested app/Clerk records prepared and validated, nested PR not submitted; EU.org awaiting approval |
+| Free domain path | `docs/FREE-DOMAIN-SETUP.md` — original is-a.dev root denied; appeal #58258 closed; root `akashgupta.is-a.dev` merged and live; nested PR #58363 open with all checks passing, waiting on review; EU.org awaiting approval |
 
 The selected Clerk application must not be replaced. Production setup resumes the same
 application.
@@ -96,10 +96,9 @@ That domain was **denied**, so the instance is not usable as-is. The owner has t
 parallel free-domain paths:
 
 - **is-a.dev (new path):** the portfolio root `akashgupta.is-a.dev` is merged and live,
-  redirecting to <https://akashgupta221.github.io/>. Register the nested application
-  `abap-studio.akashgupta.is-a.dev` and its Clerk subdomains next. The six nested files are
-  prepared in `is-a-dev-akashgupta/nested/domains/`; the owner must submit the nested PR
-  manually.
+  redirecting to <https://akashgupta221.github.io/>. The nested application
+  `abap-studio.akashgupta.is-a.dev` and its Clerk subdomains are in open PR #58363; all
+  checks pass and it is waiting on code-owner review.
 - **EU.org:** `abap-studio.eu.org` is awaiting human approval; no nameserver delegation is
   live yet.
 

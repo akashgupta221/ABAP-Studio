@@ -704,3 +704,28 @@ Stage Summary:
 - The nested app/Clerk PR is prepared and locally validated, but **not submitted**. The owner must submit it manually.
 - After the nested PR merges: add the Vercel domain, move/create the Clerk production instance, verify all five Clerk CNAMEs, set production env/webhook/OWNER_EMAIL, configure Google OAuth, and run the production checks.
 - P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
+
+---
+
+Task ID: 29
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Verify the nested is-a.dev PR submission
+
+Work Log:
+- The owner submitted the six nested records as is-a.dev PR #58363 (`Register ABAP Studio nested domains`). The PR is **OPEN**, not merged.
+- The PR changes exactly six files, 54 additions. All four checks pass: `Template`, `Tests`, `Label` and `Filter out AI-generated PRs`.
+- GitHub reports `mergeable: MERGEABLE` and `mergeStateStatus: BLOCKED`; the only remaining gate is the required code-owner review. Labels: `domain` only.
+- Nested DNS is not live yet: queries for all six `*.akashgupta.is-a.dev` hostnames return no records. Do not start Vercel/Clerk cutover until the PR is merged and DNS propagates.
+- Corrected the documentation and worklog, which still said the nested PR was not submitted.
+- No production DNS, Clerk, Vercel or application change was made.
+
+Verification:
+- `gh pr view 58363` -> `state: OPEN`, six files, 54 additions, `mergeable: MERGEABLE`, `mergeStateStatus: BLOCKED`
+- `gh pr checks 58363` -> Template pass, Tests pass, Label pass, AI-honeypot pass
+- `dig @1.1.1.1` for all six nested hostnames -> no records yet
+- The root `akashgupta.is-a.dev` remains live (`301` to the portfolio, final `200`)
+
+Stage Summary:
+- Root domain is live. Nested PR #58363 is submitted and all automated checks pass; it is waiting on a maintainer.
+- Do not comment or ping. Wait for the merge, then add the Vercel domain and move/create the Clerk production instance.
+- P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.
