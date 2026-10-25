@@ -618,3 +618,38 @@ Stage Summary:
 - The nested app and Clerk records cannot be submitted until the portfolio root is merged. EU.org remains pending.
 - P1 remains **not accepted**; production cutover is still blocked on a verified domain, Clerk instance move/create, Google OAuth, keys and webhook. P0 remains deployed and accepted.
 - Modern ABAP remains paused.
+
+---
+
+Task ID: 27
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Diagnose the failing is-a.dev root PR #58327 and prepare the correction
+
+Work Log:
+- The owner opened is-a.dev PR #58327 (`Register akashgupta.is-a.dev`) from `akashgupta221:main`; it is open with the `domain` and `reason: incomplete pr` labels and is blocked on code-owner review.
+- Inspected the PR files. It changed two files:
+  - `domains/abap-studio.json` — stale file from the denied root attempt.
+  - `domains/domains/akashgupta.json` — the new portfolio record was created one directory too deep.
+- The expected path is `domains/akashgupta.json`. The nested `domains/domains` directory causes `json` tests to attempt to read a directory and causes `pr` tests to fail with `ENOENT` for `domains/akashgupta.json`.
+- Inspected the `Template` check. The PR body replaced the repository template and removed the required HTML comment markers. `util/check-pr-template.cjs` requires `- [x] <!-- TOS -->`, `<!-- DOMAIN_STRUCTURE -->`, `<!-- WEBSITE_REACHABLE -->`, `<!-- SOFTWARE_RELATED -->`, `<!-- NON_COMMERCIAL -->`, `<!-- CONTACT_INFO -->` and `<!-- WEBSITE_LINK -->`, plus the preview/purpose markers.
+- The `Filter out AI-generated PRs` and `Label` checks pass. The `Tests` and `Template` checks fail; no maintainer review is required until those are fixed.
+- Recommended correction: reset the fork's `main` to `is-a-dev/register:main`, add only `domains/akashgupta.json`, and force-push to the fork. This removes the stale `abap-studio.json` and the nested `domains/domains` path while keeping PR #58327 open. Alternatively, delete both bad files and create the correct one in the GitHub UI.
+- Replaced the local `PR-BODY.md` with the full is-a.dev template, including all required comments and markers. The owner must paste it into the PR description via **Edit** and click **Update comment**.
+- Did not edit the fork, the PR description or the PR. The is-a.dev terms prohibit AI-created pull requests; the owner must perform the correction.
+- Updated the free-domain guide, master spec, Clerk setup guide and this worklog with the current PR failure and correction steps.
+
+Verification:
+- `gh pr view 58327` -> open, `mergeStateStatus: BLOCKED`, files `domains/abap-studio.json` and `domains/domains/akashgupta.json`; 5 commits; `Tests` and `Template` failed, `Filter out AI-generated PRs` and `Label` passed
+- CI Tests log -> `domains: File does not have .json extension`, `EISDIR`, and `Failed to read JSON for akashgupta: domains/akashgupta.json: ENOENT`
+- Template log -> `PR template is incomplete`
+- `util/check-pr-template.cjs` -> requires the seven `<!-- MARKER -->` checkboxes and both preview/purpose marker pairs
+- Corrected local `PR-BODY.md` now contains the entire template with all comments and markers
+- Local is-a.dev test suite with only `domains/akashgupta.json` present -> 13 tests passed
+- Local `util/check-pr-template.cjs` with the corrected PR body -> `PR template validation passed`
+- No fork branch, PR body, domain DNS, Clerk setting or Vercel environment was changed
+
+Stage Summary:
+- PR #58327 is open but not mergeable. The fix is mechanical: correct the file path, remove the stale denied domain, and restore the full PR template.
+- After the fix, the `Template` and `Tests` checks should re-run automatically. Do not comment or ping maintainers.
+- The nested app/Clerk PR remains blocked until the root PR is merged. EU.org remains pending.
+- P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.

@@ -39,8 +39,16 @@ in Git.
   reachable. It is a completed, responsive developer portfolio with public
   project links, including ABAP Studio. The root is-a.dev record will redirect
   to it.
-- The is-a.dev root PR has **not** been submitted yet. The owner must review and
-  submit it manually; the is-a.dev terms prohibit AI-created pull requests.
+- The owner opened the root PR as
+  [is-a.dev PR #58327](https://github.com/is-a-dev/register/pull/58327), but it is
+  **not ready**: it contains `domains/domains/akashgupta.json` instead of
+  `domains/akashgupta.json`, still includes the denied
+  `domains/abap-studio.json`, and its description removed the required template
+  comments. The `Tests` and `Template` checks fail. Follow the correction steps
+  in §A2 before waiting for review. Do not close and reopen the PR; update it.
+- The is-a.dev terms prohibit AI-created pull requests. The owner must make the
+  correction and submit/review the PR; this assistant does not edit the fork or
+  the PR.
 - The EU.org request for `abap-studio.eu.org` was submitted on 25.10.2026 and
   is still awaiting human approval. No nameserver delegation is live:
   `dig NS abap-studio.eu.org` and `dig SOA abap-studio.eu.org` return no
@@ -198,6 +206,67 @@ Important:
 
 If the maintainer asks for a different root name, use the same portfolio and
 change only the JSON filename/domain. Do not reopen the old appeal.
+
+### Correcting PR #58327 (current state)
+
+The PR currently fails because of three independent mistakes:
+
+1. The portfolio file is at `domains/domains/akashgupta.json`. It must be at
+   `domains/akashgupta.json`. The nested directory makes the tests try to read a
+   directory as JSON and makes `domains/akashgupta.json` missing.
+2. The old `domains/abap-studio.json` is still in the branch. That root was
+   denied and must not be part of this PR.
+3. The PR description replaced the repository template and removed the HTML
+   comments. The template check requires the original comments and the exact
+   `<!-- TOS -->`, `<!-- DOMAIN_STRUCTURE -->` … markers around checked boxes.
+
+The cleanest fix is to reset the fork's `main` to upstream and add only the one
+correct file. This rewrites only the owner's fork branch; the open PR updates
+automatically. Do not close and reopen the PR.
+
+```bash
+git clone https://github.com/akashgupta221/register.git
+cd register
+git remote add upstream https://github.com/is-a-dev/register.git
+git fetch upstream
+git checkout main
+git reset --hard upstream/main
+mkdir -p domains
+cp "/Volumes/drive-E/Abap Editor/is-a-dev-akashgupta/akashgupta.json" domains/akashgupta.json
+git add domains/akashgupta.json
+git commit -m "Add akashgupta.is-a.dev"
+git push --force-with-lease origin main
+```
+
+If a force push is not acceptable, use the GitHub web UI instead:
+
+1. Delete `domains/domains/akashgupta.json`.
+2. Delete `domains/abap-studio.json`.
+3. Create `domains/akashgupta.json` with the JSON above.
+4. Commit the changes to the fork's `main` branch.
+
+Then repair the PR description:
+
+1. Open <https://github.com/is-a-dev/register/pull/58327>.
+2. Click **Edit** next to the title/body.
+3. Select the entire body and replace it with the full contents of
+   `/Volumes/drive-E/Abap Editor/is-a-dev-akashgupta/PR-BODY.md` (or the
+   template in this document). Keep all HTML comments and markers.
+4. Click **Update comment**. The `edited` event re-runs the template check.
+
+The corrected PR must show exactly one added file:
+
+```text
+domains/akashgupta.json
+```
+
+Wait for the checks. Do not comment, ping maintainers or open a replacement PR.
+The `reason: incomplete pr` label should clear when the template passes; the
+`domain` label and code-owner review are normal.
+
+The corrected one-file tree and the corrected PR body were tested locally
+against the is-a.dev repository: all 13 tests passed and
+`util/check-pr-template.cjs` reported `PR template validation passed`.
 
 ### A3. Register the nested app and Clerk records — after the root merge
 
@@ -402,8 +471,9 @@ production instances without a cutover plan.
 ## Owner action checklist
 
 - [x] Publish the portfolio at <https://akashgupta221.github.io/> (verified).
-- [ ] Submit the root PR `Register akashgupta.is-a.dev` from
-      `akashgupta221`; use the portfolio preview and purpose above.
+- [ ] Fix open root PR #58327: move the file to `domains/akashgupta.json`,
+      remove `domains/abap-studio.json`, restore the full template, then wait
+      for checks.
 - [ ] After the root merges, submit the nested app/Clerk PR.
 - [ ] Monitor the EU.org contact inbox (non-Gmail) and the Cloudflare zone.
 - [ ] Choose the first fully verified domain.
