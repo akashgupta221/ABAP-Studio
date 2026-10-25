@@ -78,9 +78,11 @@ Vercel domain reports `configured-correctly` and the app returns HTTP `200` at
 `https://abap-studio.akashgupta.is-a.dev`. The P1 deployment
 `dpl_GLQLQvazo3cYfWdBV5KmjM6U4ujb` is aliased to the custom domain; `/sign-in` and
 `/sign-up` return `200`. The Clerk keys, `OWNER_EMAIL`, webhook secret and fallback flags are
-set in Vercel. Google production credentials and the real production sign-in/webhook test
-remain pending, as does legacy account mapping. No production Clerk session has been
-exercised.
+set in Vercel. **Clerk mail delivery is still blocked:** its production domain expects updated
+mail/DKIM CNAME targets, while the live DNS still points at the old tenant. Email OTP cannot
+be delivered until the three-record is-a.dev update in `CLERK-MAIL-PR.md` is merged. Google
+production credentials, the real production sign-in/webhook test and legacy account mapping
+also remain pending. No production Clerk session has been exercised.
 
 Vercel required this ownership verification:
 
@@ -293,26 +295,30 @@ files as [PR #58363](https://github.com/is-a-dev/register/pull/58363). It was
 **merged** on 25.10.2026 at 17:52 UTC (merge commit
 `bb86038f7e5004fd36e55f43b41fed286a69c707`); all four checks passed. The six
 hostnames now resolve. The Clerk production instance has been moved and its
-Frontend API/account portal are live. Vercel still needs the app hostname
-verified: if Vercel asks for a `_vercel` TXT challenge, the owner must submit
-that TXT record in a separate is-a.dev PR before the certificate can issue.
+Frontend API/account portal are live. Vercel verification and the app certificate are
+complete. Clerk's current production domain configuration, however, reports the old
+`vedhnrhsrdju` mail/DKIM targets as invalid and `mail.status: not_started`; the owner must
+submit a three-record is-a.dev PR with the current `nefqx6afwufx` targets before Email OTP
+can be delivered.
 
 The files and matching PR body are in `is-a-dev-akashgupta/nested/`; the local
 is-a.dev suite passed 13/13 and the template check passed. Do not comment or
-ping maintainers about the merged PR.
+ping maintainers about any PR.
 
 | File | Hostname | Record |
 |---|---|---|
-| `domains/abap-studio.akashgupta.json` | `abap-studio.akashgupta.is-a.dev` | `CNAME` → `cname.vercel-dns.com` |
+| `domains/abap-studio.akashgupta.json` | `abap-studio.akashgupta.is-a.dev` | `CNAME` → `e65413aa6d37f6f6.vercel-dns-017.com` |
 | `domains/clerk.abap-studio.akashgupta.json` | `clerk.abap-studio.akashgupta.is-a.dev` | `CNAME` → `frontend-api.clerk.services` |
 | `domains/accounts.abap-studio.akashgupta.json` | `accounts.abap-studio.akashgupta.is-a.dev` | `CNAME` → `accounts.clerk.services` |
-| `domains/clkmail.abap-studio.akashgupta.json` | `clkmail.abap-studio.akashgupta.is-a.dev` | `CNAME` → `mail.vedhnrhsrdju.clerk.services` |
-| `domains/clk._domainkey.abap-studio.akashgupta.json` | `clk._domainkey.abap-studio.akashgupta.is-a.dev` | `CNAME` → `dkim1.vedhnrhsrdju.clerk.services` |
-| `domains/clk2._domainkey.abap-studio.akashgupta.json` | `clk2._domainkey.abap-studio.akashgupta.is-a.dev` | `CNAME` → `dkim2.vedhnrhsrdju.clerk.services` |
+| `domains/clkmail.abap-studio.akashgupta.json` | `clkmail.abap-studio.akashgupta.is-a.dev` | `CNAME` → `mail.nefqx6afwufx.clerk.services` |
+| `domains/clk._domainkey.abap-studio.akashgupta.json` | `clk._domainkey.abap-studio.akashgupta.is-a.dev` | `CNAME` → `dkim1.nefqx6afwufx.clerk.services` |
+| `domains/clk2._domainkey.abap-studio.akashgupta.json` | `clk2._domainkey.abap-studio.akashgupta.is-a.dev` | `CNAME` → `dkim2.nefqx6afwufx.clerk.services` |
 
-The Clerk targets above were the current values at submission for instance
-`ins_3LAf6uu766aoTCwlI8nX5faMFQA`. Confirm them in the Clerk dashboard before
-moving the instance; a replacement instance can have different targets.
+The Clerk mail/DKIM targets above are the values currently returned by the production
+domain status for instance `ins_3LAf6uu766aoTCwlI8nX5faMFQA`. Do not reuse the old
+`vedhnrhsrdju` values; they resolve but fail Clerk's verification. Confirm the values in the
+Clerk dashboard before changing DNS because a replacement instance can have different
+targets.
 
 Example JSON for the application domain:
 

@@ -20,6 +20,7 @@ Vercel (and locally in the git-ignored `.env`).
 | Local Clerk integration | Owner mapping, non-owner isolation, ban/unban, force logout, deletion, audit and client sign-out verified on a throwaway DB; test users removed |
 | Google OAuth | Production config has Google enabled with empty production credentials; real Google sign-in is **pending** |
 | Webhook | Route and signature verification deployed; signing secret is set in Vercel; a real Clerk test event is still pending |
+| Clerk mail DNS | **Blocked** — the production domain reports the old `vedhnrhsrdju` mail/DKIM CNAMEs as invalid and `mail.status: not_started`; Email OTP cannot be delivered until the three-record is-a.dev update is merged |
 | Production keys | Publishable key and secret key are set in Vercel production; values were not printed |
 | Free domain path | `docs/FREE-DOMAIN-SETUP.md` — original is-a.dev root denied; appeal #58258 closed; root `akashgupta.is-a.dev` merged and live; nested PR #58363 merged and DNS live; Vercel domain/SSL verified; Clerk domain moved; P1 deployed; production sign-in pending; EU.org awaiting approval |
 
@@ -98,8 +99,8 @@ path is:
 - **is-a.dev (current):** the portfolio root `akashgupta.is-a.dev` is merged and live,
   redirecting to <https://akashgupta221.github.io/>. The nested application
   `abap-studio.akashgupta.is-a.dev` and its Clerk subdomains were merged in is-a.dev
-  PR #58363 on 25.10.2026 at 17:52 UTC. All six hostnames resolve through DNS; TLS is
-  not provisioned yet.
+  PR #58363 on 25.10.2026 at 17:52 UTC. All six hostnames resolve through DNS; Vercel and
+  Clerk TLS are provisioned and verified.
 - **EU.org:** `abap-studio.eu.org` is awaiting human approval; no nameserver delegation is
   live yet.
 
@@ -110,29 +111,22 @@ because the preview showed only the SAP-style logon screen. Appeal issue #58258 
 is-a.dev submissions; its terms prohibit AI-created pull requests. EU.org requires a
 non-Gmail contact address and may take days to months.
 
-Before deploying, complete these two dashboard steps:
+The current blocker is **Clerk mail/DKIM DNS**, not Vercel. The Vercel domain, app
+certificate, Clerk Frontend API and account portal are all live. Clerk's production domain
+status reports `mail` and both DKIM records as invalid because DNS still points at the old
+`vedhnrhsrdju` mail tenant. The required records are:
 
-1. **Vercel:** the domain has been added to the `abap-studio-rd9d` project, but
-   Vercel marks it **Verification Required** because it was previously linked to another
-   Vercel account. Submit this follow-up is-a.dev change manually:
-   - Add TXT `_vercel.akashgupta.is-a.dev` =
-     `vc-domain-verify=abap-studio.akashgupta.is-a.dev,7c86e8bdcf66173704fd`.
-   - Change CNAME `abap-studio.akashgupta.is-a.dev` from `cname.vercel-dns.com` to
-     `e65413aa6d37f6f6.vercel-dns-017.com`.
-   The prepared files are `domains/_vercel.akashgupta.json` (new) and the updated
-   `domains/abap-studio.akashgupta.json`; all 13 is-a.dev tests pass. The owner submitted
-   them as [PR #58410](https://github.com/is-a-dev/register/pull/58410); it was merged on
-   25.10.2026, the TXT/CNAME records are live, and Vercel reports the hostname as
-   `configured-correctly`. The app returns HTTP `200` at the new hostname.
-2. **Clerk:** the production instance has already been moved to
-   `abap-studio.akashgupta.is-a.dev` with **Secondary application**. The Frontend API is
-   live and reports Email OTP + Google only. The account portal has a valid TLS
-   certificate; its `403` response to curl is a Cloudflare browser challenge. Run
-   `bunx clerk deploy status --wait` until green, then complete a browser sign-in test.
+| Hostname | Required target |
+|---|---|
+| `clkmail.abap-studio.akashgupta.is-a.dev` | `mail.nefqx6afwufx.clerk.services` |
+| `clk._domainkey.abap-studio.akashgupta.is-a.dev` | `dkim1.nefqx6afwufx.clerk.services` |
+| `clk2._domainkey.abap-studio.akashgupta.is-a.dev` | `dkim2.nefqx6afwufx.clerk.services` |
 
-Do not add production keys while the Vercel certificate or Clerk account portal is still
-pending. The five CNAMEs shown by `bunx clerk deploy status` must be verified for the final
-domain.
+The updated files and PR body are prepared in `is-a-dev-akashgupta/nested/`; the local suite
+passes 13/13 and the template check passes. The owner must submit the three-file change
+manually under `CLERK-MAIL-PR.md`; is-a.dev prohibits AI-created PRs. Do not comment or ping
+maintainers. After it merges, re-run the DNS check and `bunx clerk deploy status --wait`
+until Clerk reports mail/DKIM verified. Until then, Email OTP delivery will not work.
 
 Before deploying, confirm the production instance uses **only Email OTP and Google**.
 Phone sign-up/sign-in and username sign-up/sign-in were disabled in the development

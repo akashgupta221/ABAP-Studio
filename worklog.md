@@ -914,3 +914,40 @@ Stage Summary:
 - P1 is deployed and the public Clerk configuration surface is healthy.
 - The next gate is a real production owner Email OTP sign-in plus `/admin`, non-owner isolation, webhook delivery and Google OAuth.
 - P1 remains **not accepted**; `main` remains at P0 until the production checks pass. Modern ABAP remains paused.
+
+---
+
+Task ID: 35
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Diagnose the missing production Email OTP and prepare the Clerk mail/DKIM DNS fix
+
+Work Log:
+- The owner reported that the production Email OTP was not arriving.
+- `bunx clerk@latest doctor --json` passed host/auth checks and authenticated as the owner account; the CLI can reach application `app_3Ks7MMboysX2gIBJhfURlf16Pwq`.
+- Pulled the production instance config and confirmed `auth_email` uses only `email_code`, is required for sign-up, and verifies at sign-up. The production user list is empty, consistent with an OTP step that never completed.
+- Queried the Clerk production domain status. `clerk` and `accounts` CNAMEs are verified; SSL is complete. The mail, DKIM and DKIM2 records are **not verified**:
+  - required: `mail.nefqx6afwufx.clerk.services`, actual: `mail.vedhnrhsrdju.clerk.services`
+  - required: `dkim1.nefqx6afwufx.clerk.services`, actual: `dkim1.vedhnrhsrdju.clerk.services`
+  - required: `dkim2.nefqx6afwufx.clerk.services`, actual: `dkim2.vedhnrhsrdju.clerk.services`
+  - Clerk reports `mail.status: "not_started"` and domain `status: "incomplete"`.
+- This is the cause of the missing OTP. The old mail/DKIM tenant values still resolve, so DNS alone looked healthy, but Clerk's current production mail tenant expects `nefqx6afwufx`.
+- Updated the three prepared is-a.dev files:
+  - `clkmail.abap-studio.akashgupta.json`
+  - `clk._domainkey.abap-studio.akashgupta.json`
+  - `clk2._domainkey.abap-studio.akashgupta.json`
+- Created `CLERK-MAIL-PR.md` and `CLERK-MAIL-PR-BODY.md` with the exact owner-submission steps. The PR must change exactly those three files. The owner must submit it manually; is-a.dev prohibits AI-created PRs, and no comment/ping was sent.
+- Validated the changes in the local is-a.dev clone: 13/13 tests passed; `util/check-pr-template.cjs` reported `PR template validation passed`.
+- Updated the app docs and worklog. No DNS record, Clerk setting, app code or production secret was changed.
+
+Verification:
+- `bunx clerk@latest api --platform /platform/applications/app_3Ks7MMboysX2gIBJhfURlf16Pwq/domains/abap-studio.akashgupta.is-a.dev/status` -> `status: incomplete`, `mail.status: not_started`, three invalid CNAMEs
+- `dig clkmail.abap-studio.akashgupta.is-a.dev CNAME` -> old `mail.vedhnrhsrdju.clerk.services`
+- Local is-a.dev test clone with the three updated files -> 13 tests passed
+- `PR_BODY=... node util/check-pr-template.cjs` -> `PR template validation passed`
+- Production users -> 0
+- No secret value, OTP, email body or token was printed
+
+Stage Summary:
+- Email OTP is blocked by stale Clerk mail/DKIM CNAME targets, not by the app or sign-in configuration.
+- The owner must submit the prepared three-file is-a.dev PR manually. After merge, verify the CNAMEs, trigger Clerk's DNS check, and retry the owner sign-in.
+- P1 remains **not accepted**; `main` remains at P0 and production still runs the P1 branch build.
