@@ -188,6 +188,29 @@ Add these in **Vercel → Project → Settings → Environment Variables → Pro
 Do not use development keys in production. Do not rotate `AUTH_SECRET` during the
 cutover unless you deliberately want to invalidate every legacy session.
 
+### Deploy the P1 build
+
+The public hostname currently serves the old P0 deployment, so `/sign-in` and
+`/sign-up` return `404`. After the production variables and webhook secret are
+saved in Vercel, deploy the `clerk-migration` build to production from the
+repository root:
+
+```bash
+npx vercel --prod
+```
+
+Vercel aliases the verified custom domain to the new deployment. Confirm:
+
+```bash
+curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/sign-in
+curl --tlsv1.2 https://abap-studio.akashgupta.is-a.dev/api/health
+```
+
+`/sign-in` must return `200`, and `/api/health` must report the Clerk flags as
+configured. If the deployment fails, redeploy the last `main` production
+deployment from the Vercel dashboard to roll back to P0; the legacy fallback and
+database are unchanged.
+
 ## 3. Create the webhook
 
 In the Clerk dashboard for the production instance, create an endpoint:
