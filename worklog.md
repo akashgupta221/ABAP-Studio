@@ -773,7 +773,7 @@ Work Log:
 - The owner moved the Clerk production instance to `abap-studio.akashgupta.is-a.dev` and chose **Secondary application**.
 - Verified the Clerk Frontend API directly: `https://clerk.abap-studio.akashgupta.is-a.dev/v1/environment` returns HTTP `200` over IPv4. The response identifies the production environment (`display_config.instance_environment_type: production`, application `ABAP Studio`, instance id `ins_3LAf6uu766aoTCwlI8nX5faMFQA`).
 - Verified the production auth configuration: `email_address` and Google OAuth are enabled; password, phone, username, passkey, authenticator app and backup codes are disabled. Sign-up mode is `public`.
-- The Clerk account portal at `https://accounts.abap-studio.akashgupta.is-a.dev` still fails the TLS handshake. DNS points to `accounts.clerk.services`; this is a Clerk/Cloudflare provisioning delay or dashboard issue, not an is-a.dev DNS error. Recheck before acceptance.
+- The Clerk account portal at `https://accounts.abap-studio.akashgupta.is-a.dev` initially failed the TLS handshake while Clerk provisioned the certificate. It is now live with a valid certificate; curl receives HTTP `403` with a Cloudflare browser challenge, which is expected. Complete a real browser test before acceptance.
 - Vercel still marks `abap-studio.akashgupta.is-a.dev` as **Verification Required** because the hostname was previously linked to another Vercel account. Vercel requires:
   - TXT `_vercel.akashgupta.is-a.dev` = `vc-domain-verify=abap-studio.akashgupta.is-a.dev,7c86e8bdcf66173704fd`
   - CNAME `abap-studio.akashgupta.is-a.dev` = `e65413aa6d37f6f6.vercel-dns-017.com`
@@ -789,7 +789,8 @@ Verification:
 - `curl -4 https://clerk.abap-studio.akashgupta.is-a.dev/v1/environment` -> HTTP `200`
 - `jq .display_config.home_url` -> `https://abap-studio.akashgupta.is-a.dev`
 - `jq .user_settings.attributes` -> email enabled/required; password, phone and username disabled
-- `curl -4 https://accounts.abap-studio.akashgupta.is-a.dev` -> TLS handshake failure (pending)
+- `curl -4 https://accounts.abap-studio.akashgupta.is-a.dev` -> HTTP `403` Cloudflare challenge; TLS certificate valid
+- `openssl s_client -connect accounts.abap-studio.akashgupta.is-a.dev:443` -> certificate CN matches the hostname
 - `curl -4 https://abap-studio.akashgupta.is-a.dev` -> TLS handshake failure (Vercel verification pending)
 - `dig _vercel.akashgupta.is-a.dev TXT` -> no record yet
 - Vercel requires the exact TXT and CNAME shown above
@@ -798,5 +799,5 @@ Verification:
 Stage Summary:
 - Clerk production domain move is verified correct: Frontend API is live, Email OTP + Google only.
 - Vercel requires one more owner-submitted is-a.dev PR for the `_vercel` TXT and project-specific CNAME; files and PR body are prepared.
-- After that PR merges, verify Vercel's domain, wait for the app certificate, recheck the Clerk account portal, then set production keys/webhook/OWNER_EMAIL.
+- After that PR merges, verify Vercel's domain, wait for the app certificate, complete a real browser sign-in test, then set production keys/webhook/OWNER_EMAIL.
 - P1 remains **not accepted**; P0 remains deployed and accepted. Modern ABAP remains paused.

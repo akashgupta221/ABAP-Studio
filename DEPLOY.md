@@ -22,7 +22,7 @@ Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 > portfolio is live at <https://akashgupta221.github.io/>; the new is-a.dev root
 > `akashgupta.is-a.dev` is merged and redirects to it. The six nested app/Clerk records were
 > merged in PR #58363 and now resolve in DNS. The Clerk production instance has been moved and
-> its Frontend API is live; Vercel ownership verification, the Clerk account portal, EU.org
+> its Frontend API is live; Vercel ownership verification, EU.org
 > approval, Google OAuth, keys and webhooks remain pending; production sessions are
 > unverified, so P1 is not deployed or accepted.** See §1.6 and §4 of
 > [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md) and the owner guide

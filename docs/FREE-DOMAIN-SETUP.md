@@ -56,10 +56,10 @@ in Git.
   [is-a.dev PR #58363](https://github.com/is-a-dev/register/pull/58363). It was
   **merged** on 25.10.2026 at 17:52 UTC (merge commit
   `bb86038f7e5004fd36e55f43b41fed286a69c707`); all checks passed. The six
-  nested DNS records now resolve through Cloudflare DNS. TLS is not provisioned
-  yet: the app hostname fails the TLS handshake until its domain is assigned in
-  Vercel, and the Clerk hostnames fail until the production Clerk instance is
-  moved. Do not expect the app to load on the new hostname until both are done.
+  nested DNS records now resolve through Cloudflare DNS. The Clerk production
+  instance has been moved and its Frontend API and account portal are live over
+  TLS. The app hostname still fails the TLS handshake until Vercel verifies the
+  owner-submitted `_vercel` TXT/CNAME and issues the certificate.
 - The is-a.dev terms prohibit AI-created pull requests. The owner made the root
   fix; this assistant did not edit the fork or the PR.
 - The EU.org request for `abap-studio.eu.org` was submitted on 25.10.2026 and
@@ -77,9 +77,10 @@ nested records are live. The Clerk production instance now serves its Frontend A
 requires proof that the owner controls the domain, because
 `abap-studio.akashgupta.is-a.dev` was previously linked to another Vercel account.
 The remaining blockers are the Vercel ownership TXT/unique-CNAME update, the Vercel
-certificate, the Clerk account-portal certificate, and the missing production Clerk keys,
-`OWNER_EMAIL`, `CLERK_WEBHOOK_SECRET` and Google production credential. No production
-Clerk session has been exercised.
+certificate, and the missing production Clerk keys, `OWNER_EMAIL`,
+`CLERK_WEBHOOK_SECRET` and Google production credential. The Clerk account portal now
+serves a valid TLS certificate; its `403` response to command-line requests is a Cloudflare
+browser challenge, not an app outage. No production Clerk session has been exercised.
 
 Vercel shows this required verification:
 
@@ -104,17 +105,17 @@ certificate.
 | is-a.dev PR #58327 | merged 25.10.2026 13:01 UTC; one file, 9 additions; all checks passed |
 | Nested app/Clerk records | [PR #58363](https://github.com/is-a-dev/register/pull/58363) merged 25.10.2026 17:52 UTC; merge commit `bb86038f7e5004fd36e55f43b41fed286a69c707`; all checks passed |
 | Nested PR local validation | fresh is-a.dev clone + six files -> 13/13 tests; template check passed |
-| Six nested hostnames | all resolve via Cloudflare DNS; Clerk Frontend API is live over TLS; app and account portal certificates pending |
+| Six nested hostnames | all resolve via Cloudflare DNS; Clerk Frontend API and account portal are live over TLS; app certificate pending Vercel verification |
 | `https://abap-studio.akashgupta.is-a.dev` | DNS resolves, but TLS fails until Vercel verifies the `_vercel` TXT record and assigns the domain |
 | `https://clerk.abap-studio.akashgupta.is-a.dev/v1/environment` | HTTP `200`; production instance; Email OTP + Google; password/phone/username disabled |
-| `https://accounts.abap-studio.akashgupta.is-a.dev` | DNS resolves, but TLS handshake still fails; recheck after Clerk finishes provisioning |
+| `https://accounts.abap-studio.akashgupta.is-a.dev` | Valid TLS certificate; HTTP `403` Cloudflare challenge to curl (expected); browser login not yet re-exercised |
 | Vercel verification | TXT `_vercel.akashgupta.is-a.dev` = `vc-domain-verify=abap-studio.akashgupta.is-a.dev,7c86e8bdcf66173704fd`; CNAME `abap-studio` -> `e65413aa6d37f6f6.vercel-dns-017.com`; follow-up is-a.dev PR required |
 | `https://abap-studio.is-a.dev` | `302` to `https://is-a.dev/available?d=abap-studio` |
 | is-a.dev PR #58254 | closed, `status: denied`, `reason: not dev related`; no domain registered |
 | is-a.dev issue #58258 | closed 25.10.2026 09:29 UTC; maintainer says root is for portfolios and suggests a nested subdomain |
 | `dig NS abap-studio.eu.org` | no records |
 | `dig SOA abap-studio.eu.org` | no records |
-| Clerk production instance | Moved to `abap-studio.akashgupta.is-a.dev` (Secondary application); Frontend API live and correct; account-portal TLS pending |
+| Clerk production instance | Moved to `abap-studio.akashgupta.is-a.dev` (Secondary application); Frontend API live; account portal has a valid certificate and a Cloudflare challenge |
 | Production Vercel env | has `OWNER_USERNAME`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `AUTH_SECRET`; missing `OWNER_EMAIL`, Clerk production keys and `CLERK_WEBHOOK_SECRET` |
 | Production Google OAuth | enabled in Clerk with empty production credentials |
 
@@ -289,10 +290,10 @@ the is-a.dev repository: all 13 tests passed and
 files as [PR #58363](https://github.com/is-a-dev/register/pull/58363). It was
 **merged** on 25.10.2026 at 17:52 UTC (merge commit
 `bb86038f7e5004fd36e55f43b41fed286a69c707`); all four checks passed. The six
-hostnames now resolve. TLS is not provisioned yet: add the app hostname to the
-Vercel project and move the Clerk production instance to the new hostname.
-If Vercel asks for a `_vercel` TXT challenge, the owner must submit that TXT
-record in a separate is-a.dev PR before the certificate can issue.
+hostnames now resolve. The Clerk production instance has been moved and its
+Frontend API/account portal are live. Vercel still needs the app hostname
+verified: if Vercel asks for a `_vercel` TXT challenge, the owner must submit
+that TXT record in a separate is-a.dev PR before the certificate can issue.
 
 The files and matching PR body are in `is-a-dev-akashgupta/nested/`; the local
 is-a.dev suite passed 13/13 and the template check passed. Do not comment or
@@ -529,11 +530,10 @@ production instances without a cutover plan.
       the Vercel domain and certificate.
 - [x] Move the Clerk production instance to
       `https://abap-studio.akashgupta.is-a.dev`, choosing **Secondary
-      application**. The Frontend API is live and returns the correct Email
-      OTP + Google configuration.
-- [ ] Recheck the Clerk account-portal TLS at
-      `https://accounts.abap-studio.akashgupta.is-a.dev` and run
-      `clerk deploy status` until green.
+      application**. The Frontend API is live, returns the correct Email OTP +
+      Google configuration, and the account portal has a valid certificate.
+- [ ] Run `clerk deploy status` until the dashboard reports all Clerk DNS/SSL
+      checks green, then complete a browser sign-in test.
 - [ ] Monitor the EU.org contact inbox (non-Gmail) and the Cloudflare zone.
 - [ ] Choose the first fully verified domain.
 - [ ] Add production keys, webhook, `OWNER_EMAIL` and Google OAuth.
