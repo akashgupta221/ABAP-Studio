@@ -951,3 +951,30 @@ Stage Summary:
 - Email OTP is blocked by stale Clerk mail/DKIM CNAME targets, not by the app or sign-in configuration.
 - The owner must submit the prepared three-file is-a.dev PR manually. After merge, verify the CNAMEs, trigger Clerk's DNS check, and retry the owner sign-in.
 - P1 remains **not accepted**; `main` remains at P0 and production still runs the P1 branch build.
+
+---
+
+Task ID: 36
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Verify the Clerk mail/DKIM DNS PR
+
+Work Log:
+- The owner submitted [PR #58415](https://github.com/is-a-dev/register/pull/58415), titled `Update ABAP Studio Clerk mail DNS records`.
+- The PR changes exactly three files, one CNAME value in each:
+  - `domains/clkmail.abap-studio.akashgupta.json` -> `mail.nefqx6afwufx.clerk.services`
+  - `domains/clk._domainkey.abap-studio.akashgupta.json` -> `dkim1.nefqx6afwufx.clerk.services`
+  - `domains/clk2._domainkey.abap-studio.akashgupta.json` -> `dkim2.nefqx6afwufx.clerk.services`
+- `Filter out AI-generated PRs`, `Label`, `Template` and `Tests` all pass. GitHub reports `mergeable: MERGEABLE` and `mergeStateStatus: BLOCKED`; the only remaining gate is code-owner review.
+- No comment, ping, review or edit was made. Do not comment or close the PR.
+- Updated the docs with the PR number and status. The production app and Clerk mail DNS were not changed.
+
+Verification:
+- `gh pr view 58415 --repo is-a-dev/register` -> `OPEN`, `MERGEABLE`, `BLOCKED`, three files
+- `gh pr checks 58415` -> all four checks pass
+- `gh pr diff 58415` -> exactly the three expected CNAME changes
+- No DNS, Clerk, Vercel or production app change was made
+
+Stage Summary:
+- PR #58415 is correct and ready for maintainer review.
+- Wait for the merge; do not comment or ping. Then verify DNS, trigger Clerk's mail/DNS check and retry owner Email OTP.
+- P1 remains **not accepted**; `main` remains at P0 and production still runs the P1 branch build.

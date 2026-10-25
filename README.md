@@ -78,7 +78,7 @@ practice sandbox**; training examples are shared and read-only.
   verifies the hostname, and the P1 build is deployed; `/sign-in` and `/sign-up` return
   `200`. The Clerk account portal is live. The EU.org request is still awaiting approval.
   Clerk's production mail/DKIM CNAMEs are stale, so Email OTP delivery is blocked until
-  the prepared three-record is-a.dev update is merged. Production Google OAuth, a real
+  [PR #58415](https://github.com/is-a-dev/register/pull/58415) is merged. Production Google OAuth, a real
   production sign-in/webhook event and legacy mapping also remain pending, so P1 is not
   accepted. The built-in scrypt logon remains
   a temporary fallback during cutover. Guides:

@@ -20,7 +20,7 @@ Vercel (and locally in the git-ignored `.env`).
 | Local Clerk integration | Owner mapping, non-owner isolation, ban/unban, force logout, deletion, audit and client sign-out verified on a throwaway DB; test users removed |
 | Google OAuth | Production config has Google enabled with empty production credentials; real Google sign-in is **pending** |
 | Webhook | Route and signature verification deployed; signing secret is set in Vercel; a real Clerk test event is still pending |
-| Clerk mail DNS | **Blocked** — the production domain reports the old `vedhnrhsrdju` mail/DKIM CNAMEs as invalid and `mail.status: not_started`; Email OTP cannot be delivered until the three-record is-a.dev update is merged |
+| Clerk mail DNS | **Blocked** — the production domain reports the old `vedhnrhsrdju` mail/DKIM CNAMEs as invalid and `mail.status: not_started`; Email OTP cannot be delivered until [PR #58415](https://github.com/is-a-dev/register/pull/58415) is merged |
 | Production keys | Publishable key and secret key are set in Vercel production; values were not printed |
 | Free domain path | `docs/FREE-DOMAIN-SETUP.md` — original is-a.dev root denied; appeal #58258 closed; root `akashgupta.is-a.dev` merged and live; nested PR #58363 merged and DNS live; Vercel domain/SSL verified; Clerk domain moved; P1 deployed; production sign-in pending; EU.org awaiting approval |
 
@@ -122,11 +122,12 @@ status reports `mail` and both DKIM records as invalid because DNS still points 
 | `clk._domainkey.abap-studio.akashgupta.is-a.dev` | `dkim1.nefqx6afwufx.clerk.services` |
 | `clk2._domainkey.abap-studio.akashgupta.is-a.dev` | `dkim2.nefqx6afwufx.clerk.services` |
 
-The updated files and PR body are prepared in `is-a-dev-akashgupta/nested/`; the local suite
-passes 13/13 and the template check passes. The owner must submit the three-file change
-manually under `CLERK-MAIL-PR.md`; is-a.dev prohibits AI-created PRs. Do not comment or ping
-maintainers. After it merges, re-run the DNS check and `bunx clerk deploy status --wait`
-until Clerk reports mail/DKIM verified. Until then, Email OTP delivery will not work.
+The owner submitted the three-file change as
+[PR #58415](https://github.com/is-a-dev/register/pull/58415). It changes exactly those three
+files, and the `Filter out AI-generated PRs`, `Label`, `Template` and `Tests` checks pass.
+It is `MERGEABLE` but blocked on code-owner review. Do not comment or ping maintainers. After
+it merges, re-run the DNS check and `bunx clerk deploy status --wait` until Clerk reports
+mail/DKIM verified. Until then, Email OTP delivery will not work.
 
 Before deploying, confirm the production instance uses **only Email OTP and Google**.
 Phone sign-up/sign-in and username sign-up/sign-in were disabled in the development

@@ -80,7 +80,7 @@ Vercel domain reports `configured-correctly` and the app returns HTTP `200` at
 `/sign-up` return `200`. The Clerk keys, `OWNER_EMAIL`, webhook secret and fallback flags are
 set in Vercel. **Clerk mail delivery is still blocked:** its production domain expects updated
 mail/DKIM CNAME targets, while the live DNS still points at the old tenant. Email OTP cannot
-be delivered until the three-record is-a.dev update in `CLERK-MAIL-PR.md` is merged. Google
+be delivered until [PR #58415](https://github.com/is-a-dev/register/pull/58415) is merged. Google
 production credentials, the real production sign-in/webhook test and legacy account mapping
 also remain pending. No production Clerk session has been exercised.
 
@@ -298,7 +298,7 @@ hostnames now resolve. The Clerk production instance has been moved and its
 Frontend API/account portal are live. Vercel verification and the app certificate are
 complete. Clerk's current production domain configuration, however, reports the old
 `vedhnrhsrdju` mail/DKIM targets as invalid and `mail.status: not_started`; the owner must
-submit a three-record is-a.dev PR with the current `nefqx6afwufx` targets before Email OTP
+submit [PR #58415](https://github.com/is-a-dev/register/pull/58415) with the current `nefqx6afwufx` targets before Email OTP
 can be delivered.
 
 The files and matching PR body are in `is-a-dev-akashgupta/nested/`; the local
