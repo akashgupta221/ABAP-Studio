@@ -17,9 +17,10 @@ Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 > isolation** checks pass; the production legacy-favorites table is verified empty. P0 is
 > accepted. **P1 Clerk code is implemented on `clerk-migration` and passes the local
 > gates. Development Email OTP, owner/non-owner mapping, admin ban/unban/revoke/delete,
-> audit and client sign-out were verified with disposable test users (removed). Production
-> Clerk is not configured and Google/webhooks/production sessions remain unverified, so P1
-> is not deployed or accepted.** See §1.6 and §4 of
+> audit and client sign-out were verified with disposable test users (removed). A
+> production Clerk instance exists for `abap-studio.is-a.dev`, but its DNS, Google OAuth,
+> keys and webhooks remain pending; production sessions are unverified, so P1 is not
+> deployed or accepted.** See §1.6 and §4 of
 > [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md) and the owner guide
 > [`docs/CLERK-SETUP.md`](CLERK-SETUP.md).
 
@@ -77,8 +78,10 @@ turso db shell abap-studio ".dump" > abap-studio-backup-$(date +%Y%m%d).sql
    closed if neither owner identity is configured. If both are set, `OWNER_EMAIL` wins
    and must match the verified email stored on the `OWNER` row.
 
-   **P1 Clerk cutover:** after the interactive production Clerk deploy described in
-   [`docs/CLERK-SETUP.md`](CLERK-SETUP.md), also add the production
+   **P1 Clerk cutover:** finish the domain DNS in
+   [`docs/FREE-DOMAIN-SETUP.md`](FREE-DOMAIN-SETUP.md) and Google OAuth in
+   [`docs/GOOGLE-OAUTH-SETUP.md`](GOOGLE-OAUTH-SETUP.md), then follow
+   [`docs/CLERK-SETUP.md`](CLERK-SETUP.md) and add the production
    `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`,
    `LEGACY_AUTH_MODE=fallback` and `NEXT_PUBLIC_LEGACY_AUTH_MODE=fallback`. Do not use
    development Clerk keys in production.
@@ -242,11 +245,11 @@ step instead of changing this guarantee.
   by Git and created with `bun run db:push`.
 - Custom domain: Vercel → Project → Settings → Domains.
 - Clerk Email OTP + Google is **implemented in code** on `clerk-migration`. Development
-  Email OTP and the owner/non-owner admin flows are verified, but production Clerk is not
-  configured, Google/webhooks/production sessions are unverified, and P1 is not accepted.
-  Password, phone and username sign-in are disabled. The built-in user master remains a
-  temporary fallback. `OWNER_EMAIL` is already accepted by the owner gate, so the Clerk
-  migration keeps the same server-side owner check.
+  Email OTP and the owner/non-owner admin flows are verified, but the production
+  instance's DNS, Google OAuth, keys and webhooks remain pending; production sessions are
+  unverified and P1 is not accepted. Password, phone and username sign-in are disabled.
+  The built-in user master remains a temporary fallback. `OWNER_EMAIL` is already accepted
+  by the owner gate, so the Clerk migration keeps the same server-side owner check.
 
 ## Troubleshooting
 

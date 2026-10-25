@@ -205,8 +205,10 @@ obsolete global `Favorite` model is no longer used.
   password, phone or username field.
 - All disposable Clerk test users and the throwaway database were deleted after testing.
 - Clerk config still reports Google enabled/authenticatable, but a real Google sign-in has
-  not been exercised. Webhook delivery, production Clerk instance/domain/keys and a
-  production Clerk session remain unverified. `clerk deploy status` remains `not_started`.
+  not been exercised. At the end of the local verification, `clerk deploy status` was
+  `not_started`. A production instance was then created for `abap-studio.is-a.dev` and the
+  status is now `domain_pending`; DNS, production Google credentials, keys, webhook
+  delivery and a production Clerk session remain unverified.
 
 ---
 
@@ -360,7 +362,7 @@ production is still blocked on the domain, Google OAuth, keys and webhook:
 2. **Google OAuth.** Create a free Google Cloud OAuth client for
    `https://clerk.abap-studio.is-a.dev/v1/oauth_callback` and install the client ID and
    secret in the Clerk production instance. The production config currently has Google
-   enabled with empty credentials.
+   enabled with empty credentials. Exact steps are in `docs/GOOGLE-OAUTH-SETUP.md`.
 3. **Vercel production environment.** Add the production
    `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`,
    `OWNER_EMAIL`, and the existing `AUTH_SECRET`; set `LEGACY_AUTH_MODE=fallback` and

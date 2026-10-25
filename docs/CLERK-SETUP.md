@@ -115,8 +115,8 @@ Once DNS is live, run:
 bunx clerk deploy status --wait
 ```
 
-The Google connection still needs a production OAuth client. Follow Clerk's current
-redirect URI instructions; do not reuse development credentials in production. The
+The Google connection still needs a production OAuth client. Follow
+`docs/GOOGLE-OAUTH-SETUP.md`; do not reuse development credentials in production. The
 production redirect URI for this instance is
 `https://clerk.abap-studio.is-a.dev/v1/oauth_callback`.
 

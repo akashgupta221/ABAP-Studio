@@ -508,6 +508,7 @@ Work Log:
 - Verified the production config has Email OTP as the only email strategy, Google enabled, and password/phone/username disabled. Google has empty production credentials and is the only pending OAuth provider.
 - `bunx clerk deploy status` now reports `state: domain_pending`; the five required CNAMEs, SSL and email DNS are pending. It is no longer `not_started`.
 - Added `docs/FREE-DOMAIN-SETUP.md` with the exact root and nested is-a.dev JSON files, the Clerk DNS values, the EU.org backup plan and the post-DNS cutover steps.
+- Added `docs/GOOGLE-OAUTH-SETUP.md` with the free Google Cloud production OAuth steps and the exact Clerk redirect URI.
 - Updated `docs/CLERK-SETUP.md` and `docs/MASTER-PROJECT-SPEC.md` to reflect the created production instance and the remaining domain/Google/key/webhook work.
 - Did not submit the is-a.dev pull requests. Its terms explicitly prohibit AI-created pull requests and login-gated root hostnames; the owner must review and submit them manually from `akashgupta221`.
 - Did not add production Clerk keys to Vercel. They remain in the production instance and a temporary git-ignored file; no key or secret was printed or committed.

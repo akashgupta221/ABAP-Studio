@@ -69,10 +69,12 @@ practice sandbox**; training examples are shared and read-only.
 - **Clerk Email OTP + Google** is implemented on `clerk-migration`, with verified-email
   account linking and database-authoritative roles. Development Email OTP and the
   owner/non-owner admin flows are verified with disposable test users; password, phone and
-  username sign-in are disabled. Production Clerk is not configured yet, so Google,
-  webhooks and production sessions remain unverified. The built-in scrypt logon remains a
-  temporary fallback during cutover. Guide:
-  [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md).
+  username sign-in are disabled. A production instance exists for `abap-studio.is-a.dev`,
+  but DNS, production Google OAuth, keys and webhooks remain pending, so production
+  sessions are unverified. The built-in scrypt logon remains a temporary fallback during
+  cutover. Guides: [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md),
+  [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) and
+  [`docs/GOOGLE-OAUTH-SETUP.md`](docs/GOOGLE-OAUTH-SETUP.md).
 
 ## Tech stack
 
@@ -178,9 +180,10 @@ Every `git push` rebuilds and redeploys the live app. The v0.3 security build is
 isolation run passed, and the owner reviewed `/admin` (**P0 accepted**). P1 Clerk code is
 implemented on `clerk-migration` and passes the local gates; development Email OTP,
 owner/non-owner mapping, admin ban/unban/revoke/delete and client sign-out were verified
-with disposable test users. Production Clerk is not configured yet, and Google/webhooks/
-production sessions remain unverified, so P1 is **not deployed or accepted**. Read
-[`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) before the cutover. The ownership migration
+with disposable test users. A production instance exists, but its DNS, Google OAuth,
+keys and webhooks remain pending, so P1 is **not deployed or accepted**. Read
+[`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) and
+[`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) before the cutover. The ownership migration
 changes who can see legacy programs and invalidates old sessions; the production
 legacy-favorites table is verified empty.
 
@@ -189,8 +192,11 @@ legacy-favorites table is verified empty.
 3. **Vercel** — import the repo and set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`,
    `AUTH_SECRET`, and the owner identity (`OWNER_EMAIL`, or `OWNER_USERNAME` as the
    interim fallback). If both are set, `OWNER_EMAIL` is authoritative. For the P1
-   cutover, also follow [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) to add the
-   production Clerk keys, webhook secret and `LEGACY_AUTH_MODE=fallback`.
+   cutover, finish the free-domain DNS in
+   [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) and Google OAuth in
+   [`docs/GOOGLE-OAUTH-SETUP.md`](docs/GOOGLE-OAUTH-SETUP.md), then follow
+   [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) to add the production Clerk keys,
+   webhook secret and `LEGACY_AUTH_MODE=fallback`.
 4. **Seed the cloud database** — from your machine:
 
 ```bash
@@ -307,8 +313,8 @@ tests/                   Unit tests + disposable API/security suite
 ## Roadmap
 
 - P1 Clerk cutover: code and local gates pass; development Email OTP plus owner/non-owner
-  admin flows are verified. Production instance/domain/keys, Google OAuth, webhook and
-  production owner/non-owner verification remain.
+  admin flows are verified. A production instance exists; domain/DNS, keys, Google OAuth,
+  webhook and production owner/non-owner verification remain.
 - Separate Modern ABAP environment with an honest executable / simulated / unsupported matrix
 - Distributed rate limiting for multi-instance deployments
 - Broader ABAP OO coverage, RAP/AMDP constructs and UI acceptance automation
