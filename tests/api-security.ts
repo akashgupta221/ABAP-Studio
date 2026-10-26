@@ -191,6 +191,35 @@ async function main() {
   check('owner sees every repository program', (overview.data.programs ?? []).some((p: any) => p.id === programId))
   check('owner sees user list without password hashes', !JSON.stringify(overview.data.users).includes('passwordHash'))
 
+  const programName = created.data?.program?.name
+  const exampleProgram = (overview.data.programs ?? []).find((p: any) => p.isExample)
+  check('an example program is available for the protection test', !!exampleProgram)
+  check('ordinary user cannot use owner program deletion', (await call(`/api/admin/programs/${programId}`, {
+    method: 'DELETE',
+    cookie: cookieA,
+    body: { confirmName: programName },
+  })).status === 403)
+  check('example programs cannot be deleted by the owner', exampleProgram
+    ? (await call(`/api/admin/programs/${exampleProgram.id}`, {
+        method: 'DELETE',
+        cookie: owner,
+        body: { confirmName: exampleProgram.name },
+      })).status === 403
+    : false)
+  check('owner program deletion requires the exact name', (await call(`/api/admin/programs/${programId}`, {
+    method: 'DELETE',
+    cookie: owner,
+    body: { confirmName: 'WRONG' },
+  })).status === 400)
+  check('owner can delete another user private program', (await call(`/api/admin/programs/${programId}`, {
+    method: 'DELETE',
+    cookie: owner,
+    body: { confirmName: programName },
+  })).status === 200)
+  check('deleted private program is gone', (await call(`/api/programs/${programId}`, { cookie: cookieA })).status === 404)
+  const overviewAfterDelete = await call('/api/admin/overview', { cookie: owner })
+  check('owner program deletion is audited', (overviewAfterDelete.data.audit ?? []).some((a: any) => a.action === 'PROGRAM_DELETE' && a.targetId === programId))
+
   const bUser = (overview.data.users ?? []).find((u: any) => u.username === userB)
   check('owner can identify user B', !!bUser)
   check('ordinary user cannot suspend another account', (await call(`/api/admin/users/${bUser.id}`, {
