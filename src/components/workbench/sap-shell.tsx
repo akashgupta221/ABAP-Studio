@@ -4,7 +4,7 @@
 import { useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { UserButton } from '@clerk/nextjs'
-import { Redo2, Undo2 } from 'lucide-react'
+import { ChevronRight, Redo2, Undo2 } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem,
@@ -34,8 +34,9 @@ import {
   NewObjectDialog, ObjectDirectoryDialog, SystemStatusDialog, TcodeRegistryDialog,
 } from './dialogs'
 import { LogonPad } from './logon-pad'
-import { BrowserFrame } from './browser-frame'
+import { SapLogo } from './sap-logo'
 import { getContextTitle } from './context-title'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 // ── SAP toolbar icons (inline SVG approximations of GUI icons) ─────────
 
@@ -270,6 +271,7 @@ export function SapShell() {
   const logon = useWorkbench((s) => s.session.loggedIn)
   const editorFontSize = useWorkbench((s) => s.editorFontSize)
   const systemInfoVisible = useWorkbench((s) => s.systemInfoVisible)
+  const isMobile = useIsMobile()
   const setSystemStatusOpen = useWorkbench((s) => s.setSystemStatusOpen)
   const setLogoffConfirm = useWorkbench((s) => s.setLogoffConfirm)
   const setEditorFontSize = useWorkbench((s) => s.setEditorFontSize)
@@ -884,96 +886,113 @@ export function SapShell() {
   const isEditorTab = activeTab?.kind === 'program' && !!activeProgramName
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#1d1929]" data-app="abapforge">
-      <BrowserFrame
-        title={title}
-        onBack={back}
-        onHome={exitToHome}
-        onReload={() => window.location.reload()}
-      />
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#d6e0ec] text-[#1c2b3a]">
-        <div className="h-[3px] shrink-0 bg-[#118ad8]" aria-hidden />
-        {/* ── window title bar ── */}
-        <header className="sap-titlebar relative flex h-7 shrink-0 items-center gap-2 px-2 text-white" role="banner">
-        {/* System menu (hamburger) */}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            className="flex h-6 w-6 items-center justify-center rounded-[2px] text-[13px] leading-none text-white/90 outline-none hover:bg-white/15 focus-visible:bg-white/15"
-            title="System menu"
-            aria-label="System menu"
-          >
-            ≡
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            sideOffset={2}
-            className="min-w-[220px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[12.5px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
-          >
-            <MenuList
-              items={[
-                { label: 'Find Object…', shortcut: 'Ctrl+K', run: () => useWorkbench.getState().setCommandPaletteOpen(true) },
-                ...(useWorkbench.getState().session.owner
-                  ? [{ label: 'Administration Dashboard', run: () => window.location.assign('/admin') }]
-                  : []),
-                { sep: true },
-                { label: 'Status…', run: () => setSystemStatusOpen(true) },
-                { label: 'Log Off', run: () => setLogoffConfirm(true) },
-              ]}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {/* Back (F3) */}
-        <button
-          type="button"
-          className="flex h-6 w-6 items-center justify-center rounded-[2px] text-[15px] leading-none text-white/90 hover:bg-white/15"
-          title="Back (F3)"
-          aria-label="Back"
-          onClick={back}
-        >
-          ‹
-        </button>
-        <span className="flex h-4 w-4 items-center justify-center rounded-[2px] bg-white/15" aria-hidden>
-          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-            <rect x="1.5" y="2.5" width="13" height="10" fill="#fff" opacity="0.92" />
-            <rect x="1.5" y="2.5" width="13" height="2.4" fill="#0a6ed1" />
-            <path d="M5 9.6l2 2 4-4.4" fill="none" stroke="#1c7a1c" strokeWidth="1.6" />
-          </svg>
+    <div className="flex h-screen flex-col overflow-hidden bg-[#ebf1f7] text-[#1c2b3a]" data-app="abapforge">
+      <div className="h-[5px] shrink-0 bg-[#118ad8]" aria-hidden />
+      {/* ── window title bar (SAP GUI for HTML: logo, centered title, system menu) ── */}
+      <header className="sap-titlebar relative flex h-[42px] shrink-0 items-center justify-between pl-3 pr-2" role="banner">
+        <SapLogo size={24} />
+
+        {/* centered title (absolute so it is truly centered) */}
+        <span className="pointer-events-none absolute inset-x-0 truncate px-40 text-center text-[13px] font-medium text-[#1d3a5c]">
+          {title}
         </span>
-        <span className="truncate text-[12px] font-semibold">{title}</span>
-        <span className="ml-auto flex select-none items-center gap-1 text-[12px] leading-none">
+
+        <div className="relative z-10 flex items-center gap-1">
           {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? (
             <span className="mr-1 flex items-center" title="Secure account">
-              <UserButton appearance={{ elements: { avatarBox: 'h-5 w-5' } }} />
+              <UserButton appearance={{ elements: { avatarBox: 'h-[22px] w-[22px]' } }} />
             </span>
           ) : null}
-          <span className="px-1 opacity-80" aria-hidden title="Minimize">–</span>
-          <span className="px-1 opacity-80" aria-hidden title="Maximize">▢</span>
-          <button
-            type="button"
-            className="sap-titlebar-close flex h-6 w-6 cursor-default items-center justify-center rounded-[2px] opacity-90 hover:text-white"
-            title="Log Off"
-            aria-label="Log Off"
-            onClick={() => setLogoffConfirm(true)}
-          >
-            ✕
-          </button>
-        </span>
-      </header>
-
-      {/* ── menu bar ── */}
-      <nav className="sap-menubar flex h-[26px] shrink-0 items-center px-1" aria-label="Main menu">
-        {menus.map((m) => (
-          <DropdownMenu key={m.label}>
-            <DropdownMenuTrigger className="sap-menu-item outline-none">{m.label}</DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              sideOffset={1}
-              className="min-w-[230px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+          {/* System MER (105) dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="flex h-[26px] items-center gap-1 rounded px-1.5 text-[12px] font-semibold text-[#1d3a5c] outline-none hover:bg-[#8aa9cc] focus-visible:bg-[#8aa9cc]"
+              title="System MER, client 105"
+              aria-label="System menu MER (105)"
             >
-              <MenuList items={m.items} />
+              MER (105)
+              <svg width="8" height="6" viewBox="0 0 8 6" aria-hidden="true">
+                <path d="M0.5 0.5 L7.5 0.5 L4 5 Z" fill="currentColor" />
+              </svg>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={2}
+              className="min-w-[220px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[12.5px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+            >
+              <MenuList
+                items={[
+                  { label: 'Find Object…', shortcut: 'Ctrl+K', run: () => useWorkbench.getState().setCommandPaletteOpen(true) },
+                  ...(useWorkbench.getState().session.owner
+                    ? [{ label: 'Administration Dashboard', run: () => window.location.assign('/admin') }]
+                    : []),
+                  { sep: true },
+                  { label: 'Status…', run: () => setSystemStatusOpen(true) },
+                  { label: 'About SAP System…', run: () => useWorkbench.getState().setAboutOpen(true) },
+                  { sep: true },
+                  { label: 'Log Off', run: () => setLogoffConfirm(true) },
+                ]}
+              />
             </DropdownMenuContent>
           </DropdownMenu>
-        ))}
+          <button
+            type="button"
+            title="Open a new SAP session in a browser tab"
+            aria-label="Open a new SAP session"
+            onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
+            className="flex h-[26px] w-[26px] items-center justify-center rounded text-[#1d3a5c] hover:bg-[#8aa9cc]"
+          >
+            <ChevronRight className="h-[16px] w-[16px]" />
+          </button>
+        </div>
+      </header>
+
+      {/* ── menu bar: screen menus left · OK-code field + right icons ── */}
+      <nav className="sap-menubar flex h-[27px] shrink-0 items-center px-1 md:pl-1.5 md:pr-2" aria-label="Main menu">
+        <div className="flex min-w-0 flex-1 items-center gap-[2px] overflow-hidden">
+          {menus.map((m) => (
+            <DropdownMenu key={m.label}>
+              <DropdownMenuTrigger className="sap-menu-item outline-none">{m.label}</DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                sideOffset={1}
+                className="min-w-[230px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+              >
+                <MenuList items={m.items} />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ))}
+        </div>
+
+        <div className="ml-auto flex shrink-0 items-center gap-[3px]">{!isMobile && (<>
+          <CommandField />
+          <button
+            type="button"
+            title="Find object (Ctrl+K)"
+            aria-label="Find object"
+            onClick={() => useWorkbench.getState().setCommandPaletteOpen(true)}
+            className="flex h-[24px] w-[24px] items-center justify-center rounded-[2px] text-[#4C6B8A] hover:bg-[#dbe5f0]"
+          >
+            {I.find}
+          </button>
+          <button
+            type="button"
+            title="Print (Ctrl+P)"
+            aria-label="Print"
+            onClick={() => window.print()}
+            className="flex h-[24px] w-[24px] items-center justify-center rounded-[2px] text-[#4C6B8A] hover:bg-[#dbe5f0]"
+          >
+            {I.print}
+          </button>
+          <button
+            type="button"
+            onClick={() => setLogoffConfirm(true)}
+            className="ml-1 flex h-[24px] items-center rounded-[2px] px-[7px] text-[12px] text-[#1d3a5c] hover:bg-[#dbe5f0]"
+          >
+            Exit
+          </button>
+          </>)}
+        </div>
       </nav>
 
       {/* ── standard toolbar ── */}
@@ -986,9 +1005,11 @@ export function SapShell() {
             if (s.pendingSelection) s.addMessage('I', 'Enter — use Execute (F8) on the selection screen')
           }}
         />
-        <div className="mx-1">
-          <CommandField />
-        </div>
+        {isMobile && (
+          <div className="mx-1">
+            <CommandField />
+          </div>
+        )}
         <span className="sap-toolbar-sep" aria-hidden />
         <ToolBtn
           icon={I.save}
@@ -1231,7 +1252,6 @@ export function SapShell() {
       <TcodeRegistryDialog />
       <CommandPalette />
       <Toaster position="bottom-right" richColors closeButton />
-      </div>
     </div>
   )
 }

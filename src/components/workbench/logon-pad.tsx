@@ -65,8 +65,14 @@ export function LogonPad() {
         aria-labelledby="logon-title"
         className="w-[600px] max-w-full border border-[#0a2745] bg-[#f0f0f0] shadow-[0_20px_70px_rgba(0,0,0,0.65)]"
       >
-        {/* window title bar */}
-        <div className="sap-titlebar flex h-7 items-center gap-2 px-2 text-white">
+        {/* window title bar (dark SAP GUI window style for the logon dialog) */}
+        <div
+          className="flex h-7 items-center gap-2 px-2 text-white"
+          style={{
+            background: 'linear-gradient(to bottom, #3875bd 0%, #205a9b 45%, #174a80 100%)',
+            borderBottom: '1px solid #0e3560',
+          }}
+        >
           <span className="flex h-4 w-4 items-center justify-center rounded-[2px] bg-white/15 text-[9px] font-black" aria-hidden>S</span>
           <h1 id="logon-title" className="text-[12.5px] font-semibold">SAP — Secure Logon</h1>
           <WindowGlyphs />

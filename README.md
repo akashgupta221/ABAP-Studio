@@ -41,10 +41,15 @@ user.
 
 ## Features
 
-### 🖥️ Authentic Standard SAP GUI
+### 🖥️ Authentic Standard SAP GUI (App 2 chrome)
 - SAP-style **logon pad** and the real `MER` / client `105` system identity
-- **Firefox/WebGUI outer frame** (desktop): tab strip, navigation bar with SAP URL — hidden on mobile for clean viewport
-- Full workbench shell: menu bar, standard toolbar, command field, status bar and tabs
+- **Real SAP GUI for HTML window chrome**: 5px blue accent, `#99b7d7` title bar with the SAP logo,
+  centered screen title, `MER (105)` system dropdown and new-session chevron
+- Screen menu bar with the **OK-code command field** and Find / Print / Exit on the right,
+  standard toolbar, application toolbar, tabs — no fake browser wrapper
+- **Dark status bar** (`#333d47`): colored message area with icons, `INS/OVR` toggle,
+  transaction, system, user, date and live clock
+- The simulated Firefox wrapper was removed as a design mistake; the SAP window is the product
 - **Easy Access** tree, command palette and transactions (SE38, SE11, SE16N, **SE37**, SE24, …)
 - Real SAP button sets, field help, dirty-state awareness and keyboard shortcuts
 - The Standard screenshot-fidelity work is preserved; the Modern workspace is a separate

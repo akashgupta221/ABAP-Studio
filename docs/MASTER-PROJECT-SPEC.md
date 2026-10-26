@@ -23,6 +23,7 @@ acceptance gates. Historical Task IDs and deployment evidence are kept in
 | P2 — approved Modern ABAP environment | **Implemented, deployed, production-verified and owner-signed-off** |
 | **P3 — App 2 Integration (Firefox/WebGUI shell + SE37 Function Builder)** | **Implemented, deployed, production-verified and owner-signed-off** |
 | **P4 — App 2 Integration Round 2 (Debugger, ST22, Pretty Printer, SE16N criteria)** | **Implemented locally; lint/typecheck/61 unit/138 API/18 UI gates pass; deploy pending** |
+| **P5 — Authentic SAP chrome (Firefox frame removed)** | **Implemented locally; 18 UI/axe tests pass; deploy pending** |
 | UI/accessibility automation | **Complete** — 14 Playwright tests with axe serious/critical threshold |
 | Documentation/worklog/CI | **Updated for the final release** |
 | Final acceptance report | **Published** with technical evidence; owner visual sign-off recorded |
@@ -222,6 +223,26 @@ fresh deterministic run.
 
 **Still not ported from App 2:** SHDB recorder, BDC sessions/SM35, dynpro/module pools
 (PBO/PAI screen flow), AL11, SE51, SE91, SAT runtime analysis, multi-tab Firefox sessions.
+
+
+## 5c. P5 — Authentic SAP Chrome (Firefox Frame Removed)
+
+The P3 Firefox/WebGUI browser wrapper was a design mistake and has been removed. The workbench
+now renders as the pure SAP GUI for HTML window, pixel-matched to App 2's chrome:
+
+- Title bar `#99b7d7`, 42px: SAP logo, centered screen title, Clerk account avatar,
+  `MER (105)` system dropdown (Find Object, Administration, Status, About, Log Off) and a
+  new-session chevron.
+- Menu bar `#ebf1f7`: the existing screen dropdown menus, with the OK-code command field
+  (compact App 2 style with gradient execute button and history), Find and Print icons and
+  Exit on the right. On phones the cluster moves to the standard toolbar so every menu stays
+  reachable.
+- Status bar: dark `#333d47` rounded bar with colored message icons; right cluster shows
+  transaction, `MER (1) 105`, user, date, live clock and the INS/OVR toggle behind the
+  system-information collapse arrow.
+- Accessibility kept at the project bar: title text uses `#1d3a5c` (≥4.5:1 on `#99b7d7`),
+  all new controls are ≥24px targets, the MER trigger's accessible name includes its visible
+  text, and the logon/sign-in/sign-up dialogs keep their own dark window headers.
 
 ## 5. Authentication, authorization and administration
 

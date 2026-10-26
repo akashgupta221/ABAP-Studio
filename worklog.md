@@ -1237,3 +1237,29 @@ Verification:
 Stage Summary:
 - P4 selective integration is complete locally with all gates green; deployment and production smoke are pending the next release.
 - App 2 remains untouched; App 1 remains the primary product (identity, auth, ownership, admin, seed behavior unchanged).
+
+---
+
+Task ID: 44
+Agent: ZCode (GLM)
+Task: P5 — replace the P3 Firefox wrapper with App 2's authentic SAP GUI window chrome (owner decision: the Firefox frame was a mistake)
+
+Work Log:
+- Removed the simulated Firefox browser frame entirely (component deleted, no references left) so the workbench renders as the pure SAP GUI for HTML window.
+- Ported App 2's chrome onto App 1's shell, keeping all App 1 functionality, auth and menus:
+  - Title bar #99b7d7 42px: SAP logo (ported), centered screen title, Clerk avatar, MER (105) system dropdown (Find Object, Administration, Status, About, Log Off) and a new-session chevron.
+  - Menu bar #ebf1f7: existing dropdown menus plus the OK-code command field restyled to App 2's compact OK-code field (gradient execute button, history), Find/Print icons and Exit.
+  - Standard toolbar: unchanged buttons; on phones (<768px) the OK-code field renders here instead of the menubar (useIsMobile) so no menu item is ever clipped.
+  - Status bar rewritten to App 2's dark #333d47 rounded bar: colored message icons, INS/OVR toggle, transaction, MER (1) 105, user, date, live clock, system-info collapse arrow.
+- CSS: .sap-titlebar now flat #99b7d7, .sap-menubar flat #ebf1f7 with #284d74 items, .sap-statusbar #ebf1f7; logon pad and sign-in/sign-up dialogs keep their own dark gradient headers.
+- Accessibility fixes forced by the project's axe bar (all serious/critical must pass): title-bar text darkened to #1d3a5c (4.2:1 → pass), MER trigger accessible name includes its visible text, every new control enlarged to ≥24px (OK-code buttons, menubar icons, status-bar toggles), LogonPad/sign-in/sign-up headers restyled for contrast.
+
+Verification:
+- bun run typecheck PASS; bun run lint PASS
+- bun test tests/*.test.ts → 61 pass, 0 fail
+- bun run test:ui → 18 pass (Playwright + axe) after the chrome change; the browser-frame assertion was replaced with title-bar system-menu checks
+- bun run build → PASS
+
+Stage Summary:
+- The workbench now looks like the actual SAP system (App 2 chrome) without the fake browser wrapper.
+- All prior P4 functionality (debugger, ST22, pretty printer, SE16 criteria) unchanged and verified by the same suites.

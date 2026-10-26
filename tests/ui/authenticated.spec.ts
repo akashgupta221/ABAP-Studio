@@ -147,8 +147,8 @@ test.describe('Function Builder (SE37)', () => {
   })
 
   test('shared example function modules stay read-only and execute in the test console', async ({ page }) => {
-    await expect(page.getByTestId('browser-frame')).toBeVisible()
-    await expect(page.getByText('Simulated', { exact: true })).toBeVisible()
+    await expect(page.getByRole('banner').getByText('MER (105)')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'System menu' })).toBeVisible()
 
     await page.locator('.sap-tree-row').filter({ hasText: 'Z_CALC_DISCOUNT' }).first().click()
     await expect(page.getByText('shared example · read-only')).toBeVisible()
