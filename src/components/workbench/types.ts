@@ -188,11 +188,46 @@ export interface FunctionModule {
   groupName: string
   title: string
   isExample: boolean
+  active: boolean
+  ownerId: string | null
+  ownerUsername: string | null
+  createdBy: string
+  changedBy: string
+  changedOn: string
   importParams: FmParam[]
   exportParams: FmParam[]
   changingParams: FmParam[]
   tablesParams: FmParam[]
+  exceptions: string[]
   source: string
+}
+
+export interface FunctionGroup {
+  id?: string
+  name: string
+  shortText: string
+  isExample: boolean
+  ownerId?: string | null
+  ownerUsername?: string | null
+  createdBy?: string
+  changedOn?: string
+  moduleCount: number
+}
+
+export interface FmTestResponse {
+  result: RunResult
+  lines: string[]
+  outputs: Record<string, string>
+  subrc: number | null
+  notes: string[]
+  params: {
+    import: FmParam[]
+    export: FmParam[]
+    changing: FmParam[]
+    tables: FmParam[]
+    exceptions: string[]
+  }
+  active: boolean
 }
 
 export interface Favorite {

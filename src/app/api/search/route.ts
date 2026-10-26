@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic" // always server-rendered (serverless-saf
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/ensure-seed'
-import { programListWhere } from '@/lib/access'
+import { functionListWhere, programListWhere } from '@/lib/access'
 import { isOwner, requireUser, serverError } from '@/lib/session'
 
 // GET /api/search?q=&types=PROGRAM,CLASS,TABLE,FM,TOPIC — SAP-like global search
@@ -92,7 +92,9 @@ export async function GET(req: NextRequest) {
 
     // ── function modules ──
     if (types.includes('FM')) {
-      const fms = await db.functionModule.findMany()
+      const fms = await db.functionModule.findMany({
+        where: functionListWhere(auth.user, isOwner(auth.user)),
+      })
       for (const fm of fms) {
         let score = 0
         let where = ''

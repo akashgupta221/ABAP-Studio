@@ -44,12 +44,14 @@ async function cookieValue(req: NextRequest | undefined, name: string): Promise<
  * closed rather than falling through to another identity.
  */
 export async function getSessionUser(req?: NextRequest): Promise<AuthUser | null> {
+  // Any authenticated request may be the first after a deploy. The additive
+  // schema upgrade is cached per process, so this is cheap after the first hit.
+  await ensureSchema()
   if (testAuthEnabled()) {
     const token = await cookieValue(req, TEST_SESSION_COOKIE)
     if (token) {
       const session = parseTestSessionToken(token)
       if (!session) return null
-      await ensureSchema()
       const user = await db.user.findUnique({
         where: { id: session.uid },
         select: {

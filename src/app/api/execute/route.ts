@@ -44,7 +44,10 @@ export async function POST(req: NextRequest) {
     }
     const repid = (body.name || 'ZPROGRAM').toUpperCase().replace(/[^A-Z0-9_/]/g, '').slice(0, 40) || 'ZPROGRAM'
 
-    const { dbSnap, fms, includes } = await loadEngineContext()
+    const { dbSnap, fms, includes } = await loadEngineContext({
+      user: auth.user,
+      owner: isOwner(auth.user),
+    })
 
     const result = runAbap({
       source,

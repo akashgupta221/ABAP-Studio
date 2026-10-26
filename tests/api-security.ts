@@ -310,6 +310,173 @@ async function main() {
     cookie: owner,
   })).status === 200)
 
+  console.log('\nFunction Builder ownership, activation and execution')
+  check('function list rejects anonymous callers', (await call('/api/functions')).status === 401)
+  check('function groups reject anonymous callers', (await call('/api/function-groups')).status === 401)
+  check('function creation rejects anonymous callers', (await call('/api/functions', {
+    method: 'POST',
+    body: { name: `ZFM_${suffix}`, groupName: 'ZFLIGHT_GROUP' },
+  })).status === 401)
+
+  const fmGroup = `ZFG_${suffix}`
+  const fmName = `ZFM_${suffix}`
+  const groupCreate = await call('/api/function-groups', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: fmGroup, shortText: 'API test function group' },
+  })
+  check('user A can create a private function group', groupCreate.status === 201, JSON.stringify(groupCreate.data))
+  check('user B does not see user A function group', !((await call('/api/function-groups', { cookie: cookieB })).data.groups ?? []).some((g: any) => g.name === fmGroup))
+  check('the owner sees user A function group', ((await call('/api/function-groups', { cookie: owner })).data.groups ?? []).some((g: any) => g.name === fmGroup))
+
+  const fmSource = `FUNCTION ${fmName.toLowerCase()}.\n  WRITE: / 'FM says hello'.\nENDFUNCTION.\n`
+  const fmCreate = await call('/api/functions', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: fmName, groupName: fmGroup, title: 'API test module', source: fmSource },
+  })
+  check('user A can create a private function module', fmCreate.status === 201, JSON.stringify(fmCreate.data))
+  check('a new function module starts inactive', fmCreate.data?.function?.active === false)
+  check('function module creation records the owner', fmCreate.data?.function?.ownerId != null)
+  check('user B cannot open user A function module', (await call(`/api/functions/${fmName}`, { cookie: cookieB })).status === 404)
+  check('user B cannot save user A function module', (await call(`/api/functions/${fmName}`, {
+    method: 'PUT',
+    cookie: cookieB,
+    body: { title: 'stolen' },
+  })).status === 404)
+  check('user B cannot delete user A function module', (await call(`/api/functions/${fmName}`, {
+    method: 'DELETE',
+    cookie: cookieB,
+  })).status === 404)
+  check('user B cannot execute user A function module test', (await call('/api/functions/test', {
+    method: 'POST',
+    cookie: cookieB,
+    body: { name: fmName, inputs: {} },
+  })).status === 404)
+  check('shared example function modules are read-only', (await call('/api/functions/Z_CALC_DISCOUNT', {
+    method: 'PUT',
+    cookie: cookieA,
+    body: { title: 'changed' },
+  })).status === 403)
+  check('private function modules cannot be created in an example group', (await call('/api/functions', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: `ZFM_${suffix}_EX`, groupName: 'ZFLIGHT_GROUP' },
+  })).status === 403)
+
+  const fmCheck = await call('/api/check', { method: 'POST', cookie: cookieA, body: { source: fmSource } })
+  check('a generated function module source passes syntax check', fmCheck.status === 200 && !(fmCheck.data.issues ?? []).some((i: any) => i.kind === 'E'))
+  const fmActivate = await call(`/api/functions/${fmName}`, {
+    method: 'PUT',
+    cookie: cookieA,
+    body: { activate: true },
+  })
+  check('user A can activate their function module', fmActivate.status === 200 && fmActivate.data.function.active === true, JSON.stringify(fmActivate.data))
+  check('the owner can inspect a private function module', (await call(`/api/functions/${fmName}`, { cookie: owner })).status === 200)
+  const fmTest = await call('/api/functions/test', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: fmName, inputs: {} },
+  })
+  check('an active function module executes in the real ABAP engine', fmTest.status === 200 && fmTest.data.result?.status === 'SUCCESS', JSON.stringify(fmTest.data))
+  check('function module test returns list output', (fmTest.data.lines ?? []).some((line: string) => line.includes('FM says hello')))
+
+  const fmDeactivate = await call(`/api/functions/${fmName}`, {
+    method: 'PUT',
+    cookie: cookieA,
+    body: { deactivate: true },
+  })
+  check('user A can deactivate their function module', fmDeactivate.status === 200 && fmDeactivate.data.function.active === false)
+  const inactiveCall = await call('/api/execute', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: `ZFM_CALL_${suffix}`, source: `CALL FUNCTION '${fmName}'.` },
+  })
+  check('inactive function modules are not loaded by the program engine', inactiveCall.status === 200 && inactiveCall.data.status === 'ERROR', JSON.stringify(inactiveCall.data))
+  await call(`/api/functions/${fmName}`, { method: 'PUT', cookie: cookieA, body: { activate: true } })
+  const activeCall = await call('/api/execute', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: `ZFM_CALL_${suffix}`, source: `CALL FUNCTION '${fmName}'.` },
+  })
+  check('active function modules are callable from ABAP programs', activeCall.status === 200 && activeCall.data.status === 'SUCCESS', JSON.stringify(activeCall.data))
+
+  // Cross-tenant isolation: a private active module must not enter another
+  // user's engine snapshot, even when its name is guessed exactly.
+  const bGroup = `ZFGB_${suffix}`
+  const bFm = `ZFMB_${suffix}`
+  check('user B can create a private function group', (await call('/api/function-groups', {
+    method: 'POST',
+    cookie: cookieB,
+    body: { name: bGroup, shortText: 'User B private group' },
+  })).status === 201)
+  check('user B can create and activate a private function module', (await call('/api/functions', {
+    method: 'POST',
+    cookie: cookieB,
+    body: {
+      name: bFm,
+      groupName: bGroup,
+      title: 'User B secret module',
+      source: `FUNCTION ${bFm.toLowerCase()}.\n  WRITE: / 'B private secret'.\nENDFUNCTION.\n`,
+    },
+  })).status === 201 && (await call(`/api/functions/${bFm}`, {
+    method: 'PUT',
+    cookie: cookieB,
+    body: { activate: true },
+  })).status === 200)
+  check('user A cannot open user B function module by name', (await call(`/api/functions/${bFm}`, { cookie: cookieA })).status === 404)
+  const bSearchA = await call(`/api/search?q=${bFm}&types=FM`, { cookie: cookieA })
+  check('user A search does not leak user B function module', !(bSearchA.data.groups ?? []).some((g: any) => (g.hits ?? []).some((h: any) => h.name === bFm)))
+  const bSearchB = await call(`/api/search?q=${bFm}&types=FM`, { cookie: cookieB })
+  check('user B search finds their own function module', (bSearchB.data.groups ?? []).some((g: any) => (g.hits ?? []).some((h: any) => h.name === bFm)))
+  const crossCall = await call('/api/execute', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: `ZFMB_CALL_${suffix}`, source: `CALL FUNCTION '${bFm}'.` },
+  })
+  check('another user cannot call a private function module from ABAP', crossCall.status === 200 && crossCall.data.status === 'ERROR', JSON.stringify(crossCall.data))
+
+  const aCaller = `ZFMA_${suffix}`
+  check('user A can create a caller module in their own group', (await call('/api/functions', {
+    method: 'POST',
+    cookie: cookieA,
+    body: {
+      name: aCaller,
+      groupName: fmGroup,
+      title: 'Cross-tenant caller probe',
+      source: `FUNCTION ${aCaller.toLowerCase()}.\n  CALL FUNCTION '${bFm}'.\nENDFUNCTION.\n`,
+    },
+  })).status === 201 && (await call(`/api/functions/${aCaller}`, {
+    method: 'PUT',
+    cookie: cookieA,
+    body: { activate: true },
+  })).status === 200)
+  const crossTest = await call('/api/functions/test', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: aCaller, inputs: {} },
+  })
+  check('the function-module test engine is also tenant-scoped', crossTest.status === 200 && crossTest.data.result?.status === 'ERROR', JSON.stringify(crossTest.data))
+  check('user A can delete their caller module', (await call(`/api/functions/${aCaller}`, { method: 'DELETE', cookie: cookieA })).status === 200)
+
+  check('user A can delete their function module', (await call(`/api/functions/${fmName}`, {
+    method: 'DELETE',
+    cookie: cookieA,
+  })).status === 200)
+  check('deleted function modules are gone', (await call(`/api/functions/${fmName}`, { cookie: cookieA })).status === 404)
+  check('user A can delete their empty function group', (await call(`/api/function-groups/${fmGroup}?force=true`, {
+    method: 'DELETE',
+    cookie: cookieA,
+  })).status === 200)
+  check('user B can delete their test function module', (await call(`/api/functions/${bFm}`, {
+    method: 'DELETE',
+    cookie: cookieB,
+  })).status === 200)
+  check('user B can delete their test function group', (await call(`/api/function-groups/${bGroup}?force=true`, {
+    method: 'DELETE',
+    cookie: cookieB,
+  })).status === 200)
+
   console.log('\nOwner administration')
   check('ordinary user is denied admin overview', (await call('/api/admin/overview', { cookie: cookieA })).status === 403)
   const overview = await call('/api/admin/overview', { cookie: owner })

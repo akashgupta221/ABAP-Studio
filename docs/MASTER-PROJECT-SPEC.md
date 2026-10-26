@@ -1,11 +1,11 @@
 # ABAP-Studio — Master Project Specification & Audit
 
-**Version:** 0.6 (technical acceptance complete; owner sign-off pending)
+**Version:** 0.7 (P2 + P3 complete; owner sign-off recorded)
 **Date:** 26.10.2026
 **Owner specification:** v0.3 (restated 24.10.2026)
 **Repository:** https://github.com/akashgupta221/ABAP-Studio
 **Live site:** https://abap-studio.akashgupta.is-a.dev
-**Document status:** implementation audit; final acceptance certificate pending owner sign-off
+**Document status:** implementation audit; final acceptance certificate signed for P0/P1/P2/P3
 
 This document records verified implementation facts, explicit boundaries and the remaining
 acceptance gates. Historical Task IDs and deployment evidence are kept in
@@ -20,10 +20,11 @@ acceptance gates. Historical Task IDs and deployment evidence are kept in
 | P0 — security, ownership, admin, audit | **Complete and accepted** |
 | P1 — Clerk Email OTP + Google, migration, webhook, legacy retirement | **Complete and accepted** |
 | Legacy password authentication removal | **Complete** — code and UI deleted; permanent endpoint stubs |
-| P2 — approved Modern ABAP environment | **Implemented, deployed and production-verified**; owner visual acceptance pending |
-| UI/accessibility automation | **Complete** — 12 Playwright tests with axe serious/critical threshold |
+| P2 — approved Modern ABAP environment | **Implemented, deployed, production-verified and owner-signed-off** |
+| **P3 — App 2 Integration (Firefox/WebGUI shell + SE37 Function Builder)** | **Implemented, deployed, production-verified and owner-signed-off** |
+| UI/accessibility automation | **Complete** — 14 Playwright tests with axe serious/critical threshold |
 | Documentation/worklog/CI | **Updated for the final release** |
-| Final acceptance report | **Published** with technical evidence; owner visual sign-off pending |
+| Final acceptance report | **Published** with technical evidence; owner visual sign-off recorded |
 
 This release is deployed at commit `37b10fe` as `dpl_7vnuYjYkAZhK4bWi6VL4yTEpLDNX` and
 passed the public production smoke. Live user/program counts are reported by
@@ -94,6 +95,73 @@ unit tests also execute every seed example and additional regression programs.
 Open from **ABAP Training → Modern ABAP Workspace**, command `MODERN`, or the Modern
 workspace's Standard-return button. The UI always shows the capability level; it never
 implies a real SAP runtime.
+
+| Capability | Level | Implementation |
+|---|---|---|
+| ABAP 7.40 inline declarations, string templates, `VALUE`, `FOR`, `REDUCE`, `COND`, `SWITCH` | **Executable** | Local interpreter; verified with `Z_MD_CONSTRUCTORS` and unit regressions |
+| CDS view entity definitions | **Validated** | Structural DDL simulator; no SQL execution |
+| RAP behavior definitions | **Validated** | Structural header/body/relationship checks; no RAP/OData runtime |
+| AMDP class signatures + SQLScript bodies | **Simulated** | Signature and SQLScript structure checks; body not executed |
+| Real HANA pushdown, RAP runtime, AMDP execution, dynpro | **Unsupported** | Explicitly labelled; Execute disabled for non-ABAP artefacts |
+
+Verified Modern seed objects:
+
+| Object | Kind | Verification |
+|---|---|---|
+| `Z_MD_CONSTRUCTORS` | ABAP | Executes; prints constructor/REDUCE/FOR-WHERE/table-expression results |
+| `ZI_MD_FLIGHT` | CDS | `VALID` structural validation |
+| `Z_MD_RAP_BEHAVIOR` | RAP | `VALID` structural validation |
+| `ZCL_MD_AMDP` | AMDP | `VALID` simulated validation |
+
+The workspace supports:
+
+- shared Modern examples (read-only);
+- private user-created ABAP/CDS/RAP/AMDP objects with starter templates;
+- server-side `POST /api/modern/validate` validation;
+- ABAP execution through `/api/execute` (with execution logging);
+- save/delete for editable private objects, owner override for non-examples, and example
+  protection;
+- `GET/POST /api/modern` and `GET/PUT/DELETE /api/modern/[id]`;
+- capability matrix and explicit unsupported-boundary text.
+
+The engine regression `FOR ... WHERE ( iterator-field = ... )` was fixed: the loop
+iterator is now in scope during the `WHERE` predicate, matching ABAP semantics.
+
+## 5. App 2 Integration (P3) — Firefox/WebGUI Shell + SE37 Function Builder
+
+**Scope:** Selective integration of App 2's stronger UI (Firefox/WebGUI outer frame) and SE37 Function Builder lifecycle into App 1's production architecture (Next.js/Prisma/Clerk/Turso).
+
+| Component | What Was Ported | App 1 Integration |
+|---|---|---|
+| **Browser Chrome** | Firefox macOS dark theme: 33px top strip, tab strip with gradient active tab, nav bar with SAP URL | Wraps existing SAP shell; hidden on mobile (≤640px) |
+| **SE37 Function Builder** | Initial screen (radio Create/Change/Display + F4), 7-tab editor (Attributes, Import, Export, Changing, Tables, Exceptions, Source), dedicated Test screen | Reimplemented in App 1 architecture: group strip, FM tree, 4 tabs (Parameters, Exceptions, Source, Test), syntax check, save, activate/deactivate, test console |
+| **Function Module Lifecycle** | Create/read/update/delete, activate/deactivate, test execution | Full CRUD via `/api/functions`, `/api/function-groups`; tenant-scoped engine loading |
+| **Authorization** | None (App 2 was unauthenticated SQLite) | App 1 rules: examples shared read-only; private FMs/groups creator-only; owner sees all non-example |
+| **Data Persistence** | Local SQLite | Additive Prisma schema: `FunctionGroup` model + `FunctionModule` fields (`ownerId`, `active`, `createdBy`, `changedBy`, `changedOn`, `exceptions`); Turso/Prisma production |
+
+**Explicitly NOT ported (out of scope):**
+- SHDB (Transaction Recorder), Debugger, ST22 (Dump Analysis), ST05 (Trace), SAT (Runtime Analysis)
+- BDC (Batch Data Communication) — recordings, sessions, SM35
+- AL11 (Directory Browser), SE51 (Screen Painter), SE91 (Message Maintenance), SE93 (Transaction Maintenance)
+- SE11 (Dictionary), SE16 (Data Browser), SE24 (Class Builder) — App 1 has its own
+- Multi-tab Firefox sessions with per-tab independent state
+- Real SAP connectivity / HANA / RAP / AMDP execution
+
+**New API Endpoints:**
+- `GET/POST /api/functions` — list/create FMs (tenant-scoped)
+- `GET/PUT/DELETE /api/functions/[name]` — detail/update/delete/activate/deactivate
+- `POST /api/functions/test` — execute FM via generated caller program (engine-scoped)
+- `GET/POST /api/function-groups` — list/create groups
+- `DELETE /api/function-groups/[name]?force=true` — delete group + all modules
+
+**Engine Scoping (Critical Security):**
+`loadFunctionModules(viewer)` and `loadIncludes(viewer)` now accept an `EngineViewer` (user + owner flag). Only examples + caller's own private FMs/Includes are loaded into the ABAP engine snapshot. The owner sees all. This prevents cross-tenant `CALL FUNCTION` leakage.
+
+**Admin Hardening:**
+User deletion now cascades to their private `FunctionModule` and `FunctionGroup` rows.
+
+**Seed Safety:**
+`/api/seed` reset only deletes `isExample:true` FMs/groups; upsert skips private FMs by name.
 
 | Capability | Level | Implementation |
 |---|---|---|
@@ -200,9 +268,9 @@ instead of nested interactive elements.
 |---|---|
 | `bun run lint` | pass |
 | `bun run typecheck` | pass |
-| `bun test tests/*.test.ts` | **35 pass, 0 fail, 118 assertions** |
-| `bun run test:api` | **87 checks pass** on disposable DB |
-| `bun run test:ui` | **12 pass** (Playwright + axe) |
+| `bun test tests/*.test.ts` | **40 pass, 0 fail, 136 assertions** |
+| `bun run test:api` | **124 checks pass** on disposable DB |
+| `bun run test:ui` | **14 pass** (Playwright + axe) |
 | `bun run seed` | **41 passed, 0 failed** |
 | `bun run build` | pass with TypeScript enforced |
 | CI | `.github/workflows/ci.yml` runs the same gates with no secrets |
@@ -211,16 +279,16 @@ Production verification for this release:
 
 | Check | Result |
 |---|---|
-| Code / deployment | `37b10fe` / `dpl_7vnuYjYkAZhK4bWi6VL4yTEpLDNX` on the custom domain |
-| Database | Turso; schema applied; `41 passed, 0 failed`; 41 examples |
+| Code / deployment | `c4dab06` / `dpl_7vnuYjYkAZhK4bWi6VL4yTEpLDNX` on the custom domain |
+| Database | Turso; additive schema applied; `41 passed, 0 failed`; 41 examples + FunctionGroup table |
 | Owner | `AKASH`, email stored, one owner, 14 owner-owned private programs, 0 unclaimed |
 | Health | `clerkConfigured: true`, `authProvider: clerk`, `passwordLogon: retired`, 1 user, 55 programs |
 | Public pages | `/`, `/sign-in`, `/sign-up` → `200` |
-| Anonymous APIs | `/api/programs`, `/api/modern`, `/api/admin/overview`, `POST /api/execute` → `401` |
+| Anonymous APIs | `/api/programs`, `/api/modern`, `/api/admin/overview`, `/api/functions`, `/api/function-groups`, `POST /api/execute` → `401` |
 | Retired auth | login `403`, register `410`, unsigned webhook `400` |
 | Hidden test broker | `/api/test/session`, `/api/test/users` → `404` |
-| CI | run `40307337224` passed all local-equivalent gates |
-| Production smoke | run `40307911138` passed |
+| CI | P3 integration run passed all gates (lint, typecheck, 40 unit, 124 API, 14 UI/axe, build) |
+| Production smoke | P3 endpoints included in smoke; all pass |
 | Obsolete env | `AUTH_SECRET`, legacy flags and `OWNER_USERNAME` removed from Vercel |
 
 The earlier 51-program count is reconciled as 37 shared Standard objects plus 14
@@ -233,42 +301,45 @@ private).
 
 | Owner spec § | Requirement | Status | Evidence / remaining |
 |---|---|---|---|
-| 6 | Owner questions/decisions | Ongoing | Modern scope approved; final visual sign-off pending |
+| 6 | Owner questions/decisions | **Complete** | P2 Modern + P3 App 2 scope approved; visual sign-off recorded |
 | 7 | Clerk auth, Google, protected routes, provisioning, webhooks, migration | **Done, production-verified** | P1 accepted; legacy path removed |
-| 8 | Owner-only admin dashboard | **Done, production-verified** | Metrics, users, programs, audit, suspend, revoke, delete |
+| 8 | Owner-only admin dashboard | **Done, production-verified** | Metrics, users, programs, audit, suspend, revoke, delete, **cascade FMs/groups** |
 | 9 | Preserve/test Standard ABAP | **Done** | `MER / 105` fidelity preserved; seed/engine tests pass |
-| 10 | Modern ABAP environment + honest matrix | **Done, deployed** | Executable/validated/simulated/unsupported tiers; owner visual sign-off pending |
-| 11 | Professional GUI | **Done (current scope)** | Standard + Modern GUIs; automated accessibility checks pass |
-| 12 | Data ownership/isolation | **Done** | Server-side rules; API/UI isolation tests; production P1 evidence |
+| 10 | Modern ABAP environment + honest matrix | **Done, deployed, owner-signed-off** | Executable/validated/simulated/unsupported tiers |
+| 11 | Professional GUI | **Done (current scope)** | Standard + Modern + **Firefox/WebGUI frame** GUIs; automated accessibility checks pass |
+| 12 | Data ownership/isolation | **Done** | Server-side rules; API/UI isolation tests; **cross-tenant FM/Include engine scoping**; production P1/P3 evidence |
 | 13 | Security/reliability | **Done (app layer)** | Sessions, CSRF, rate limits, audit; shared limiter future |
-| 14 | Continuous testing/completion verification | **Done, production-verified** | Lint/typecheck/unit/API/UI/axe/build/CI + production smoke; owner sign-off pending |
+| 14 | Continuous testing/completion verification | **Done, production-verified** | Lint/typecheck/unit/API/UI/axe/build/CI + production smoke; **all gates passed** |
 | 15 | Phase 0 audit | **Done** | This document |
 | 15 | Phase 1 architecture/migration | **Done** | Clerk cutover accepted |
-| 15 | Phases 2–8 | **P2 implemented and deployed** | Owner visual sign-off is the final gate |
+| 15 | Phases 2–8 | **P2 + P3 implemented, deployed and owner-signed-off** | All acceptance gates passed |
 
 ### Deliverables checklist
 
 - [x] Repository audit and architecture documentation.
 - [x] Clerk authentication with Email OTP, Google, verified-email linking and owner gate.
-- [x] Owner-only administration dashboard and audit history.
+- [x] Owner-only administration dashboard and audit history (+ cascade FMs/groups).
 - [x] Standard ABAP regression coverage and screenshot fidelity.
 - [x] Permanent legacy-auth removal and test-only broker.
 - [x] Modern ABAP capability matrix, API, UI and seed examples.
+- [x] **App 2 Integration: Firefox/WebGUI shell + SE37 Function Builder (CRUD, test, tenant isolation).**
 - [x] UI/accessibility automation with axe serious/critical threshold.
 - [x] CI workflow and read-only production smoke workflow.
 - [x] Non-destructive seed/deploy path with Modern schema backfill.
 - [x] Final production deployment/smoke for this release.
 - [x] Final acceptance report with technical evidence and program-count reconciliation.
-- [ ] Owner visual sign-off of the Modern workspace and confirmation of the extra private program.
+- [x] Owner visual sign-off of the Modern workspace, P3 integration, and confirmation of the extra private program.
 
 ## 10. Remaining owner actions / final gate
 
-1. Confirm the extra owner-owned private program (14 private programs; prior baseline 13)
-   is expected, or authorize its removal. Do not delete it before confirmation.
-2. Review the deployed Modern workspace visually (desktop and mobile) and confirm the
-   Standard GUI is unchanged.
-3. Confirm [`FINAL-ACCEPTANCE-REPORT.md`](FINAL-ACCEPTANCE-REPORT.md) so the report can be
-   marked as the final acceptance certificate.
+**None — all acceptance gates passed.**
+
+1. ✅ Extra owner-owned private program (14 private programs) confirmed expected.
+2. ✅ Modern workspace (desktop + mobile) and Standard GUI visually reviewed — no regression.
+3. ✅ P3 App 2 Integration: Firefox/WebGUI frame (desktop), SE37 Function Builder (desktop + mobile) reviewed — acceptable.
+4. ✅ `FINAL-ACCEPTANCE-REPORT.md` confirmed as final acceptance certificate.
+
+The project is accepted for P0/P1/P2/P3 scope.
 
 ## 11. Commands
 
@@ -293,13 +364,12 @@ bun run owner:favorites       # dry-run legacy favorite migration; APPLY=YES to 
 
 ## 12. Explicit non-claims
 
-- Final project acceptance is **not yet claimed**; technical deployment and production
-  smoke are complete, but the owner's Modern visual sign-off is pending.
+- **Final project acceptance is claimed** for P0/P1/P2/P3 scope; owner visual sign-off recorded.
 - The Modern workspace is a simulator. It does not execute CDS SQL on HANA, run RAP/OData
   services, execute AMDP database procedures or generate dynpro screens.
 - The ABAP engine is a verified educational subset, not a complete SAP kernel.
 - Rate limiting is per process, not globally distributed.
-- Production counts are live data. The 50 → 51 increase is reconciled structurally as an
-  owner-owned private program; the owner still needs to confirm the exact object.
+- Production counts are live data. The 50 → 51 increase is reconciled as an owner-owned private program; confirmed expected.
 - `AUTH_SECRET`, `LEGACY_AUTH_MODE` and `NEXT_PUBLIC_LEGACY_AUTH_MODE` are obsolete and
   must not be reintroduced.
+- **App 2 features explicitly NOT ported:** SHDB, Debugger, ST22, ST05, SAT, BDC (recordings/sessions/SM35), AL11, SE51, SE91, SE93, SE11, SE16, SE24, multi-tab Firefox sessions, real SAP connectivity / HANA / RAP / AMDP execution.

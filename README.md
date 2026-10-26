@@ -35,20 +35,32 @@ user.
 
 > **Project status:** P0 security/ownership and P1 Clerk cutover are deployed and accepted.
 > The P2 Modern ABAP scope, UI/accessibility automation and permanent legacy-auth removal
-> are deployed and production-smoke-verified. Technical acceptance evidence is in the
-> [final acceptance report](docs/FINAL-ACCEPTANCE-REPORT.md); the only remaining gate is
-> the owner's visual sign-off of the modernised Standard/Modern workspace. Live counts are
+> are deployed and production-smoke-verified. **P3 App 2 integration (Firefox/WebGUI shell + SE37 Function Builder) is deployed and owner-signed-off.** Technical acceptance evidence is in the
+> [final acceptance report](docs/FINAL-ACCEPTANCE-REPORT.md). Live counts are
 > always available at `/api/health`.
 
 ## Features
 
 ### 🖥️ Authentic Standard SAP GUI
 - SAP-style **logon pad** and the real `MER` / client `105` system identity
+- **Firefox/WebGUI outer frame** (desktop): tab strip, navigation bar with SAP URL — hidden on mobile for clean viewport
 - Full workbench shell: menu bar, standard toolbar, command field, status bar and tabs
-- **Easy Access** tree, command palette and transactions (SE38, SE11, SE16N, SE37, SE24, …)
+- **Easy Access** tree, command palette and transactions (SE38, SE11, SE16N, **SE37**, SE24, …)
 - Real SAP button sets, field help, dirty-state awareness and keyboard shortcuts
 - The Standard screenshot-fidelity work is preserved; the Modern workspace is a separate
   view opened from **ABAP Training → Modern ABAP Workspace** or command `MODERN`
+
+### 🧱 SE37 Function Builder (new)
+- **Function Group strip** — clickable chips with module counts; create/delete groups
+- **Function Module tree** — expandable groups, filterable list, create/edit/display modes
+- **Parameter grids** — Import / Export / Changing / Tables with type spec, default, optional, add/delete rows
+- **Exceptions list** — named exceptions with add/delete
+- **Source Code editor** — syntax-highlighted ABAP, read-only for shared examples
+- **Syntax Check** (Ctrl+F2) — real parser validation
+- **Save** (Ctrl+S) — deactivates on save; **Activate / Deactivate** (Ctrl+F3) — check → save → toggle
+- **Test console** (F8) — input parameters → Execute → structured result grid + `sy-subrc` + list output
+- **Full isolation** — private FMs visible/editable only to creator; examples shared read-only; owner sees all
+- **Engine-scoped** — `CALL FUNCTION` from ABAP programs only resolves active FMs the caller may access
 
 ### ⚙️ A real ABAP engine — from scratch
 - Hand-written **tokenizer → parser → tree-walking interpreter** (`src/lib/abap/`)
@@ -185,9 +197,9 @@ the application and should be removed from existing deployments.
 ```bash
 bun run lint          # ESLint
 bun run typecheck     # TypeScript (tsc --noEmit)
-bun run test          # 35 unit tests (118 assertions)
-bun run test:api      # 87 disposable live API/security checks (port 3100)
-bun run test:ui       # 12 Playwright UI + axe accessibility tests (port 3101)
+bun run test          # 40 unit tests (136 assertions)
+bun run test:api      # 124 disposable live API/security checks (port 3100)
+bun run test:ui       # 14 Playwright UI + axe accessibility tests (port 3101)
 bun run test:all      # lint + typecheck + unit + API + UI
 bun run build         # production build (TypeScript enforced)
 ```
@@ -196,7 +208,7 @@ The API and UI suites create throwaway databases and isolated servers; they neve
 local user data or production. Run them sequentially because both use the Next.js `.next`
 build directory. The UI suite fails on serious or critical WCAG 2.x axe findings and
 covers the public logon, secure auth pages, keyboard navigation, mobile overflow, owner
-workbench, SE38, admin tabs and the Modern workspace.
+workbench, SE38, **SE37 Function Builder**, admin tabs and the Modern workspace.
 
 ## Deploy for free (Vercel + Turso)
 
@@ -284,7 +296,7 @@ seeded, not a frozen acceptance count.
 
 ```
 prisma/
-  schema.prisma          Topic, Program, DbTable, DbRow, FunctionModule,
+  schema.prisma          Topic, Program, DbTable, DbRow, FunctionModule, FunctionGroup,
                          ExecutionLog, User, UserFavorite, AdminAuditLog
 scripts/
   seed-content.ts        Syllabus topics + demo DDIC tables
@@ -302,16 +314,18 @@ scripts/
   legacy-favorites.yml     Guarded legacy-favorite dry-run/apply
 src/
   app/admin/             Owner-only dashboard page
-  app/api/               REST endpoints (auth, modern, programs, admin, sandbox, execute, …)
-  components/workbench/  SAP GUI shell + Standard and Modern workspaces
+  app/api/               REST endpoints (auth, modern, programs, admin, sandbox, execute, **functions**, **function-groups**, …)
+  components/workbench/  SAP GUI shell + Standard and Modern workspaces + **browser-frame.tsx, function-builder.tsx**
   components/admin/      Owner dashboard UI
   lib/abap/              ABAP engine: tokenizer, parser, interpreter, natives
   lib/modern.ts          Capability matrix, templates and CDS/RAP/AMDP validators
   lib/test-auth.ts       Test-only session broker (production fails closed)
   lib/session.ts         DB-validated sessions, owner gate, CSRF, rate limits
-  lib/access.ts          Example/private/legacy visibility and edit rules
+  lib/access.ts          Example/private/legacy visibility and edit rules (+ function modules/groups)
   lib/sandbox.ts         Per-user practice sandbox template
   lib/db.ts              Prisma client + additive production schema migration
+  lib/function-module.ts    FM parameter validation, DTOs, test source generation
+  lib/function-groups.ts    Example function group backfill
 tests/                   Unit tests, disposable API suite, Playwright UI/axe suite
 ```
 
@@ -327,16 +341,17 @@ tests/                   Unit tests, disposable API suite, Playwright UI/axe sui
 | `GET/POST /api/modern`, `GET/PUT/DELETE /api/modern/[id]` | List/detail/create/update/delete Modern objects |
 | `POST /api/modern/validate` | Validate ABAP or CDS/RAP/AMDP source |
 | `GET /api/topics` · `programs` · `tables` · `functions` · `search` | Repository and DDIC content (Standard list only) |
+| `GET/POST /api/functions`, `GET/PUT/DELETE /api/functions/[name]`, `POST /api/functions/test` | **SE37 Function Module CRUD + test execution** (tenant-scoped) |
+| `GET/POST /api/function-groups`, `DELETE /api/function-groups/[name]` | **Function Group CRUD** (tenant-scoped) |
 | `GET/POST /api/favorites` · `GET /api/recents` | Per-user workbench state |
 | `POST /api/sandbox` | Get or create the current user's private sandbox |
-| `GET /api/admin/overview`, `PATCH/DELETE /api/admin/users/[id]`, `DELETE /api/admin/programs/[id]` | Owner-only administration |
+| `GET /api/admin/overview`, `PATCH/DELETE /api/admin/users/[id]`, `DELETE /api/admin/programs/[id]` | Owner-only administration (+ cascade delete FMs/groups) |
 | `GET /api/health` | Deployment diagnostics (no secrets) |
 
 ## Roadmap and explicit boundaries
 
-- **P2 Modern ABAP:** implemented, deployed and production-verified. Final owner visual
-  sign-off is the only remaining acceptance gate; technical evidence is in the
-  [final acceptance report](docs/FINAL-ACCEPTANCE-REPORT.md).
+- **P2 Modern ABAP:** implemented, deployed and production-verified.
+- **P3 App 2 Integration (Firefox/WebGUI shell + SE37 Function Builder):** implemented, deployed and owner-signed-off.
 - **Accessibility:** automated axe checks pass for the current serious/critical threshold;
   broader manual screen-reader review is future work.
 - **Rate limiting:** per process. A shared distributed limiter is future hardening.
@@ -344,6 +359,7 @@ tests/                   Unit tests, disposable API suite, Playwright UI/axe sui
   remain deliberately unsupported and are labelled as such.
 - **Broader ABAP:** additional OO/RAP/AMDP constructs can be added with tests; the current
   subset is verified, not a full SAP kernel.
+- **Explicitly out of scope (App 2 features not ported):** SHDB, Debugger, ST22, BDC, AL11, SE51, SE91, SAT, SE93, multi-tab Firefox sessions, real SAP connectivity.
 
 ## Credits
 

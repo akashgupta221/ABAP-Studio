@@ -89,8 +89,10 @@ async function seed() {
           exportParams: JSON.stringify(fm.exportParams || []),
           changingParams: JSON.stringify(fm.changingParams || []),
           tablesParams: JSON.stringify(fm.tablesParams || []),
+          exceptions: JSON.stringify(fm.exceptions || []),
           source: fm.source,
           isExample: fm.isExample ?? true,
+          active: true,
           topicId: fm.topicCode ? topicIds.get(fm.topicCode) ?? null : null,
         }
         await tx.functionModule.upsert({

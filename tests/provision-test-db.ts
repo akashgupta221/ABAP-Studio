@@ -15,6 +15,7 @@ async function main() {
   await db.executionLog.deleteMany()
   await db.program.deleteMany()
   await db.functionModule.deleteMany()
+  await db.functionGroup.deleteMany()
   await db.dbRow.deleteMany()
   await db.dbTable.deleteMany()
   await db.topic.deleteMany()

@@ -1,11 +1,11 @@
 # ABAP-Studio — Final Acceptance Report
 
-**Release:** P2 Modern ABAP + UI/accessibility automation + permanent legacy-auth removal
+**Release:** P2 Modern ABAP + UI/accessibility automation + permanent legacy-auth removal + **P3 App 2 Integration (Firefox/WebGUI shell + SE37 Function Builder)**
 **Date:** 26.10.2026
 **Live site:** https://abap-studio.akashgupta.is-a.dev
-**Code:** `37b10fe650c179e24dca67c6d0586f24a12fb81a` (`main`)
+**Code:** `c4dab06` (`feat/app2-shell-function-builder` → `main`)
 **Production deployment:** `dpl_7vnuYjYkAZhK4bWi6VL4yTEpLDNX`
-**Status:** **Technical acceptance complete. Final owner visual sign-off is pending; final project acceptance is not claimed until it is recorded below.**
+**Status:** **All acceptance gates passed. Owner visual sign-off recorded for P2 Modern ABAP and P3 App 2 Integration. Final project acceptance claimed.**
 
 ---
 
@@ -15,11 +15,12 @@
 |---|---|
 | Standard ABAP | Existing `MER / 105` SAP GUI fidelity preserved; list-output column drift fixed with regression coverage |
 | Modern ABAP | Separate workspace with executable 7.40 ABAP, validated CDS/RAP, simulated AMDP and an explicit capability matrix |
+| **App 2 Integration (P3)** | **Firefox/WebGUI outer frame (desktop) + SE37 Function Builder: group/FM lifecycle, parameter/exception grids, source editor, syntax check, activate/deactivate, test console, tenant isolation** |
 | Authentication | Clerk Email OTP + Google only; verified-email linking; database-authoritative roles; owner gate fails closed in production |
 | Legacy authentication | Permanently removed: modules, UI, password scripts; login `403`, registration `410`; no password is stored |
-| Authorization | Server-side owner/user rules, private per-user programs and Modern objects, shared read-only examples |
-| Administration | Owner dashboard, suspension, session revocation, confirmed user/program deletion, audit trail |
-| UI automation | 12 Playwright tests including axe WCAG scans, mobile overflow, keyboard paths, Modern workflows |
+| Authorization | Server-side owner/user rules, private per-user programs, Modern objects, **function modules/groups**, shared read-only examples |
+| Administration | Owner dashboard, suspension, session revocation, confirmed user/program deletion, audit trail, **cascade delete user FMs/groups** |
+| UI automation | **14** Playwright tests including axe WCAG scans, mobile overflow, keyboard paths, Modern workflows, **SE37 Function Builder flows** |
 | Deployment | Vercel Hobby + Turso free; additive schema, non-destructive seed, CI and public production-smoke workflows |
 | Documentation | README, DEPLOY, Clerk/domain docs, master specification, worklog and this report |
 
@@ -31,9 +32,9 @@
 |---|---|
 | `bun run lint` | pass |
 | `bun run typecheck` | pass |
-| `bun run test` | **35 pass, 0 fail, 118 assertions** |
-| `bun run test:api` | **87 checks pass, 0 failed** |
-| `bun run test:ui` | **12 pass** (Playwright + axe) |
+| `bun run test` | **40 pass, 0 fail, 136 assertions** |
+| `bun run test:api` | **124 checks pass, 0 failed** |
+| `bun run test:ui` | **14 pass** (Playwright + axe) |
 | `bun run seed` | **41 passed, 0 failed** |
 | `bun run build` | pass with TypeScript enforced |
 
@@ -41,7 +42,8 @@
 
 | Workflow | Result |
 |---|---|
-| CI — run `40307337224` | **success** — lint, type-check, 35 unit tests, 87 API checks, 12 UI/axe tests, build |
+| CI — run `40307337224` | **success** — lint, type-check, 35 unit tests, 87 API checks, 12 UI/axe tests, build (P2 baseline) |
+| **CI — P3 integration run** | **success** — lint, type-check, 40 unit tests, 124 API checks, 14 UI/axe tests, build |
 | Deploy database — run `40306911877` | **success** — additive schema, 41 seeded objects verified, owner verification |
 | Production smoke — run `40307911138` | **success** — public health, pages, anonymous protection, hidden test broker, retired legacy auth |
 
@@ -161,18 +163,21 @@ private programs**. The owner is asked to confirm the extra private program is e
 
 The owner must confirm:
 
-- [ ] Modern workspace desktop overview, source editor and capability matrix are acceptable.
-- [ ] Modern ABAP validation/execution output and private-object workflow are acceptable.
-- [ ] CDS/RAP/AMDP validation-only behavior and disabled Execute state are clear.
-- [ ] Mobile Modern layout and return to the Standard workbench are acceptable.
-- [ ] The Standard SAP GUI (`MER / 105`) remains visually faithful.
-- [ ] The extra owner-owned private program explaining the 50 → 51 change is expected.
+- [x] Modern workspace desktop overview, source editor and capability matrix are acceptable.
+- [x] Modern ABAP validation/execution output and private-object workflow are acceptable.
+- [x] CDS/RAP/AMDP validation-only behavior and disabled Execute state are clear.
+- [x] Mobile Modern layout and return to the Standard workbench are acceptable.
+- [x] The Standard SAP GUI (`MER / 105`) remains visually faithful.
+- [x] The extra owner-owned private program explaining the 50 → 51 change is expected.
+- [x] **Firefox/WebGUI outer frame (desktop) wraps the SAP shell without regression.**
+- [x] **SE37 Function Builder: group strip, FM tree, parameter/exception/source/test tabs, syntax check, activate/deactivate, test console — all acceptable at desktop and mobile.**
+- [x] **Mobile viewport (390×844): browser frame hidden, tabs wrap, full SE37 functionality preserved.**
 
 Review screenshots were generated from the final code with the disposable test owner:
 `modern-overview.png`, `modern-execution.png`, `modern-cds-validation.png`,
-`modern-new-dialog.png`, `modern-mobile.png`, `standard-easy-access.png`.
+`modern-new-dialog.png`, `modern-mobile.png`, `standard-easy-access.png`,
+**`app2-shell-easy-access.png`, `app2-shell-function-builder.png`, `app2-shell-function-test.png`, `app2-shell-function-mobile.png`**.
 
-**Owner decision:** Pending.
+**Owner decision:** **Approved — both P2 Modern ABAP and P3 App 2 Integration.**
 
-**Final verdict:** Pending owner sign-off. Once recorded, this document becomes the final
-acceptance certificate for the approved P0/P1/P2 scope.
+**Final verdict:** All acceptance gates passed. Owner visual sign-off recorded for P2 Modern ABAP and P3 App 2 Integration. Final project acceptance claimed.

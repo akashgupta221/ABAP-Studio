@@ -14,14 +14,14 @@ datasource db {
 
 // ── Syllabus / Learning ────────────────────────────────────────────────
 model Topic {
-  id        Int        @id @default(autoincrement())
-  srNo      Int        // 1..10 from HCLTech syllabus
-  code      String     @unique // e.g. "TOPIC_01"
+  id        Int              @id @default(autoincrement())
+  srNo      Int // 1..10 from HCLTech syllabus
+  code      String           @unique // e.g. "TOPIC_01"
   title     String
   summary   String
-  details   String     @default("") // markdown: concepts, key points
-  paradigm  String     @default("BOTH") // POP | OOP | BOTH | CONCEPT
-  category  String     @default("CORE") // CORE | REPORTING | MODERN
+  details   String           @default("") // markdown: concepts, key points
+  paradigm  String           @default("BOTH") // POP | OOP | BOTH | CONCEPT
+  category  String           @default("CORE") // CORE | REPORTING | MODERN
   programs  Program[]
   tables    DbTable[]
   functions FunctionModule[]
@@ -58,41 +58,70 @@ model Program {
 
 // ── Data Dictionary (SE11) ─────────────────────────────────────────────
 model DbTable {
-  id          Int         @id @default(autoincrement())
-  name        String      @unique // SFLIGHT, MARA ...
-  description String      @default("")
-  isSap       Boolean     @default(true) // part of simulated SAP model
-  fields      String      @default("[]") // JSON: [{name,type,length,decimals,key,text}]
+  id          Int     @id @default(autoincrement())
+  name        String  @unique // SFLIGHT, MARA ...
+  description String  @default("")
+  isSap       Boolean @default(true) // part of simulated SAP model
+  fields      String  @default("[]") // JSON: [{name,type,length,decimals,key,text}]
   topicId     Int?
-  topic       Topic?      @relation(fields: [topicId], references: [id])
+  topic       Topic?  @relation(fields: [topicId], references: [id])
   rows        DbRow[]
 }
 
 // Simulated DB content (rows of the DDIC tables)
 model DbRow {
-  id      Int      @id @default(autoincrement())
+  id      Int     @id @default(autoincrement())
   tableId Int
-  table   DbTable  @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  data    String   @default("{}") // JSON {field: value}
-  seq     Int      @default(0)
+  table   DbTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  data    String  @default("{}") // JSON {field: value}
+  seq     Int     @default(0)
 
   @@index([tableId])
 }
 
 // ── Function Builder (SE37) ────────────────────────────────────────────
+model FunctionGroup {
+  id        String   @id @default(cuid())
+  name      String   @unique // ZFLIGHT_GROUP
+  shortText String   @default("")
+  isExample Boolean  @default(false)
+  // null + isExample=true  → shared training group, read-only
+  // set                    → private group owned by that user
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdBy String   @default("SAP")
+  changedOn String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
 model FunctionModule {
-  id            String  @id @default(cuid())
-  name          String  @unique // Z_GET_FLIGHT_DETAILS
-  groupName     String  @default("ZFLIGHT_GROUP")
-  title         String  @default("")
-  importParams  String  @default("[]") // JSON param specs
-  exportParams  String  @default("[]")
-  changingParams String @default("[]")
-  tablesParams  String  @default("[]")
-  source        String  @default("")
-  isExample     Boolean @default(false)
-  topicId       Int?
-  topic         Topic?  @relation(fields: [topicId], references: [id])
+  id             String  @id @default(cuid())
+  name           String  @unique // Z_GET_FLIGHT_DETAILS
+  groupName      String  @default("ZFLIGHT_GROUP")
+  title          String  @default("")
+  importParams   String  @default("[]") // JSON param specs
+  exportParams   String  @default("[]")
+  changingParams String  @default("[]")
+  tablesParams   String  @default("[]")
+  exceptions     String  @default("[]") // JSON string[] (documented RAISE names)
+  source         String  @default("")
+  isExample      Boolean @default(false)
+  active         Boolean @default(true)
+  // null + isExample=true  → shared training module, read-only
+  // set                    → private module owned by that user
+  ownerId        String?
+  owner          User?   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdBy      String  @default("SAP")
+  changedBy      String  @default("")
+  changedOn      String  @default("")
+  topicId        Int?
+  topic          Topic?  @relation(fields: [topicId], references: [id])
+
+  @@index([ownerId])
+  @@index([groupName])
 }
 
 // ── Execution log (SM21-ish) ───────────────────────────────────────────
@@ -119,20 +148,22 @@ model ExecutionLog {
 
 // ── User master (SAP-style logon: user + password) ─────────────────────
 model User {
-  id             String         @id @default(cuid())
-  username       String         @unique // stored uppercase, like SAP user names
-  passwordHash   String // scrypt: "<salt-hex>:<hash-hex>" (legacy); "clerk-only" for Clerk accounts
-  email          String?        @unique // verified Clerk email or owner-verified migration mapping
-  clerkId        String?        @unique // Clerk user id; links the Clerk identity to this SAP user
-  displayName    String         @default("")
-  role           String         @default("USER") // USER | OWNER (server-managed only)
-  suspended      Boolean        @default(false)
-  sessionVersion Int            @default(1) // bump to revoke every existing session
-  createdAt      DateTime       @default(now())
-  lastLoginAt    DateTime?
-  programs       Program[]
-  favorites      UserFavorite[]
-  logs           ExecutionLog[]
+  id              String           @id @default(cuid())
+  username        String           @unique // stored uppercase, like SAP user names
+  passwordHash    String // scrypt: "<salt-hex>:<hash-hex>" (legacy); "clerk-only" for Clerk accounts
+  email           String?          @unique // verified Clerk email or owner-verified migration mapping
+  clerkId         String?          @unique // Clerk user id; links the Clerk identity to this SAP user
+  displayName     String           @default("")
+  role            String           @default("USER") // USER | OWNER (server-managed only)
+  suspended       Boolean          @default(false)
+  sessionVersion  Int              @default(1) // bump to revoke every existing session
+  createdAt       DateTime         @default(now())
+  lastLoginAt     DateTime?
+  programs        Program[]
+  functionGroups  FunctionGroup[]
+  functionModules FunctionModule[]
+  favorites       UserFavorite[]
+  logs            ExecutionLog[]
 }
 
 // ── Per-user Easy Access favorites ─────────────────────────────────────

@@ -71,7 +71,26 @@ async function migrateSchema(): Promise<void> {
   await addColumn('Program', 'environment', "TEXT NOT NULL DEFAULT 'STANDARD'")
   await addColumn('Program', 'modernKind', "TEXT NOT NULL DEFAULT 'ABAP'")
   await addColumn('ExecutionLog', 'userId', 'TEXT')
+  await addColumn('FunctionModule', 'ownerId', 'TEXT')
+  await addColumn('FunctionModule', 'active', 'BOOLEAN NOT NULL DEFAULT true')
+  await addColumn('FunctionModule', 'createdBy', "TEXT NOT NULL DEFAULT 'SAP'")
+  await addColumn('FunctionModule', 'changedBy', "TEXT NOT NULL DEFAULT ''")
+  await addColumn('FunctionModule', 'changedOn', "TEXT NOT NULL DEFAULT ''")
+  await addColumn('FunctionModule', 'exceptions', "TEXT NOT NULL DEFAULT '[]'")
 
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "FunctionGroup" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "name" TEXT NOT NULL,
+      "shortText" TEXT NOT NULL DEFAULT '',
+      "isExample" BOOLEAN NOT NULL DEFAULT false,
+      "ownerId" TEXT,
+      "createdBy" TEXT NOT NULL DEFAULT 'SAP',
+      "changedOn" TEXT NOT NULL DEFAULT '',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "UserFavorite" (
       "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -100,6 +119,10 @@ async function migrateSchema(): Promise<void> {
     'CREATE UNIQUE INDEX IF NOT EXISTS "User_clerkId_key" ON "User"("clerkId")',
     'CREATE INDEX IF NOT EXISTS "Program_ownerId_idx" ON "Program"("ownerId")',
     'CREATE INDEX IF NOT EXISTS "ExecutionLog_userId_idx" ON "ExecutionLog"("userId")',
+    'CREATE UNIQUE INDEX IF NOT EXISTS "FunctionGroup_name_key" ON "FunctionGroup"("name")',
+    'CREATE INDEX IF NOT EXISTS "FunctionGroup_ownerId_idx" ON "FunctionGroup"("ownerId")',
+    'CREATE INDEX IF NOT EXISTS "FunctionModule_ownerId_idx" ON "FunctionModule"("ownerId")',
+    'CREATE INDEX IF NOT EXISTS "FunctionModule_groupName_idx" ON "FunctionModule"("groupName")',
     'CREATE UNIQUE INDEX IF NOT EXISTS "UserFavorite_userId_objectType_objectName_key" ON "UserFavorite"("userId", "objectType", "objectName")',
     'CREATE INDEX IF NOT EXISTS "UserFavorite_userId_idx" ON "UserFavorite"("userId")',
     'CREATE INDEX IF NOT EXISTS "AdminAuditLog_createdAt_idx" ON "AdminAuditLog"("createdAt")',
