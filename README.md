@@ -165,10 +165,11 @@ Never commit real values; `.env` is git-ignored. Do not paste secrets into chat 
 
 ```bash
 bun run lint          # ESLint
+bun run typecheck     # TypeScript (tsc --noEmit)
 bun test tests        # auth, access, sandbox and ABAP regression tests
 bun run test:api      # disposable live API/security suite (port 3100)
-bun run test:all      # lint + unit + API
-bun run build         # production build
+bun run test:all      # lint + typecheck + unit + API
+bun run build         # production build (TypeScript enforced)
 ```
 
 The API suite creates a throwaway database and server; it never touches local user data
@@ -255,10 +256,11 @@ reachability without exposing secrets:
 | `bun run owner:password` | Hidden-input owner password reset |
 | `bun run owner:verify` | Read-only check: exactly one owner, email match, no unclaimed legacy programs |
 | `bun run owner:favorites` | Dry-run/apply migration of legacy global favorites to the owner |
-| `bun run test` / `test:api` / `test:all` | Unit / live API / full test suites |
+| `bun run test` / `test:api` / `test:all` | Unit / live API / full test suites (full includes type-check) |
 | `bun run db:push` | Sync the Prisma schema to the local database |
 | `bun run db:generate` | Regenerate the Prisma client |
 | `bun run lint` | ESLint |
+| `bun run typecheck` | TypeScript check (`tsc --noEmit`) |
 
 ## Project structure
 
@@ -316,7 +318,8 @@ tests/                   Unit tests + disposable API/security suite
   matrix (owner scope approval required; currently paused)
 - Distributed rate limiting for multi-instance deployments
 - Broader ABAP OO coverage, RAP/AMDP constructs and UI acceptance/accessibility automation
-- Final project acceptance report after the remaining type-check and UI-automation debt
+- Dormant legacy-auth code removal after owner approval
+- Final project acceptance report after the remaining UI automation/accessibility work and approved P2 scope
 
 ## Credits
 

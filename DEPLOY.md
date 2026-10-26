@@ -187,6 +187,9 @@ to every user — they were never tied to an identity.
 
 ## Part 6 — Verify production
 
+0. Run the local gates before deploying: `bun run lint`, `bun run typecheck`,
+   `bun test tests`, `bun run test:api` and `bun run build`. The production build now
+   enforces TypeScript; a type error fails the Vercel build.
 1. Sign out, then sign in with Clerk Email OTP or Google.
 2. A regular user must see only shared examples, their own programs and their own
    `Z_MY_PRACTICE_<USERNAME>` sandbox.

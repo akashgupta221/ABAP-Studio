@@ -96,6 +96,21 @@ class Cursor {
     }
     return out
   }
+  // Collect the remaining tokens of one statement, skipping separators.
+  rawStatementTokens(): Token[] {
+    const out: Token[] = []
+    while (!this.atEnd()) {
+      const t = this.cur!
+      if (t.value === '.' || t.value === ';') { this.next(); break }
+      if (t.value === ',' || t.value === ':') { this.next(); continue }
+      out.push(this.next())
+    }
+    return out
+  }
+  rawStatementToDotWhere(): void {
+    while (!this.atEnd() && !this.isPunc('.')) this.next()
+    this.tryPunc('.')
+  }
 }
 
 // Compound keywords: sequences of IDENT - IDENT [- IDENT] that form one keyword
@@ -567,7 +582,7 @@ export class Parser {
     const t = c.peek()
     if (!t || t.type !== 'IDENT') c.err('Expected type')
     c.next()
-    const u = t.upper
+    const u = t!.upper
     // dbtab-field DDIC reference
     if (c.isPunc('-')) {
       c.next()
@@ -1464,7 +1479,7 @@ export class Parser {
         if (sub.tryKw('TO')) {
           if (sub.tryKw('CURRENT')) { sub.tryKw('STATE'); sub.tryKw('TRANSACTION') ; return { t: 'leave', line } }
           sub.tryKw('TRANSACTION')
-          const name = sub.peek() ? this.parseExprCursor(sub) : { t: 'str', v: '' }
+          const name: Expr = sub.peek() ? this.parseExprCursor(sub) : { t: 'str', v: '' }
           return { t: 'leave', toTransaction: name, line }
         }
         if (sub.tryKw('LIST-PROCESSING')) { sub.tryKw('AND'); sub.tryKw('RETURN'); sub.tryKw('TO'); sub.tryKw('SCREEN'); return { t: 'leave', toListProcessing: true, line } }
@@ -2783,7 +2798,7 @@ export class Parser {
     if (c.isKw('TITLEBAR')) {
       const toks = c.rawStatementTokens().filter((x) => x.upper !== 'TITLEBAR' && x.upper !== 'OF')
       const sub = new Cursor(toks)
-      const title = sub.peek() ? this.parseExprCursor(sub) : { t: 'str', v: '' }
+      const title: Expr = sub.peek() ? this.parseExprCursor(sub) : { t: 'str', v: '' }
       return { t: 'settitlebar', title, line: this.line() }
     }
     if (c.isKw('SCREEN')) { c.rawStatement(); return null }
@@ -2816,7 +2831,11 @@ export class Parser {
           if (t.upper === 'INTO' || t.upper === 'BEFORE' || t.upper === 'OR') { break }
           classToks.push(this.c.next().upper)
         }
-        if (this.c.tryKw('BEFORE')) { this.c.tryKw('UNWIND'); this.c.rawStatementToDot() }
+        if (this.c.tryKw('BEFORE')) {
+          this.c.tryKw('UNWIND')
+          // Consume the rest of the CATCH header, leaving the terminating dot.
+          while (!this.c.atEnd() && !this.c.isPunc('.')) this.c.next()
+        }
         if (this.c.tryKw('INTO')) {
           into = this.parseExpr()
         }
@@ -3022,15 +3041,6 @@ export class Parser {
     const d = this.pendingInlineDecl
     this.pendingInlineDecl = null
     return d
-  }
-
-  private rawStatementToDotWhere() {
-    while (!this.c.atEnd() && !this.c.isPunc('.')) this.c.next()
-    this.c.tryPunc('.')
-  }
-  private rawStatementToDot() {
-    while (!this.c.atEnd() && !this.c.isPunc('.')) this.c.next()
-    this.c.tryPunc('.')
   }
 
   // SQL condition — parse with expression parser (supports AND/OR, IN, BETWEEN, LIKE, host vars @x, db fields)
@@ -3707,25 +3717,6 @@ export class Parser {
     if (buf) parts.push({ lit: buf })
     return parts
   }
-}
-
-// ── helpers for raw token statements ──────────────────────────────────
-declare module './parser' {}
-
-// extend Cursor with token-collection helpers (kept separate to avoid clutter)
-;(Cursor.prototype as any).rawStatementTokens = function (): Token[] {
-  const out: Token[] = []
-  while (!this.atEnd()) {
-    const t = this.cur!
-    if (t.value === '.' || t.value === ';') { this.next(); break }
-    if (t.value === ',' || t.value === ':') { this.next(); continue }
-    out.push(this.next())
-  }
-  return out
-}
-;(Cursor.prototype as any).rawStatementToDotWhere = function () {
-  while (!this.atEnd() && !this.isPunc('.')) this.next()
-  this.tryPunc('.')
 }
 
 export { Cursor }

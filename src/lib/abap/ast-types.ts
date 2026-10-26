@@ -65,7 +65,7 @@ export interface FuncCall {
   fn: string // builtin function name (strlen, lines...) or METHOD for method call
   method?: string // method name when fn === 'METHOD'
   recv?: Expr // receiver object for method call
-  sep?: '->' | '=>' | '~'
+  sep?: '->' | '=>' | '~' | '-'
   args: CallArg[]
   style: 'functional' | 'builtin'
 }
@@ -176,7 +176,7 @@ export interface LoopStmt {
 export interface ControlStmt { t: 'continue' | 'exit' | 'return' }
 export interface CheckStmt { t: 'check'; cond: Expr; line: number }
 export interface AppendStmt { t: 'append'; src?: Expr; table: Expr; initialLine?: boolean; linesOf?: Expr; assigning?: Expr; sortedBy?: Expr; line: number }
-export interface InsertStmt { t: 'insert'; src: Expr; table?: Expr; index?: Expr; linesOf?: Expr; into?: Expr; initialLine?: boolean; assign?: Expr; line: number }
+export interface InsertStmt { t: 'insert'; src?: Expr; table?: Expr; index?: Expr; linesOf?: Expr; into?: Expr; initialLine?: boolean; assign?: Expr; line: number }
 export interface ReadTableStmt {
   t: 'readtable'
   table: Expr
@@ -294,7 +294,7 @@ export interface SelectStmt {
   appending?: boolean
   upTo?: Expr
   where?: Expr
-  orderBy?: { expr: string; dir: 'asc' | 'desc' }[]
+  orderBy: { expr: string; dir: 'asc' | 'desc' }[]
   groupBy?: string[]
   line: number
 }

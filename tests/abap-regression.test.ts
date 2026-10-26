@@ -113,6 +113,71 @@ describe('Standard ABAP regression suite', () => {
     expect(issues.some((i) => i.kind === 'E')).toBe(true)
   })
 
+  test('numeric REDUCE accumulates across its WHILE loop', () => {
+    const result = runAbap({
+      source:
+        "REPORT Z_REDUCE_NUM.\n" +
+        'DATA(lv_sum) = REDUCE #( INIT s = 0 FOR i = 1 THEN i + 1 WHILE i <= 10 NEXT s = s + i ).\n' +
+        'WRITE lv_sum.',
+      repid: 'Z_REDUCE_NUM',
+      db: new DbSnapshot(),
+    })
+    expect(result.status).toBe('SUCCESS')
+    const text = result.list.map((l) => l.segments.map((s) => s.text).join('')).join('\n')
+    expect(text.trim()).toBe('55')
+  })
+
+  test('REDUCE over elementary VALUE rows accumulates their values', () => {
+    const result = runAbap({
+      source:
+        "REPORT Z_REDUCE_TABLE.\n" +
+        'DATA(lt) = VALUE i( ( 1 ) ( 2 ) ( 3 ) ).\n' +
+        'DATA(lv_sum) = REDUCE #( INIT s = 0 FOR n IN lt NEXT s = s + n ).\n' +
+        'WRITE lv_sum.',
+      repid: 'Z_REDUCE_TABLE',
+      db: new DbSnapshot(),
+    })
+    expect(result.status).toBe('SUCCESS')
+    const text = result.list.map((l) => l.segments.map((s) => s.text).join('')).join('\n')
+    expect(text.trim()).toBe('6')
+  })
+
+  test('caught exceptions expose their message text', () => {
+    const result = runAbap({
+      source:
+        "REPORT Z_EXCEPTION_TEXT.\n" +
+        'DATA lv_text TYPE string.\n' +
+        'TRY.\n' +
+        '  DATA(lv_x) = 10 / 0.\n' +
+        'CATCH cx_sy_zerodivide INTO DATA(lx_err).\n' +
+        '  lv_text = lx_err->get_text( ).\n' +
+        'ENDTRY.\n' +
+        'WRITE lv_text.',
+      repid: 'Z_EXCEPTION_TEXT',
+      db: new DbSnapshot(),
+    })
+    expect(result.status).toBe('SUCCESS')
+    const text = result.list.map((l) => l.segments.map((s) => s.text).join('')).join('\n')
+    expect(text).toContain('Division by zero')
+  })
+
+  test('CATCH BEFORE UNWIND parses and handles the exception', () => {
+    const result = runAbap({
+      source:
+        "REPORT Z_CATCH_UNWIND.\n" +
+        'TRY.\n' +
+        '  DATA(lv_x) = 1 / 0.\n' +
+        'CATCH cx_root BEFORE UNWIND.\n' +
+        "  WRITE 'caught'.\n" +
+        'ENDTRY.',
+      repid: 'Z_CATCH_UNWIND',
+      db: new DbSnapshot(),
+    })
+    expect(result.status).toBe('SUCCESS')
+    const text = result.list.map((l) => l.segments.map((s) => s.text).join('')).join('\n')
+    expect(text).toContain('caught')
+  })
+
   test('statement limit stops an endless loop with a controlled dump', () => {
     const source = 'REPORT Z_LOOP.\nDO 1000000 TIMES.\nENDDO.'
     const program = parseAbap(source)

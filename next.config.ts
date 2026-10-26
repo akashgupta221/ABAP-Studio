@@ -5,9 +5,6 @@ const nextConfig: NextConfig = {
   output: process.env.VERCEL ? undefined : "standalone",
   /* config options here */
   devIndicators: false,
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   reactStrictMode: false,
 };
 

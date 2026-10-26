@@ -3,6 +3,7 @@ import type {
   AbapProgram, Stmt, Expr, CallArg, TypeSpecAST, VarDeclStmt, MethodDecl, MethParam,
   FormParam, ClassDefStmt, ClassImplStmt, RunResult, ListLine, ListSegment, MessageItem,
   SelectionScreenItem, ParamSpec, SelectOptionSpec, AbapTypeDef, ElemType, FormStmt,
+  ReduceExpr,
 } from './ast-types'
 import { AbapSyntaxError } from './tokenizer'
 import {
@@ -448,7 +449,8 @@ export class Interpreter {
       } else if (st.kind === 'SELECT-OPTIONS') {
         const entry = this.globalScope.lookup(st.name)
         if (!entry || entry.value.kind !== 'table') continue
-        entry.value.rows = []
+        const rangeTable = entry.value
+        rangeTable.rows = []
         const addRange = (low: string, high: string, sign: string, opt: string) => {
           const line = new RtStruct()
           const sgn = initialElem('C', 1)
@@ -463,7 +465,7 @@ export class Interpreter {
           line.fields.set('OPTION', op)
           line.fields.set('LOW', lo)
           line.fields.set('HIGH', hi)
-          entry.value!.rows.push(line)
+          rangeTable.rows.push(line)
         }
         if (input !== undefined) {
           if (Array.isArray(input)) {
@@ -506,7 +508,7 @@ export class Interpreter {
       scope.declare(st.name, initialFromDef(def), st)
       return
     }
-    if (st.kind === 'SELECT-OPTIONS' || st.kind === 'RANGES') {
+    if (st.kind === 'SELECT-OPTIONS') {
       // range table: SIGN OPTION LOW HIGH
       const rangeLine: AbapTypeDef = {
         kind: 'struct',
@@ -635,7 +637,9 @@ export class Interpreter {
         }
       }
       case 'table': {
-        const lineType = spec.lineType ? this.resolveTypeSpec(spec.lineType, scope) : { kind: 'elem', type: 'C' as ElemType, length: 1 }
+        const lineType: AbapTypeDef = spec.lineType
+          ? this.resolveTypeSpec(spec.lineType, scope)
+          : { kind: 'elem', type: 'C', length: 1 }
         return { kind: 'table', lineType, tableKind: spec.tableKind ?? 'STANDARD', keyFields: spec.keyFields, unique: spec.unique, withHeaderLine: spec.headerLine }
       }
       case 'oref': return { kind: 'oref', className: spec.typeName ?? '' }
@@ -2270,7 +2274,7 @@ export class Interpreter {
           }
         }
       }
-      const txt = initialElem('STRING', message)
+      const txt = new RtElem('STRING', message)
       oref.attrs.set('TEXT', txt)
     }
     return oref
@@ -2793,7 +2797,7 @@ export class Interpreter {
         // DATA(x) — create in current scope
         const cur = scope
         if (!cur.vars.has(e.name)) {
-          cur.declare(e.name, initialElem('STRING', ''))
+          cur.declare(e.name, initialElem('STRING'))
         }
         const entry = cur.vars.get(e.name)!
         return { get: () => entry.value, set: (v) => { entry.value = v } }
@@ -3305,7 +3309,7 @@ export class Interpreter {
               recvVal = undefined
             }
           }
-          const ret = this.invokeMethodOrStatic(recvVal, staticCls, e.fnName ?? (e as any).method ?? this.methodNameOf(e), e.args, scope)
+          const ret = this.invokeMethodOrStatic(recvVal, staticCls, e.method ?? this.methodNameOf(e), e.args, scope)
           return ret
         }
         // builtin function
@@ -3385,10 +3389,7 @@ export class Interpreter {
       case '=': case '<>': case '<': case '>': case '<=': case '>=': case 'EQ': case 'NE': case 'LT': case 'GT': case 'LE': case 'GE': {
         const l = this.evalExpr(e.l, scope, rowCtx, sqlCtx)
         const r = this.evalExpr(e.r, scope, rowCtx, sqlCtx)
-        let cmp: number
-        // NULL handling for SQL
-        if (sqlCtx && (l.t === undefined)) cmp = 0
-        cmp = compareValues(l, r)
+        const cmp = compareValues(l, r)
         let res = false
         switch (e.op) {
           case '=': case 'EQ': res = cmp === 0; break
@@ -3485,7 +3486,18 @@ export class Interpreter {
           t.rows.push(deepCopyValue(b))
         }
       } else if (l.kind === 'row') {
-        t.rows.push(buildStructFromLines(l.lines))
+        const rowFields = l.lines.filter((x: any) => x.kind === 'field')
+        const rowBases = l.lines.filter((x: any) => x.kind === 'base')
+        if (rowFields.length === 0 && rowBases.length === 1) {
+          // Elementary table rows: VALUE i( ( 1 ) ( 2 ) ).
+          const value = this.evalExpr(rowBases[0].expr, scope)
+          if (t.rows.length === 0) t.lineType = this.defOfValue(value)
+          t.rows.push(deepCopyValue(value))
+        } else {
+          const row = buildStructFromLines(l.lines)
+          if (t.rows.length === 0) t.lineType = this.defOfValue(row)
+          t.rows.push(row)
+        }
       } else if (l.kind === 'for') {
         const table = this.evalExpr(l.table, scope)
         if (table.kind === 'table') {
@@ -3523,51 +3535,47 @@ export class Interpreter {
     return t
   }
 
-  evalReduce(e: any, scope: Scope): RtValue {
+  evalReduce(e: ReduceExpr, scope: Scope): RtValue {
     const acc = new RtElem('I', 0)
     const loopScope = new Scope('form', scope)
+    const initVal = this.evalExpr(e.init.expr, scope)
+    loopScope.declare(e.init.name, deepCopyValue(initVal))
     if (e.forOf) {
       loopScope.declare(e.forOf.var, initialElem('C', 1))
       const table = this.evalExpr(e.forOf.table, scope)
-      if (table.kind !== 'table') return acc
-      const initVal = this.evalExpr(e.init.expr, scope)
-      const cur = deepCopyValue(initVal)
-      loopScope.declare(e.init.name, cur)
+      if (table.kind !== 'table') return loopScope.vars.get(e.init.name)?.value ?? acc
       for (const row of table.rows) {
         if (e.forOf.where && !this.truthy(this.evalExpr(e.forOf.where, loopScope, row))) continue
         loopScope.vars.set(e.forOf.var, { value: row })
         const nextVal = this.evalExpr(e.next.expr, loopScope)
         loopScope.vars.set(e.init.name, { value: nextVal })
       }
-      return loopScope.vars.get(e.init.name) ?? acc
+      return loopScope.vars.get(e.init.name)?.value ?? acc
+    }
+    if (e.forNum) {
+      // Numeric FOR: FOR i = init THEN step WHILE condition NEXT ...
+      loopScope.declare(e.forNum.var, deepCopyValue(this.evalExpr(e.forNum.init, scope)))
+      let guard = 0
+      while (this.truthy(this.evalExpr(e.forNum.while, loopScope))) {
+        if (++guard > 1_000_000) throw new RtDump('REDUCE endless loop', 'STEP_LIMIT_EXCEEDED')
+        const nextVal = this.evalExpr(e.next.expr, loopScope)
+        loopScope.vars.set(e.init.name, { value: nextVal })
+        const stepVal = this.evalExpr(e.forNum.step, loopScope)
+        loopScope.vars.set(e.forNum.var, { value: stepVal })
+      }
+      return loopScope.vars.get(e.init.name)?.value ?? acc
     }
     if (e.while) {
-      // numeric for: FOR i = init THEN step WHILE cond
-      const forSpec = (e as any).forNum
-      const initVal = this.evalExpr(e.init.expr, scope)
-      const cur = deepCopyValue(initVal)
-      loopScope.declare(e.init.name, cur)
-      if (forSpec) {
-        loopScope.declare(forSpec.var, deepCopyValue(this.evalExpr(forSpec.init, scope)))
-        let guard = 0
-        while (this.truthy(this.evalExpr(e.while!, loopScope))) {
-          if (++guard > 1_000_000) throw new RtDump('REDUCE endless loop', 'STEP_LIMIT_EXCEEDED')
-          const nextVal = this.evalExpr(e.next.expr, loopScope)
-          loopScope.vars.set(e.init.name, { value: nextVal })
-          const stepVal = this.evalExpr(forSpec.step, loopScope)
-          loopScope.vars.set(forSpec.var, { value: stepVal })
-        }
-      } else {
-        let guard = 0
-        while (this.truthy(this.evalExpr(e.while, loopScope))) {
-          if (++guard > 1_000_000) throw new RtDump('REDUCE endless loop', 'STEP_LIMIT_EXCEEDED')
-          const nextVal = this.evalExpr(e.next.expr, loopScope)
-          loopScope.vars.set(e.init.name, { value: nextVal })
-        }
+      // Compatibility for a REDUCE whose WHILE is stored at the top level.
+      let guard = 0
+      while (this.truthy(this.evalExpr(e.while, loopScope))) {
+        if (++guard > 1_000_000) throw new RtDump('REDUCE endless loop', 'STEP_LIMIT_EXCEEDED')
+        const nextVal = this.evalExpr(e.next.expr, loopScope)
+        loopScope.vars.set(e.init.name, { value: nextVal })
       }
-      return loopScope.vars.get(e.init.name) ?? acc
+      return loopScope.vars.get(e.init.name)?.value ?? acc
     }
-    return acc
+    return loopScope.vars.get(e.init.name)?.value ?? acc
   }
 
   // ── builtin functions ───────────────────────────────────────────────

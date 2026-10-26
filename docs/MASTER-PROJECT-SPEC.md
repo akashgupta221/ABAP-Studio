@@ -90,7 +90,7 @@ remaining blockers and unverified claims. Planned work is labelled as such.
 | **Legacy production favorites: verified empty** | Dry-run run `40111257243` found the old global `Favorite` table empty. | No migration is needed. The guarded workflow is retained for future databases; no data was copied or deleted. |
 | **Dormant legacy code and `AUTH_SECRET` remain** | Production health reports `hasAuthSecret: true`; the legacy path is `off` | No live session uses it. Remove the scrypt/HMAC code and `AUTH_SECRET` dependency in a later cleanup; do not re-enable fallback. |
 | **Rate limits are per process** | In-memory limiter | Serverless instances do not share counters; interpreter limits remain authoritative. A shared limiter is future hardening. |
-| **Type-check debt remains** | `bunx tsc --noEmit` reports pre-existing interpreter/example typing errors; `next build` passes | Clean up without changing verified behaviour before final acceptance. |
+| **Type-check gate restored** | `bun run typecheck` (`tsc --noEmit`) passes; `next build` now runs TypeScript validation (the temporary `ignoreBuildErrors` bypass was removed). `examples/` is excluded from the application type-check, and Bun test types are declared. | The type-check blocker is closed. `typecheck` is part of `bun run test:all`; keep it green. Engine fixes uncovered by this work are covered by regression tests. |
 | **Historical local database was committed** | Earlier commits tracked `prisma/db/app.db`, which contains scrypt hashes for local demo accounts (not the production Turso database) | The file is now untracked/ignored, but it remains in Git history. Treat any password reused from those local accounts as compromised. Rewriting public history requires owner approval. |
 | **Final UI/accessibility automation pending** | The owner visually reviewed `/admin` on 24.10.2026; production owner and isolation checks pass. | Add automated UI checks and an accessibility audit before final acceptance. |
 
@@ -220,6 +220,21 @@ obsolete global `Favorite` model is no longer used.
   `dpl_H827WkruszuKqUBCeV58DRER4LyU`. `/api/health` reports Clerk configured,
   `legacyAuthMode: "off"`, Turso, 1 user and 50 programs. **P1 accepted.**
 
+**Post-P1 quality gate (26.10.2026):**
+
+- `bun run typecheck` passes with zero errors. `next build` now runs TypeScript
+  validation; the temporary `ignoreBuildErrors` bypass was removed. `examples/` is
+  excluded from the application type-check and Bun test types are declared.
+- Type-checking and the new regression tests uncovered and fixed real engine defects:
+  numeric `REDUCE` returned its initial value instead of accumulating; `REDUCE ... FOR ...
+  IN` returned a scope entry instead of the accumulated value; elementary `VALUE i( ( … ) )`
+  rows were built as empty structures; caught exception `get_text( )` was blank because the
+  message was passed as a length; and `CATCH ... BEFORE UNWIND` referenced a missing cursor
+  method and consumed its terminating dot.
+- Current local gates: `bun run lint`, `bun run typecheck`, **30 unit tests** (77
+  assertions), **59 API checks** and `bun run build` all pass. The seeded `Z_COND_REDUCE`
+  example now prints `5050` and `720` for its sum and factorial.
+
 ---
 
 ## 2. Requirement-by-requirement status
@@ -237,7 +252,7 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 | 11 | Professional developer GUI | **Partial** | Standard SAP GUI is complete. Modern environment GUI and a formal accessibility audit are pending. |
 | 12 | Data ownership and isolation | **Done (deployed and production-verified)** | Server-side ownership rules and private sandboxes verified. Disposable production users could not see or mutate another user’s private program; owner access, session revocation, suspension and deletion passed. Production currently has one owner and 50 programs. |
 | 13 | Security and reliability | **Done (application layer, deployed)** | Sessions, CSRF, rate limiting, per-user execution authorization and audit trail; production anonymous APIs verified closed. Shared/distributed limiter remains future hardening. |
-| 14 | Continuous testing and completion verification | **Partial** | Lint clean, 26 unit tests, **59 API checks** and production build pass; P0 and P1 production acceptance checks pass. Formal UI automation, accessibility audit, type-check cleanup and the final project acceptance report remain. |
+| 14 | Continuous testing and completion verification | **Partial** | Lint, **type-check**, **30 unit tests**, **59 API checks** and production build pass; P0 and P1 production acceptance checks pass. Formal UI automation, accessibility audit and the final project acceptance report remain. |
 | 15 | Phase 0 audit | **Done** | This document. |
 | 15 | Phase 1 architecture/migration design | **Done** | Owner approved verified-email mapping and phased cutover; the code and owner guide implement it. |
 | 15 | Phases 2–8 | **In progress** | P0 security/admin/ownership and P1 Clerk cutover are deployed and accepted. Modern ABAP remains paused pending owner scope approval; final project acceptance still requires the remaining quality work. |
@@ -249,7 +264,7 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 - [x] Clerk account-migration plan — owner approved verified-email mapping; the cutover is complete and the legacy path is retired.
 - [x] Clerk authentication implementation — Email OTP + Google, verified-email linking, owner gate and signed webhook live on `main`.
 - [x] Owner-only administration dashboard — deployed; production owner gate, isolation checks, user/program deletion and owner browser sign-off pass.
-- [x] Standard ABAP automated regression tests — 26 unit tests pass (including Clerk mapping).
+- [x] Standard ABAP automated regression tests — 30 unit tests pass (including Clerk mapping, REDUCE, exception text and CATCH BEFORE UNWIND regressions).
 - [ ] Modern ABAP capability matrix and tests — pending scope approval.
 - [x] Improved Standard ABAP GUI fidelity — 24.10.2026; rechecked after P1.
 - [x] Security and authorization test coverage — **59 API checks** pass.
@@ -257,7 +272,7 @@ Status legend: **Done** = implemented and verified; **Partial** = verified subse
 - [x] Non-destructive seed/deploy path — verified locally.
 - [x] P0 production migration and owner provisioning — owner role/legacy claim, live owner gate, controlled isolation and owner `/admin` sign-off verified; legacy favorites verified empty.
 - [x] P1 production migration — Clerk Email OTP + Google, domain/keys/webhook, owner and non-owner verification, admin actions, legacy retirement and signed webhook all pass.
-- [ ] Final acceptance-test report — pending the remaining type-check, UI automation and accessibility work.
+- [ ] Final acceptance-test report — pending UI automation, accessibility review and the approved Modern ABAP/P2 scope.
 
 ---
 
@@ -400,9 +415,9 @@ browser. The temporary `OWNER_PASSWORD` GitHub secret was deleted after acceptan
 database owner password remains owner-held. The legacy-favorites dry-run (`40111257243`)
 found the old global `Favorite` table empty, so no migration is required.
 
-P1 is now accepted. Final project acceptance is still not claimed: UI/accessibility
-automation, the remaining type-check debt, final cleanup of dormant legacy code and the
-unapproved Modern ABAP/P2 scope remain open.
+P1 is now accepted. The type-check debt is closed and `next build` enforces TypeScript
+again. Final project acceptance is still not claimed: UI/accessibility automation, final
+cleanup of dormant legacy code and the unapproved Modern ABAP/P2 scope remain open.
 
 ### 4.3 Modern ABAP scope (blocking spec §10)
 
@@ -441,9 +456,10 @@ bun install
 bun run db:push              # create/update the local schema
 bun run dev                  # http://localhost:3000 (auto-seeds shared content)
 bun run lint
-bun test tests               # 26 unit tests
+bun run typecheck            # tsc --noEmit
+bun test tests               # 30 unit tests
 bun run test:api             # disposable end-to-end API suite (59 checks, port 3100)
-bun run test:all             # lint + unit + API
+bun run test:all             # lint + typecheck + unit + API
 bun run build
 bun run seed                 # non-destructive local content upsert + engine check
 bun run deploy:db            # remote schema/content upsert (requires TURSO_*)
@@ -466,7 +482,8 @@ bun run owner:favorites      # dry-run legacy favorite migration (APPLY=YES to c
 - The password previously supplied in chat was **not** reused, stored or verified, and
   must be considered exposed. The temporary GitHub `OWNER_PASSWORD` secret was deleted
   after the owner's admin review.
-- Final project acceptance is **not complete**: type-check debt, UI/accessibility
-  automation, dormant legacy-code cleanup, Modern ABAP/P2 scope and the final acceptance
-  report remain open. The legacy-favorites dry-run found the old table empty.
+- Final project acceptance is **not complete**: UI/accessibility automation, dormant
+  legacy-code cleanup, Modern ABAP/P2 scope and the final acceptance report remain open.
+  The type-check gate is green and enforced by `next build`. The legacy-favorites dry-run
+  found the old table empty.
 - The live site is the merged `main` P1 build, not the earlier `11d2b1c` build.
