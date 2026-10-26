@@ -1160,3 +1160,50 @@ Stage Summary:
 - The discovered ABAP constructor/exception defects are fixed and covered by regression tests.
 - P0/P1 remain accepted; production authentication, ownership and admin behavior were not changed.
 - Final project acceptance is still not claimed: UI/accessibility automation, dormant legacy-auth cleanup and owner-approved Modern ABAP/P2 scope remain open.
+
+---
+
+Task ID: 42
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Complete P2 Modern ABAP, permanently retire legacy authentication, add UI/accessibility automation and deploy the final acceptance build
+
+Work Log:
+- Implemented the approved Modern ABAP workspace as a separate view:
+  - executable ABAP 7.40 constructor-expression scratchpad;
+  - validated CDS and RAP definitions;
+  - simulated AMDP signatures/SQLScript bodies;
+  - explicit executable / validated / simulated / unsupported capability matrix.
+- Added four shared Modern examples (`Z_MD_CONSTRUCTORS`, `ZI_MD_FLIGHT`, `Z_MD_RAP_BEHAVIOR`, `ZCL_MD_AMDP`), private Modern object create/save/delete, ownership checks and Modern/Standard API isolation.
+- Permanently retired legacy password authentication:
+  - deleted the scrypt/HMAC auth modules, auth-mode flags, password-reset script and legacy logon UI;
+  - retained permanent stubs (`login` -> `403`, `register` -> `410`);
+  - added a test-only session broker gated by `E2E_TEST_MODE`, a >=16-character secret, and absence of `VERCEL`/`TURSO_DATABASE_URL`;
+  - hardened the owner gate so production/Vercel requires DB `role=OWNER` plus matching `OWNER_EMAIL` and fails closed.
+- Added Playwright + axe automation (12 tests) covering owner navigation, SE38 execution, Modern execution/validation, private Modern objects, admin, keyboard paths and mobile overflow.
+- Fixed two real engine defects found during final visual review:
+  - `FOR ... WHERE` now evaluates the iterator in loop scope;
+  - every `WRITE /` list line resets to column 1, preventing cumulative horizontal drift. Added a regression test for the list columns; unit tests are now 35 (118 assertions).
+- Added secret-free CI, public production smoke and manual `Deploy database` workflows. The database workflow uses repository secrets and prints only host/shared verification, never tokens or private program names.
+- First CI run for the release failed because the broad `test` pattern in `.gitignore` excluded `src/app/api/test/*`. Changed the pattern to `/test`, committed the test-only routes, and reran CI successfully. The routes fail closed on production and now return `404`.
+- Deployed database run `40306911877`:
+  - additive schema applied;
+  - `41 passed, 0 failed` / `SEED COMPLETE`;
+  - owner `AKASH`, email stored, one owner, 14 owner-owned private programs, 0 unclaimed.
+- Deployed code `37b10fe` to production as `dpl_7vnuYjYkAZhK4bWi6VL4yTEpLDNX`; custom-domain alias confirmed.
+- Removed obsolete Vercel variables `AUTH_SECRET`, `LEGACY_AUTH_MODE`, `NEXT_PUBLIC_LEGACY_AUTH_MODE` and `OWNER_USERNAME` after verification. Clerk, Turso and `OWNER_EMAIL` remain; no secret value was printed or committed.
+- Captured final Modern desktop, execution, CDS validation, create-dialog, mobile and Standard Easy Access screenshots from the disposable UI test environment for owner review.
+- Wrote `docs/FINAL-ACCEPTANCE-REPORT.md` with technical evidence, boundaries and the pending owner sign-off.
+
+Verification:
+- Local: lint pass; type-check pass; 35 unit tests / 118 assertions; 87 API checks; 12 UI/axe tests; 41/41 seed objects; production build pass.
+- CI run `40307337224`: success for lint, type-check, unit, 87 API checks, 12 UI/axe tests and production build.
+- Database run `40306911877`: success (schema, seed, owner verification).
+- Production deployment `dpl_7vnuYjYkAZhK4bWi6VL4yTEpLDNX`, commit `37b10fe`.
+- Production health: `dbTarget: turso`, `clerkConfigured: true`, `authProvider: clerk`, `passwordLogon: retired`, 1 user, 55 programs.
+- Production smoke run `40307911138`: success for health, pages, anonymous protection, hidden test broker and retired auth.
+- Live endpoint checks: `/`, `/sign-in`, `/sign-up` -> `200`; anonymous `/api/programs`, `/api/modern`, `/api/admin/overview`, `POST /api/execute` -> `401`; legacy login -> `403`; register -> `410`; unsigned webhook -> `400`; test broker -> `404`.
+- Program count reconciled structurally: pre-Modern 51 = 37 shared Standard objects + 14 owner-owned private programs; previous baseline 50 = 13 private. Modern seed moved the total to 55 = 41 shared + 14 private. No unclaimed or foreign-owned program exists; owner confirmation of the extra private object is requested.
+
+Stage Summary:
+- Technical implementation, deployment and production verification are complete.
+- Final project acceptance still requires the owner's Modern/Standard visual sign-off and confirmation that the extra private program is expected; the final report remains marked pending until then.

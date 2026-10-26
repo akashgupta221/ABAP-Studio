@@ -1,11 +1,11 @@
 # ABAP-Studio — Master Project Specification & Audit
 
-**Version:** 0.6 (implementation complete; final acceptance pending)
+**Version:** 0.6 (technical acceptance complete; owner sign-off pending)
 **Date:** 26.10.2026
 **Owner specification:** v0.3 (restated 24.10.2026)
 **Repository:** https://github.com/akashgupta221/ABAP-Studio
 **Live site:** https://abap-studio.akashgupta.is-a.dev
-**Document status:** implementation audit, not the final acceptance certificate
+**Document status:** implementation audit; final acceptance certificate pending owner sign-off
 
 This document records verified implementation facts, explicit boundaries and the remaining
 acceptance gates. Historical Task IDs and deployment evidence are kept in
@@ -20,14 +20,15 @@ acceptance gates. Historical Task IDs and deployment evidence are kept in
 | P0 — security, ownership, admin, audit | **Complete and accepted** |
 | P1 — Clerk Email OTP + Google, migration, webhook, legacy retirement | **Complete and accepted** |
 | Legacy password authentication removal | **Complete** — code and UI deleted; permanent endpoint stubs |
-| P2 — approved Modern ABAP environment | **Implemented and verified locally**; final production/owner visual acceptance pending |
+| P2 — approved Modern ABAP environment | **Implemented, deployed and production-verified**; owner visual acceptance pending |
 | UI/accessibility automation | **Complete** — 12 Playwright tests with axe serious/critical threshold |
 | Documentation/worklog/CI | **Updated for the final release** |
-| Final acceptance report | **Pending** deployment, production smoke and owner visual sign-off |
+| Final acceptance report | **Published** with technical evidence; owner visual sign-off pending |
 
-The live deployment must be reverified after this release. Live user/program counts are
-reported by `/api/health`; do not treat an illustrative count in documentation as an
-acceptance invariant.
+This release is deployed at commit `37b10fe` as `dpl_7vnuYjYkAZhK4bWi6VL4yTEpLDNX` and
+passed the public production smoke. Live user/program counts are reported by
+`/api/health`; do not treat an illustrative count in documentation as an acceptance
+invariant.
 
 ## 2. Verified stack and architecture
 
@@ -206,11 +207,27 @@ instead of nested interactive elements.
 | `bun run build` | pass with TypeScript enforced |
 | CI | `.github/workflows/ci.yml` runs the same gates with no secrets |
 
-Production verification for this release, deployment IDs and the live counts are recorded
-in [`FINAL-ACCEPTANCE-REPORT.md`](FINAL-ACCEPTANCE-REPORT.md) once the deploy is complete.
-The pre-release production database had one unexplained extra program (51 instead of 50)
-before Modern seeding; it is being identified with the owner and must be explained in the
-final report. No user count changed.
+Production verification for this release:
+
+| Check | Result |
+|---|---|
+| Code / deployment | `37b10fe` / `dpl_7vnuYjYkAZhK4bWi6VL4yTEpLDNX` on the custom domain |
+| Database | Turso; schema applied; `41 passed, 0 failed`; 41 examples |
+| Owner | `AKASH`, email stored, one owner, 14 owner-owned private programs, 0 unclaimed |
+| Health | `clerkConfigured: true`, `authProvider: clerk`, `passwordLogon: retired`, 1 user, 55 programs |
+| Public pages | `/`, `/sign-in`, `/sign-up` → `200` |
+| Anonymous APIs | `/api/programs`, `/api/modern`, `/api/admin/overview`, `POST /api/execute` → `401` |
+| Retired auth | login `403`, register `410`, unsigned webhook `400` |
+| Hidden test broker | `/api/test/session`, `/api/test/users` → `404` |
+| CI | run `40307337224` passed all local-equivalent gates |
+| Production smoke | run `40307911138` passed |
+| Obsolete env | `AUTH_SECRET`, legacy flags and `OWNER_USERNAME` removed from Vercel |
+
+The earlier 51-program count is reconciled as 37 shared Standard objects plus 14
+owner-owned private programs. The prior baseline was 50 (13 private), so the one-object
+change was owner activity, not a seed; owner confirmation of the specific private program
+is requested in the final report. Modern seeding took the total to 55 (41 shared + 14
+private).
 
 ## 9. Requirement status
 
@@ -220,14 +237,14 @@ final report. No user count changed.
 | 7 | Clerk auth, Google, protected routes, provisioning, webhooks, migration | **Done, production-verified** | P1 accepted; legacy path removed |
 | 8 | Owner-only admin dashboard | **Done, production-verified** | Metrics, users, programs, audit, suspend, revoke, delete |
 | 9 | Preserve/test Standard ABAP | **Done** | `MER / 105` fidelity preserved; seed/engine tests pass |
-| 10 | Modern ABAP environment + honest matrix | **Done (implementation)** | Executable/validated/simulated/unsupported tiers; owner visual sign-off pending |
+| 10 | Modern ABAP environment + honest matrix | **Done, deployed** | Executable/validated/simulated/unsupported tiers; owner visual sign-off pending |
 | 11 | Professional GUI | **Done (current scope)** | Standard + Modern GUIs; automated accessibility checks pass |
 | 12 | Data ownership/isolation | **Done** | Server-side rules; API/UI isolation tests; production P1 evidence |
 | 13 | Security/reliability | **Done (app layer)** | Sessions, CSRF, rate limits, audit; shared limiter future |
-| 14 | Continuous testing/completion verification | **Done locally; production pending** | Lint/typecheck/unit/API/UI/axe/build/CI; final smoke/report pending |
+| 14 | Continuous testing/completion verification | **Done, production-verified** | Lint/typecheck/unit/API/UI/axe/build/CI + production smoke; owner sign-off pending |
 | 15 | Phase 0 audit | **Done** | This document |
 | 15 | Phase 1 architecture/migration | **Done** | Clerk cutover accepted |
-| 15 | Phases 2–8 | **P2 implemented** | Final deploy, owner sign-off and report remain |
+| 15 | Phases 2–8 | **P2 implemented and deployed** | Owner visual sign-off is the final gate |
 
 ### Deliverables checklist
 
@@ -240,18 +257,18 @@ final report. No user count changed.
 - [x] UI/accessibility automation with axe serious/critical threshold.
 - [x] CI workflow and read-only production smoke workflow.
 - [x] Non-destructive seed/deploy path with Modern schema backfill.
-- [ ] Final production deployment/smoke for this release.
-- [ ] Owner visual sign-off of the Modern workspace.
-- [ ] Final acceptance report and unexplained program-count resolution.
+- [x] Final production deployment/smoke for this release.
+- [x] Final acceptance report with technical evidence and program-count reconciliation.
+- [ ] Owner visual sign-off of the Modern workspace and confirmation of the extra private program.
 
 ## 10. Remaining owner actions / final gate
 
-1. Confirm the extra pre-release production program (51 vs 50) is expected, or authorize
-   its removal. Do not delete it before confirmation.
+1. Confirm the extra owner-owned private program (14 private programs; prior baseline 13)
+   is expected, or authorize its removal. Do not delete it before confirmation.
 2. Review the deployed Modern workspace visually (desktop and mobile) and confirm the
    Standard GUI is unchanged.
-3. Confirm the final acceptance report after production smoke. Final acceptance is not
-   claimed until then.
+3. Confirm [`FINAL-ACCEPTANCE-REPORT.md`](FINAL-ACCEPTANCE-REPORT.md) so the report can be
+   marked as the final acceptance certificate.
 
 ## 11. Commands
 
@@ -276,13 +293,13 @@ bun run owner:favorites       # dry-run legacy favorite migration; APPLY=YES to 
 
 ## 12. Explicit non-claims
 
-- Final project acceptance is **not yet claimed**; deployment, production smoke and the
-  owner's Modern visual sign-off are pending.
+- Final project acceptance is **not yet claimed**; technical deployment and production
+  smoke are complete, but the owner's Modern visual sign-off is pending.
 - The Modern workspace is a simulator. It does not execute CDS SQL on HANA, run RAP/OData
   services, execute AMDP database procedures or generate dynpro screens.
 - The ABAP engine is a verified educational subset, not a complete SAP kernel.
 - Rate limiting is per process, not globally distributed.
-- Production counts are live data. The pre-release extra program is under owner review and
-  is not silently attributed to a seed.
+- Production counts are live data. The 50 → 51 increase is reconciled structurally as an
+  owner-owned private program; the owner still needs to confirm the exact object.
 - `AUTH_SECRET`, `LEGACY_AUTH_MODE` and `NEXT_PUBLIC_LEGACY_AUTH_MODE` are obsolete and
   must not be reintroduced.

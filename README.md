@@ -13,7 +13,7 @@ workspace, private user workspaces and a 100% free cloud deployment.
 ![Database](https://img.shields.io/badge/Database-SQLite%20%7C%20Turso%20%28libSQL%29-4FF8D2)
 ![Deploy](https://img.shields.io/badge/Deploy-Vercel-000?logo=vercel&logoColor=white)
 
-[**▶ Live demo**](https://abap-studio.akashgupta.is-a.dev) · [Deployment guide](DEPLOY.md) · [Master specification](docs/MASTER-PROJECT-SPEC.md) · [Report an issue](https://github.com/akashgupta221/ABAP-Studio/issues)
+[**▶ Live demo**](https://abap-studio.akashgupta.is-a.dev) · [Deployment guide](DEPLOY.md) · [Master specification](docs/MASTER-PROJECT-SPEC.md) · [Final acceptance report](docs/FINAL-ACCEPTANCE-REPORT.md) · [Report an issue](https://github.com/akashgupta221/ABAP-Studio/issues)
 
 </div>
 
@@ -35,9 +35,10 @@ user.
 
 > **Project status:** P0 security/ownership and P1 Clerk cutover are deployed and accepted.
 > The P2 Modern ABAP scope, UI/accessibility automation and permanent legacy-auth removal
-> are implemented. Final project acceptance is the last gate: production deployment,
-> smoke verification, the acceptance report and owner visual sign-off of the Modern
-> workspace. Live counts are always available at `/api/health`.
+> are deployed and production-smoke-verified. Technical acceptance evidence is in the
+> [final acceptance report](docs/FINAL-ACCEPTANCE-REPORT.md); the only remaining gate is
+> the owner's visual sign-off of the modernised Standard/Modern workspace. Live counts are
+> always available at `/api/health`.
 
 ## Features
 
@@ -201,7 +202,8 @@ workbench, SE38, admin tabs and the Modern workspace.
 
 Every `git push` to `main` rebuilds and redeploys the live app. Production is
 `https://abap-studio.akashgupta.is-a.dev`, running Clerk-only authentication. P0/P1 are
-accepted; the P2 Modern workspace is implemented and awaiting final owner visual sign-off.
+accepted; the P2 release is deployed and production-verified, with final owner visual
+sign-off still pending.
 
 The domain path is documented in [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md).
 The app origin and Clerk Frontend API are live on is-a.dev.
@@ -332,8 +334,9 @@ tests/                   Unit tests, disposable API suite, Playwright UI/axe sui
 
 ## Roadmap and explicit boundaries
 
-- **P2 Modern ABAP:** implemented; final owner visual sign-off and the final acceptance
-  report remain.
+- **P2 Modern ABAP:** implemented, deployed and production-verified. Final owner visual
+  sign-off is the only remaining acceptance gate; technical evidence is in the
+  [final acceptance report](docs/FINAL-ACCEPTANCE-REPORT.md).
 - **Accessibility:** automated axe checks pass for the current serious/critical threshold;
   broader manual screen-reader review is future work.
 - **Rate limiting:** per process. A shared distributed limiter is future hardening.

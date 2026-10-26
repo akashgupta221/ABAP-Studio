@@ -18,6 +18,10 @@ never printed by the commands in this guide.
 | Clerk Frontend API | `https://clerk.abap-studio.akashgupta.is-a.dev` — live with a valid TLS certificate |
 | Sign-in methods | **Email OTP + Google only**; password, phone, username, Facebook and GitHub disabled |
 | P1 code | Merged into `main` as `e3df40c`; production code deployment `dpl_H827WkruszuKqUBCeV58DRER4LyU` |
+| P2 final release | `main` at `37b10fe`; deployment `dpl_7vnuYjYkAZhK4bWi6VL4yTEpLDNX` on the custom domain; CI run `40307337224`, production smoke `40307911138` |
+| Final database | Turso schema applied; `41 passed, 0 failed`; 41 shared examples + 14 owner-owned private programs = 55 total |
+| Final env cleanup | `AUTH_SECRET`, `LEGACY_AUTH_MODE`, `NEXT_PUBLIC_LEGACY_AUTH_MODE` and `OWNER_USERNAME` removed from Vercel; Clerk/Turso/`OWNER_EMAIL` remain |
+| Hidden test broker | `/api/test/session` and `/api/test/users` return `404` on the live site; production smoke verifies this |
 | Local gates | `lint`, type-check, **35 unit tests**, **87 API checks**, **12 UI/axe tests** and production `build` pass |
 | Owner sign-in | Verified production Email OTP and Google; both linked to the same Clerk identity; `/api/auth/me` returns `AKASH` / `OWNER` / `owner: true` |
 | Non-owner isolation | Verified in production with disposable users: `/admin` redirects to `/`; `/api/admin/*` returns `403`; another user’s private program is invisible and direct GET/PUT/DELETE returns `404` |
