@@ -1,5 +1,10 @@
 # Production Google OAuth for Clerk
 
+**Status: complete (26.10.2026).** The production Google Cloud OAuth client is installed
+in the Clerk production instance. The owner completed a real Google sign-in, and the
+Google account linked to the existing Clerk identity as `oauth_google`. The resulting
+session returns `AKASH` / `OWNER` with the same private workspace.
+
 Clerk provides shared Google OAuth credentials for development only. The
 production instance must use a Google Cloud OAuth client owned by the project
 owner. This is free; Google Cloud does not charge for OAuth credentials.
@@ -9,23 +14,21 @@ screenshot. Enter it directly in the Clerk dashboard.
 
 ## Values for this deployment
 
-The hostnames below use the **Path A** is-a.dev domain. If the EU.org backup is approved
-first, substitute `abap-studio.eu.org` for the application origin and
-`clerk.abap-studio.eu.org` for the Clerk Frontend API. Do not create Google credentials
-for a domain that is not live yet.
+The hostnames below use the verified **Path A** is-a.dev domain. EU.org is an unused
+backup path; do not create Google credentials for it unless the owner explicitly moves
+production.
 
 | Field | Value |
 |---|---|
 | Clerk application | `app_3Ks7MMboysX2gIBJhfURlf16Pwq` |
-| Clerk production instance | `ins_3LAf6uu766aoTCwlI8nX5faMFQA` (currently bound to the denied `abap-studio.is-a.dev`; move it or create a new production instance for the final domain) |
+| Clerk production instance | `ins_3LAf6uu766aoTCwlI8nX5faMFQA`, bound to `abap-studio.akashgupta.is-a.dev` |
 | Clerk Frontend API | `https://clerk.abap-studio.akashgupta.is-a.dev` |
 | Google authorized redirect URI | `https://clerk.abap-studio.akashgupta.is-a.dev/v1/oauth_callback` |
 | Application origin | `https://abap-studio.akashgupta.is-a.dev` |
 
 The redirect URI must match exactly, including the `/v1/oauth_callback` path.
-The app origin is not the OAuth callback. The EU.org alternatives are
-`https://abap-studio.eu.org` and
-`https://clerk.abap-studio.eu.org/v1/oauth_callback`.
+The app origin is not the OAuth callback. Do not add the EU.org alternatives unless the
+production domain actually moves.
 
 ## 1. Create the Google Cloud project
 
@@ -61,24 +64,19 @@ Google may label this **Google Auth Platform** or **OAuth consent screen**.
 5. Authorized JavaScript origins:
    - `https://clerk.abap-studio.akashgupta.is-a.dev`
    - `https://accounts.abap-studio.akashgupta.is-a.dev`
-   - Path B alternative: `https://clerk.abap-studio.eu.org` and
-     `https://accounts.abap-studio.eu.org`
 6. Authorized redirect URIs:
    - `https://clerk.abap-studio.akashgupta.is-a.dev/v1/oauth_callback`
-   - Path B alternative: `https://clerk.abap-studio.eu.org/v1/oauth_callback`
 7. Create the client.
 
 Google shows the client ID and client secret once. Keep the secret private.
 
 ## 4. Install the credentials in Clerk
 
-Use the Clerk dashboard for the **production** instance. The old instance is
-`ins_3LAf6uu766aoTCwlI8nX5faMFQA`, but it is bound to the denied
-`abap-studio.is-a.dev`; move it to the final domain or open the new production
-instance if you create one:
+Use the Clerk dashboard for the **production** instance
+`ins_3LAf6uu766aoTCwlI8nX5faMFQA`, which is bound to
+`abap-studio.akashgupta.is-a.dev`:
 
-1. Open <https://dashboard.clerk.com/apps/app_3Ks7MMboysX2gIBJhfURlf16Pwq/instances/ins_3LAf6uu766aoTCwlI8nX5faMFQA>
-   (or the new instance).
+1. Open <https://dashboard.clerk.com/apps/app_3Ks7MMboysX2gIBJhfURlf16Pwq/instances/ins_3LAf6uu766aoTCwlI8nX5faMFQA>.
 2. Go to **SSO connections → Google**.
 3. Enable Google if it is not enabled.
 4. Paste the Google client ID and client secret into the production
@@ -90,25 +88,21 @@ shared development client.
 
 ## 5. Verify
 
-After the Clerk domain DNS is live and the credentials are saved:
+The Clerk production config reports Google `enabled: true`, `authenticatable: true`, and
+both the client id and secret present. The owner completed a real Google sign-in in
+production on 26.10.2026. Clerk linked `oauth_google` to the existing verified-email
+identity, and `/api/auth/me` returned `AKASH` / `OWNER`.
 
-```bash
-bunx clerk deploy status
-```
-
-`oauth.complete` should become `true` and `oauth.configured` should include
-`google`. A real Google sign-in is still required in a browser; a configured
-status alone is not acceptance evidence.
+For a future credential rotation, repeat the browser check; a configured status alone is
+not acceptance evidence.
 
 ## Troubleshooting
 
 - `redirect_uri_mismatch`: the Google authorized redirect URI does not exactly
-  match the final Clerk callback, either
-  `https://clerk.abap-studio.akashgupta.is-a.dev/v1/oauth_callback` (Path A) or
-  `https://clerk.abap-studio.eu.org/v1/oauth_callback` (Path B).
+  match `https://clerk.abap-studio.akashgupta.is-a.dev/v1/oauth_callback`.
 - `invalid_client`: the client ID/secret was pasted into the wrong Clerk
   instance or contains whitespace.
 - Google blocks the app for unverified branding: check the consent screen app
   name and support email; do not add scopes beyond `openid`, `email`, `profile`.
-- Clerk still lists Google as pending: save the credentials in the production
-  instance, then re-run `bunx clerk deploy status`.
+- Clerk does not offer Google: confirm the connection is enabled and the client
+  credentials are saved in the correct production instance, then reload the sign-in page.

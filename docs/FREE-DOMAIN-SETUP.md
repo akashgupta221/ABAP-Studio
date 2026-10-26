@@ -5,13 +5,14 @@ Clerk production requires a domain with DNS records that we control. A
 document records the zero-cost domain paths, the current blockers and the exact
 owner actions.
 
-The production Clerk instance was created for `abap-studio.is-a.dev`:
+The production Clerk instance was moved to the verified is-a.dev path:
 
 - Instance: `ins_3LAf6uu766aoTCwlI8nX5faMFQA`
-- Status: `domain_pending`
-- The `abap-studio.is-a.dev` domain was **denied** and is not registered
-- The instance therefore must be moved to the final domain, or replaced with a
-  new production instance, before any production keys are added
+- Status: **complete** — domain/DNS/mail/SSL all complete
+- Application origin: `https://abap-studio.akashgupta.is-a.dev`
+- Clerk Frontend API: `https://clerk.abap-studio.akashgupta.is-a.dev`
+- The original `abap-studio.is-a.dev` root was **denied** and is not registered; it is
+  not used by the app
 
 No production key, webhook secret, password or OTP belongs in this document or
 in Git.
@@ -71,19 +72,17 @@ in Git.
   mail are verified for that domain. Do not switch domains after production
   users start signing in without a planned cutover.
 
-Production is now **live on the P1 build**, but acceptance is still blocked on production
-verification, not DNS. The six nested records are live. The Clerk production instance serves
-its Frontend API and account portal on the new hostname. is-a.dev PR #58410 was merged; the
-Vercel domain reports `configured-correctly` and the app returns HTTP `200` at
-`https://abap-studio.akashgupta.is-a.dev`. The P1 deployment
-`dpl_GLQLQvazo3cYfWdBV5KmjM6U4ujb` is aliased to the custom domain; `/sign-in` and
-`/sign-up` return `200`. The Clerk keys, `OWNER_EMAIL`, webhook secret and fallback flags are
+Production is **live and P1 is accepted** on this domain. The six nested records are live;
+the Clerk production instance serves its Frontend API and account portal on the new
+hostname. is-a.dev PR #58410 was merged; Vercel reports `configured-correctly`, and the app
+returns HTTP `200` at `https://abap-studio.akashgupta.is-a.dev`. The merged `main` build
+(`e3df40c`) is deployed; `/sign-in`, `/sign-up` and `/api/health` report the expected
+configuration. Clerk keys, `OWNER_EMAIL`, webhook secret and both legacy flags (`off`) are
 set in Vercel. [PR #58415](https://github.com/is-a-dev/register/pull/58415) merged on
-25.10.2026 at 20:07 UTC; the three Clerk mail/DKIM CNAMEs now point at the current
-`nefqx6afwufx` tenant, Clerk reports `status: complete`, `dns: complete`, `mail: complete`
-and `ssl: complete`, so Email OTP delivery is unblocked. Google production credentials, the
-real production sign-in/webhook test and legacy account mapping remain pending. No
-production Clerk session has been exercised yet.
+25.10.2026 at 20:07 UTC; the three Clerk mail/DKIM CNAMEs point at the current
+`nefqx6afwufx` tenant, and Clerk reports domain/DNS/mail/SSL complete. Production owner
+Email OTP and Google sign-in, non-owner isolation, administration, signed webhook delivery
+and legacy retirement are verified. EU.org is not required.
 
 Vercel required this ownership verification:
 
@@ -109,20 +108,20 @@ The TXT/CNAME records are live and `vercel domains verify` reports
 | Nested app/Clerk records | [PR #58363](https://github.com/is-a-dev/register/pull/58363) merged 25.10.2026 17:52 UTC; merge commit `bb86038f7e5004fd36e55f43b41fed286a69c707`; all checks passed |
 | Nested PR local validation | fresh is-a.dev clone + six files -> 13/13 tests; template check passed |
 | Six nested hostnames | all resolve via Cloudflare DNS; Clerk Frontend API and account portal are live over TLS; Vercel app hostname verified |
-| `https://abap-studio.akashgupta.is-a.dev` | HTTP `200` via Vercel; certificate valid; P1 deployment `dpl_GLQLQvazo3cYfWdBV5KmjM6U4ujb`; `/sign-in` and `/sign-up` return `200` |
+| `https://abap-studio.akashgupta.is-a.dev` | HTTP `200` via Vercel; valid certificate; merged `main` build; `/sign-in` and `/sign-up` return `200` |
 | `https://clerk.abap-studio.akashgupta.is-a.dev/v1/environment` | HTTP `200`; production instance; Email OTP + Google; password/phone/username disabled |
-| `https://accounts.abap-studio.akashgupta.is-a.dev` | Valid TLS certificate; HTTP `403` Cloudflare challenge to curl (expected); browser login not yet re-exercised |
+| `https://accounts.abap-studio.akashgupta.is-a.dev` | Valid TLS certificate; Cloudflare browser challenge to curl (expected); production Clerk sign-in verified through the app |
 | Vercel verification | [PR #58410](https://github.com/is-a-dev/register/pull/58410) merged 25.10.2026 18:42 UTC; TXT/CNAME live; `vercel domains verify` says `configured-correctly`; project `abap-studio-rd9d` verified |
-| Production P1 config | `/api/health` reports `clerkConfigured: true`, `legacyAuthMode: "fallback"`, webhook secret present, 4 users, 50 programs; unsigned webhook request returns `400` |
-| Production sign-in | `/sign-in` and `/sign-up` return `200`; owner Email OTP/Google browser flow and authenticated `/admin` still pending |
+| Production P1 config | `/api/health` reports `clerkConfigured: true`, `legacyAuthMode: "off"`, webhook secret present, 1 user, 50 programs; unsigned webhook request returns `400` |
+| Production sign-in | Owner Email OTP and Google verified; `/admin` loads; non-owner isolation, suspend/reactivate/force-logout/delete and webhook delivery verified |
 | `https://abap-studio.is-a.dev` | `302` to `https://is-a.dev/available?d=abap-studio` |
 | is-a.dev PR #58254 | closed, `status: denied`, `reason: not dev related`; no domain registered |
 | is-a.dev issue #58258 | closed 25.10.2026 09:29 UTC; maintainer says root is for portfolios and suggests a nested subdomain |
 | `dig NS abap-studio.eu.org` | no records |
 | `dig SOA abap-studio.eu.org` | no records |
 | Clerk production instance | Moved to `abap-studio.akashgupta.is-a.dev` (Secondary application); Frontend API live; account portal has a valid certificate and a Cloudflare challenge |
-| Production Vercel env | has `OWNER_USERNAME`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `AUTH_SECRET`; missing `OWNER_EMAIL`, Clerk production keys and `CLERK_WEBHOOK_SECRET` |
-| Production Google OAuth | enabled in Clerk with empty production credentials |
+| Production Vercel env | has `OWNER_EMAIL`, production Clerk publishable/secret keys, `CLERK_WEBHOOK_SECRET`, Turso credentials, `AUTH_SECRET` (dormant); both legacy flags are `off` |
+| Production Google OAuth | configured with a production Google Cloud client; owner Google sign-in verified and linked as `oauth_google` |
 
 ## Why the first is-a.dev root was denied
 
@@ -508,7 +507,7 @@ production instances without a cutover plan.
    current records, but Clerk may issue different mail/DKIM targets after the
    move.
 3. Add the production Clerk keys, `CLERK_WEBHOOK_SECRET`, `OWNER_EMAIL`,
-   `AUTH_SECRET` and the fallback flags to Vercel production.
+   `AUTH_SECRET` (dormant) and both legacy flags (`off`) to Vercel production.
 4. Create the Clerk webhook:
    - Path A: `https://abap-studio.akashgupta.is-a.dev/api/webhooks/clerk`
    - Path B: `https://abap-studio.eu.org/api/webhooks/clerk`
@@ -516,7 +515,9 @@ production instances without a cutover plan.
    - Path A: `https://clerk.abap-studio.akashgupta.is-a.dev/v1/oauth_callback`
    - Path B: `https://clerk.abap-studio.eu.org/v1/oauth_callback`
 6. Set Clerk paths to `/sign-in`, `/sign-up`, `/` and `/`.
-7. Complete the checks in `docs/CLERK-SETUP.md` before merging or accepting P1.
+7. Complete the production regression checks in `docs/CLERK-SETUP.md` before switching
+   domains. P1 is already accepted on the is-a.dev path; do not move unless the owner
+   explicitly decides to replace it.
 
 ## Owner action checklist
 
@@ -542,16 +543,15 @@ production instances without a cutover plan.
       `https://abap-studio.akashgupta.is-a.dev`, choosing **Secondary
       application**. The Frontend API is live, returns the correct Email OTP +
       Google configuration, and the account portal has a valid certificate.
-- [x] Set the production Clerk keys, `OWNER_EMAIL`, `CLERK_WEBHOOK_SECRET` and
-      fallback flags in Vercel.
-- [x] Deploy the `clerk-migration` (P1) build to the custom domain. `/sign-in`,
-      `/sign-up` and `/api/health` report the expected configuration.
-- [ ] Complete the production owner Email OTP sign-in, `/admin` and non-owner
+- [x] Set the production Clerk keys, `OWNER_EMAIL`, `CLERK_WEBHOOK_SECRET` and both
+      legacy flags to `off` in Vercel.
+- [x] Merge and deploy the P1 build (`main`, `e3df40c`) to the custom domain.
+      `/sign-in`, `/sign-up` and `/api/health` report the expected configuration.
+- [x] Complete the production owner Email OTP sign-in, `/admin` and non-owner
       isolation checks.
-- [ ] Configure production Google OAuth and test the Google flow.
-- [ ] Send a real Clerk webhook test event and confirm it is accepted.
-- [ ] Run `clerk deploy status` until the dashboard reports all Clerk DNS/SSL
-      checks green.
-- [ ] Monitor the EU.org contact inbox (non-Gmail) and the Cloudflare zone.
-- [ ] Choose the first fully verified domain.
-- [ ] Complete the production verification checklist and only then accept P1.
+- [x] Configure production Google OAuth and verify the owner Google flow.
+- [x] Send/observe a real signed Clerk webhook event and confirm acceptance.
+- [x] Confirm Clerk reports domain/DNS/mail/SSL complete.
+- [x] Verify the Standard ABAP `MER / 105` screen after P1.
+- [x] Accept P1 after the production verification checklist passed.
+- [ ] Optional: monitor the EU.org contact inbox; EU.org is not needed for production.

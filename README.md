@@ -13,7 +13,7 @@ Faithful SAP GUI feel, a from-scratch ABAP interpreter, private user workspaces 
 ![Database](https://img.shields.io/badge/Database-SQLite%20%7C%20Turso%20%28libSQL%29-4FF8D2)
 ![Deploy](https://img.shields.io/badge/Deploy-Vercel-000?logo=vercel&logoColor=white)
 
-[**▶ Live demo**](https://abap-studio-rd9d.vercel.app) · [Deployment guide](DEPLOY.md) · [Master specification](docs/MASTER-PROJECT-SPEC.md) · [Report an issue](https://github.com/akashgupta221/ABAP-Studio/issues)
+[**▶ Live demo**](https://abap-studio.akashgupta.is-a.dev) · [Deployment guide](DEPLOY.md) · [Master specification](docs/MASTER-PROJECT-SPEC.md) · [Report an issue](https://github.com/akashgupta221/ABAP-Studio/issues)
 
 </div>
 
@@ -29,11 +29,11 @@ It ships with a complete self-study curriculum (10 topics, 36 examples + a share
 INCLUDE, 11 demo tables with 113 rows and function modules). Every user gets a **private
 practice sandbox**; training examples are shared and read-only.
 
-> **Live demo:** https://abap-studio-rd9d.vercel.app — open it, click **Register**, and
-> you are inside the secure v0.3 build. Production owner provisioning and the Vercel
-> owner gate are verified: the owner can open `/admin`, and the 12 legacy programs are
-> assigned to the owner. A controlled production isolation run also passed. See
-> `docs/MASTER-PROJECT-SPEC.md` §1.6 for the evidence.
+> **Live demo:** https://abap-studio.akashgupta.is-a.dev — sign in with a verified email
+> or Google. Production Clerk Email OTP, Google OAuth, owner administration, non-owner
+> isolation, suspend/reactivate/force-logout/delete, signed webhook delivery and the
+> retirement of the legacy password path are verified. **P1 is accepted.** See
+> `docs/CLERK-SETUP.md` for the evidence.
 
 ## Features
 
@@ -59,32 +59,24 @@ practice sandbox**; training examples are shared and read-only.
 - Save your own programs, keep favorites and see recent activity
 
 ### 🔐 Secure accounts and private workspaces
-- **Server-side sessions** validated against the database on every protected request
-- Passwords hashed with **scrypt**; HTTP-only, HMAC-signed session cookies
-- **Same-origin CSRF checks**, rate limiting and session revocation
+- **Clerk Email OTP + Google** with verified-email account linking; password, phone and
+  username sign-in are disabled
+- Clerk proves identity only; the database remains authoritative for roles, suspension,
+  program ownership and audit history
+- **Server-side sessions**, same-origin CSRF checks, rate limiting and session revocation
 - Training examples are shared/read-only; your programs and sandbox are private
-- The designated owner can inspect all users and non-example programs
-- **Owner-only admin dashboard** (`/admin`): metrics, activity, users, programs, audit
-  log, suspend/reactivate, revoke sessions and confirmed deletion
-- **Clerk Email OTP + Google** is implemented on `clerk-migration`, with verified-email
-  account linking and database-authoritative roles. Development Email OTP and the
-  owner/non-owner admin flows are verified with disposable test users; password, phone and
-  username sign-in are disabled. The original production root `abap-studio.is-a.dev` was
-  denied and its appeal is closed. A portfolio is live at
-  <https://akashgupta221.github.io/>; the new is-a.dev root `akashgupta.is-a.dev` is
-  merged and live, redirecting to the portfolio. The six nested app/Clerk records were
-  merged in PR #58363 and their DNS resolves. The Clerk production instance has been moved
-  to the new hostname and its Frontend API is live with Email OTP + Google only. Vercel
-  verifies the hostname, and the P1 build is deployed; `/sign-in` and `/sign-up` return
-  `200`. The Clerk account portal is live. The EU.org request is still awaiting approval.
-  Clerk's mail/DKIM DNS was fixed by [PR #58415](https://github.com/is-a-dev/register/pull/58415),
-  and Clerk reports domain/DNS/mail/SSL complete, so Email OTP delivery is unblocked.
-  Production Google OAuth, a real production sign-in/webhook event and legacy mapping also
-  remain pending, so P1 is not accepted. The built-in scrypt logon remains
-  a temporary fallback during cutover. Guides:
+- The designated owner can inspect all users and non-example programs, and delete any
+  non-example program with an exact-name confirmation
+- **Owner-only admin dashboard** (`/admin`): metrics, 7-day chart, activity, users,
+  programs, audit log, suspend/reactivate, revoke sessions, confirmed deletion and
+  program deletion
+- Production cutover verified: owner Email OTP and Google, non-owner isolation,
+  suspend/reactivate/force-logout/delete, signed webhook delivery, audit entries and
+  Standard ABAP fidelity. The legacy password path is retired
+  (`LEGACY_AUTH_MODE=off`); production has 1 owner and 50 programs. Guides:
   [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md),
-  [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) and
-  [`docs/GOOGLE-OAUTH-SETUP.md`](docs/GOOGLE-OAUTH-SETUP.md).
+  [`docs/GOOGLE-OAUTH-SETUP.md`](docs/GOOGLE-OAUTH-SETUP.md) and
+  [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md).
 
 ## Tech stack
 
@@ -125,15 +117,14 @@ programs). On the first request the app auto-seeds the shared syllabus, examples
 tables and function modules. In local development without Clerk keys
 (`LEGACY_AUTH_MODE=full` is the default outside production), open the **Legacy SAP user
 master** section and click **Create local test user**. With Clerk keys present, use
-**Create User** for Clerk sign-up. Production defaults to `fallback` and blocks new
-password registrations.
+**Create User** for Clerk sign-up. Production is Clerk-only: both legacy flags are `off`,
+so password login and registration are closed.
 
 To make a local account the owner:
 
 ```bash
 # Register the account in the UI first, then:
 OWNER_USERNAME=AKASH OWNER_EMAIL="owner@example.com" bun run owner:provision
-OWNER_USERNAME=AKASH bun run owner:password   # optional legacy fallback; hidden input
 bun run owner:verify                          # read-only: role, email match, legacy claim
 ```
 
@@ -159,14 +150,14 @@ bun run build && bun run start
 | `DATABASE_URL` | local | SQLite file path — `file:./db/app.db` (relative to `prisma/`) |
 | `TURSO_DATABASE_URL` | Vercel + shell | libSQL URL of the Turso database (`libsql://…`) |
 | `TURSO_AUTH_TOKEN` | Vercel + shell | Turso access token |
-| `AUTH_SECRET` | Vercel | Legacy fallback session-signing secret — keep until the fallback is removed; generate with `openssl rand -base64 32` |
-| `OWNER_USERNAME` | Vercel + local | Interim single-owner account name; fallback when `OWNER_EMAIL` is unset |
+| `AUTH_SECRET` | Vercel | Dormant legacy session-signing secret; remove when the legacy code is deleted |
+| `OWNER_USERNAME` | Vercel + local | Interim single-owner account name; used only when `OWNER_EMAIL` is unset |
 | `OWNER_EMAIL` | Vercel + provisioning | Authoritative owner identity; must match the verified email on the `OWNER` row |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Vercel + local | Clerk browser key (`pk_live_…` in production) |
 | `CLERK_SECRET_KEY` | Vercel + local | Clerk server key (`sk_live_…`); never expose |
 | `CLERK_WEBHOOK_SECRET` | Vercel | Clerk webhook signing secret for `/api/webhooks/clerk` |
-| `LEGACY_AUTH_MODE` | Vercel + local | `fallback` during cutover; `off` after every account is linked |
-| `NEXT_PUBLIC_LEGACY_AUTH_MODE` | Vercel + local | Hides the legacy form when set to `off` |
+| `LEGACY_AUTH_MODE` | Vercel + local | Production is `off`; `full` is only for disposable local tests |
+| `NEXT_PUBLIC_LEGACY_AUTH_MODE` | Vercel + local | Production is `off`; hides the legacy form |
 
 Never commit real values; `.env` is git-ignored. Do not paste secrets into chat or issues.
 
@@ -185,33 +176,30 @@ or production. Stop any dev server sharing `.next` before running it.
 
 ## Deploy for free (Vercel + Turso)
 
-Every `git push` rebuilds and redeploys the live app. The v0.3 security build is live;
-**database provisioning and the Vercel owner gate are verified**, a controlled production
-isolation run passed, and the owner reviewed `/admin` (**P0 accepted**). P1 Clerk code is
-implemented on `clerk-migration` and passes the local gates; development Email OTP,
-owner/non-owner mapping, admin ban/unban/revoke/delete and client sign-out were verified
-with disposable test users. The original production root was denied and the appeal is
-closed; a portfolio is live at <https://akashgupta221.github.io/> and the new is-a.dev root
-`akashgupta.is-a.dev` is merged and redirects to it. The six nested app/Clerk records were
-merged in PR #58363 and now resolve in DNS. The Clerk production instance has been moved and
-its Frontend API is live; the Vercel hostname is verified and the P1 build is deployed.
-Clerk mail DNS is now complete, but production sign-in, Google OAuth, a real webhook test and
-legacy mapping remain pending, so P1 is **not accepted**. Read
-[`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) and
-[`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) before the cutover. The ownership migration
-changes who can see legacy programs and invalidates old sessions; the production
-legacy-favorites table is verified empty.
+Every `git push` rebuilds and redeploys the live app. Production is
+`https://abap-studio.akashgupta.is-a.dev`, running the merged `main` build with Clerk-only
+authentication. **P0 and P1 are accepted.** The production owner has a verified Clerk
+identity with Email OTP + Google; non-owner isolation, suspend/reactivate, force logout,
+deletion, owner program deletion, signed webhook delivery and audit logging were verified.
+The legacy scrypt/HMAC path is `off`, and production has 1 owner and 50 programs.
+
+The domain path is documented in [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md).
+The app origin and Clerk Frontend API are live on is-a.dev; the EU.org request remains an
+unused backup. Read [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) before changing
+authentication or owner behavior. Authentication changes can alter who can see private
+programs and invalidate sessions; the production legacy-favorites table is verified empty.
 
 1. **GitHub** — push this repository.
 2. **Turso** — create a free database, copy its `libsql://` URL and create a token.
 3. **Vercel** — import the repo and set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`,
-   `AUTH_SECRET`, and the owner identity (`OWNER_EMAIL`, or `OWNER_USERNAME` as the
-   interim fallback). If both are set, `OWNER_EMAIL` is authoritative. For the P1
-   cutover, finish the free-domain DNS in
-   [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) and Google OAuth in
-   [`docs/GOOGLE-OAUTH-SETUP.md`](docs/GOOGLE-OAUTH-SETUP.md), then follow
-   [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) to add the production Clerk keys,
-   webhook secret and `LEGACY_AUTH_MODE=fallback`.
+   `OWNER_EMAIL`, the Clerk production publishable/secret keys and
+   `CLERK_WEBHOOK_SECRET`. Set `LEGACY_AUTH_MODE=off` and
+   `NEXT_PUBLIC_LEGACY_AUTH_MODE=off`. `OWNER_EMAIL` is authoritative; keep
+   `AUTH_SECRET` only while the dormant legacy code remains. Follow
+   [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md),
+   [`docs/GOOGLE-OAUTH-SETUP.md`](docs/GOOGLE-OAUTH-SETUP.md) and
+   [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) for the domain, Google client and Clerk
+   instance details. Never use development Clerk keys in production.
 4. **Seed the cloud database** — from your machine:
 
 ```bash
@@ -226,29 +214,24 @@ users, private programs, favorites or execution history**.
 5. **Provision the owner and claim legacy programs** (after a verified backup). The
    recommended path uses the manual **Provision owner** GitHub Actions workflow: store
    `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and the verified `OWNER_EMAIL` as repository
-   secrets, optionally set `OWNER_PASSWORD` to a fresh strong value, then run the workflow
-   with `confirm=PROVISION` and `owner_username=AKASH`. It runs `owner:provision` and the
-   read-only `owner:verify` without printing secrets. Delete the temporary
-   `OWNER_PASSWORD` secret after the run.
+   secrets, then run the workflow with `confirm=PROVISION` and `owner_username=AKASH`.
+   It runs `owner:provision` and the read-only `owner:verify` without printing secrets.
+   No owner password is needed; the owner signs in through Clerk.
 
    The local equivalent (set `TURSO_*` in your shell, never in Git) is:
 
 ```bash
 CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH OWNER_EMAIL="owner@example.com" \
 TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:provision
-
-CONFIRM_OWNER_PASSWORD=YES OWNER_USERNAME=AKASH \
-TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:password
 bun run owner:verify
 ```
 
-6. **Verify live owner access** — after setting `OWNER_EMAIL` (or the
-   `OWNER_USERNAME` fallback) in Vercel and redeploying, run **Actions → Verify
-   production**. It logs in with the temporary owner secret, checks the owner flag,
-   `/api/admin/overview` and `/admin`, and prints only statuses/counts. For a controlled
-   regular-user isolation test, run **Actions → Verify production isolation** with
-   `confirm=ISOLATION`; it creates and deletes its own temporary user. Delete the
-   temporary `OWNER_PASSWORD` secret after both checks pass.
+6. **Verify live owner access** — after setting `OWNER_EMAIL` and the Clerk production
+   environment in Vercel and redeploying, sign in with Email OTP or Google. Check
+   `/api/auth/me` (`role=OWNER`, `owner=true`), `/api/admin/overview` (`200`) and `/admin`.
+   Use a disposable Clerk user to test non-owner isolation; do not create a password
+   account. The full evidence checklist is in
+   [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md).
 
 See **[DEPLOY.md](DEPLOY.md)** for the full walkthrough.
 
@@ -256,7 +239,7 @@ See **[DEPLOY.md](DEPLOY.md)** for the full walkthrough.
 reachability without exposing secrets:
 
 ```json
-{ "ok": true, "dbTarget": "turso", "hasTursoToken": true, "hasAuthSecret": true, "users": 0, "programs": 37 }
+{ "ok": true, "dbTarget": "turso", "clerkConfigured": true, "legacyAuthMode": "off", "users": 1, "programs": 50 }
 ```
 
 ## npm scripts
@@ -302,7 +285,7 @@ src/
   components/workbench/  SAP GUI: logon pad, shell, SE38/SE11/SE16N/SE37 views
   components/admin/      Owner dashboard UI
   lib/abap/              ABAP engine: tokenizer, parser, interpreter, natives
-  lib/auth.ts            scrypt hashing + signed session tokens
+  lib/auth.ts            dormant scrypt/HMAC code retained for local tests only
   lib/session.ts         DB-validated sessions, owner gate, CSRF, rate limits
   lib/access.ts          Example/private/legacy visibility and edit rules
   lib/sandbox.ts         Per-user practice sandbox template
@@ -314,7 +297,7 @@ tests/                   Unit tests + disposable API/security suite
 
 | Endpoint | Purpose |
 | --- | --- |
-| `POST /api/auth/register` · `login` · `logout`, `GET /api/auth/me` | Legacy fallback user master and session bridge |
+| `GET /api/auth/me`, `POST /api/auth/logout` | Clerk session identity and revocation; legacy login/register are retired (`403`/`410`) |
 | `POST /api/webhooks/clerk` | Signed Clerk user sync (created/updated/deleted) |
 | `/sign-in`, `/sign-up` | Clerk Email OTP + Google authentication pages |
 | `POST /api/check` | ABAP syntax check |
@@ -322,17 +305,18 @@ tests/                   Unit tests + disposable API/security suite
 | `GET /api/topics` · `programs` · `tables` · `functions` · `search` | Repository and DDIC content |
 | `GET/POST /api/favorites` · `GET /api/recents` | Per-user workbench state |
 | `POST /api/sandbox` | Get or create the current user's private sandbox |
-| `GET /api/admin/overview`, `PATCH/DELETE /api/admin/users/[id]` | Owner-only administration |
+| `GET /api/admin/overview`, `PATCH/DELETE /api/admin/users/[id]`, `DELETE /api/admin/programs/[id]` | Owner-only administration |
 | `GET /api/health` | Deployment diagnostics (no secrets) |
 
 ## Roadmap
 
-- P1 Clerk cutover: code and local gates pass; development Email OTP plus owner/non-owner
-  admin flows are verified. A production instance exists; domain/DNS, keys, Google OAuth,
-  webhook and production owner/non-owner verification remain.
-- Separate Modern ABAP environment with an honest executable / simulated / unsupported matrix
+- P1 Clerk cutover: **complete and accepted** (production Email OTP + Google, isolation,
+  administration, webhook and legacy retirement verified).
+- Separate Modern ABAP environment with an honest executable / simulated / unsupported
+  matrix (owner scope approval required; currently paused)
 - Distributed rate limiting for multi-instance deployments
-- Broader ABAP OO coverage, RAP/AMDP constructs and UI acceptance automation
+- Broader ABAP OO coverage, RAP/AMDP constructs and UI acceptance/accessibility automation
+- Final project acceptance report after the remaining type-check and UI-automation debt
 
 ## Credits
 

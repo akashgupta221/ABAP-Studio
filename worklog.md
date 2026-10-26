@@ -1011,3 +1011,115 @@ Stage Summary:
 - The Clerk mail/DKIM blocker is cleared.
 - The owner should retry the production Email OTP sign-in at `https://abap-studio.akashgupta.is-a.dev/sign-in`.
 - P1 remains **not accepted**; `main` remains at P0 and production still runs the P1 branch build.
+
+---
+
+Task ID: 38
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Diagnose the production Clerk session failure, verify owner sign-in and complete admin isolation checks
+
+Work Log:
+- The owner completed production Email OTP, but server-side Clerk session resolution failed.
+- Diagnosed a Vercel `CLERK_SECRET_KEY` that did not match the production Clerk instance. Pulled the production key with `bunx clerk@latest env pull --app … --instance prod`, validated it against the production owner user, updated the Vercel production secret, and redeployed. No key value was printed.
+- Owner `/api/auth/me` then returned `username: AKASH`, `role: OWNER`, `owner: true`; `/admin` loaded.
+- Verified non-owner isolation with disposable production Clerk users:
+  - `/admin` redirected to `/`;
+  - `/api/admin/overview` returned `403`;
+  - a private program created by one user was invisible to the other;
+  - direct GET/PUT/DELETE on it returned `404`.
+- Verified suspend: database `suspended=true` immediately blocked `/api/auth/me` and `/api/programs`; reactivation with a fresh Clerk session restored access.
+- Verified force logout independently: a fresh Clerk session became `revoked`, token refresh returned `authentication_invalid`, and the suspended target remained denied.
+- Verified delete: the Clerk identity and database row were removed; owned data was deleted and audit history retained. The owner confirmed the audit log entries.
+- Confirmed Clerk's free plan rejects native bans (`unsupported_subscription_plan_features`, `app:ban_user`); suspension is DB-authoritative plus Clerk session revocation.
+- Fixed the latest code so app suspension is honored even when native Clerk bans are unavailable (`db6ca4f`); deployed `dpl_ByZUX2BiqBcNr1gmRgBLmqKBMfqL`.
+- Local gates passed: `bun run lint`, 26 unit tests, 52 API checks and `bun run build`.
+- Cleaned up disposable test users `CLERKVERIFY179299120` and `CLERKVERIFY217929913` and program `Z_CLERK_VERIFY_H3831`; production returned to 4 users / 50 programs.
+- Updated the owner guide and worklog. No secret was printed or committed.
+
+Verification:
+- `/api/health` -> `clerkConfigured: true`, `legacyAuthMode: "fallback"`, 4 users, 50 programs
+- `/api/auth/me` -> `AKASH` / `OWNER` / `owner: true`
+- Non-owner `/admin` redirect, `403` admin API and private-program `404` checks passed
+- Suspend, reactivate, force logout and delete checks passed with disposable production users
+- Audit log entries confirmed by the owner
+- Deployment `dpl_ByZUX2BiqBcNr1gmRgBLmqKBMfqL` aliased to the custom domain
+- `bun run lint`, 26 unit tests, 52 API checks and `bun run build` passed
+
+Stage Summary:
+- Production owner authorization and the core admin/isolation flows are verified.
+- Remaining P1 work at this point: real signed webhook event, Google OAuth, final account cleanup, legacy retirement and merge.
+- P1 not yet accepted.
+
+---
+
+Task ID: 39
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Verify webhook delivery and Google OAuth, add owner program deletion, and retire legacy authentication
+
+Work Log:
+- Verified real signed Clerk webhook delivery:
+  - created a disposable verified Clerk user `user_3LDeKf194PCThS19C3PvAFABpf8`;
+  - the live `user.created` event created a database row and `/api/health` moved from 4 to 5 users without a browser sign-in;
+  - deleted the Clerk test identity and had the owner remove the local test row.
+  - unsigned POST still returns `400 Invalid webhook signature`.
+- Confirmed the production Google Cloud OAuth client is installed in Clerk (`enabled`, `authenticatable`, client id and secret present). The owner completed Google sign-in; Clerk linked `oauth_google` to the same identity, and `/api/auth/me` remained `AKASH` / `OWNER`.
+- The owner confirmed the overview (4 users / 50 programs and the 7-day chart), audit entries and Standard ABAP `MER / 105` screenshot fidelity.
+- Added owner authority to delete any non-example program from `/admin` → **All programs**:
+  - new owner-only `DELETE /api/admin/programs/[id]`;
+  - exact program-name confirmation;
+  - examples remain protected;
+  - execution history is detached, not deleted;
+  - audit action `PROGRAM_DELETE`.
+  - Added API coverage; tests now report 59 checks.
+- Verified the new control in production: a disposable private program was deleted, the count returned to 50 and the owner confirmed the `PROGRAM_DELETE` audit entry.
+- The owner approved permanent removal of the three remaining non-owner database accounts and their data. They were deleted through `/admin`; production is now 1 user / 50 programs, and Clerk has only the owner.
+- Set `LEGACY_AUTH_MODE=off` and `NEXT_PUBLIC_LEGACY_AUTH_MODE=off` in Vercel and redeployed (`dpl_7yLpXYtHe4aVhfb9hsrP7ZapDFWs`).
+- Verified retirement: `/api/auth/login` -> `403`, `/api/auth/register` -> `410`, legacy UI hidden, `/api/health` reports `legacyAuthMode: "off"`.
+- The feature-only deployment before the flag change was `dpl_6e89ChwMGAJX5JiZGWUx83Ujt2k2`.
+- No secret, OTP, token or private email was printed.
+
+Verification:
+- Real signed `user.created` webhook created a DB row; users 4 -> 5; test identity and row removed
+- Google production sign-in linked to the same Clerk identity; owner flag remained true
+- Disposable private program deleted from `/admin`; count restored to 50; `PROGRAM_DELETE` audited
+- Three non-owner accounts removed with owner approval; health -> 1 user / 50 programs
+- `/api/auth/login` -> 403, `/api/auth/register` -> 410, legacy UI absent
+- Deployment `dpl_7yLpXYtHe4aVhfb9hsrP7ZapDFWs` aliased; health reports `legacyAuthMode: "off"`
+
+Stage Summary:
+- Webhook, Google OAuth, owner program deletion, account cleanup and legacy retirement are verified.
+- P1 is ready to merge into `main`, deploy and accept.
+
+---
+
+Task ID: 40
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Merge P1 into main, deploy, complete production smoke checks and accept P1
+
+Work Log:
+- Merged `clerk-migration` into `main` with `e3df40c` (feature commit `584ba40`).
+- Re-ran the full gates on `main`: `bun run lint`, 26 unit tests, 59 API checks and `bun run build` all passed.
+- Pushed `main` and deployed `dpl_H827WkruszuKqUBCeV58DRER4LyU`.
+- Production smoke checks on the merged build:
+  - `/api/health` -> Turso, Clerk configured, `legacyAuthMode: "off"`, 1 user, 50 programs;
+  - `/`, `/sign-in`, `/sign-up` -> `200`;
+  - anonymous `/api/auth/me` -> `user: null`;
+  - anonymous `/api/admin/overview` -> `401`;
+  - `/admin` protected by Clerk (`404` protect-rewrite without a session);
+  - legacy login `403`, registration `410`, unsigned webhook `400`;
+  - Clerk production config reports Email OTP + Google; Google credentials present;
+  - Clerk production has one verified owner identity with `oauth_google`.
+- Updated `README.md`, `DEPLOY.md`, `docs/CLERK-SETUP.md`, `docs/GOOGLE-OAUTH-SETUP.md`, `docs/FREE-DOMAIN-SETUP.md`, `docs/MASTER-PROJECT-SPEC.md` and this worklog with the final state, evidence and remaining non-P1 work.
+- **P1 accepted on 26.10.2026** after the owner confirmed the production admin/audit, Google sign-in, program deletion and Standard ABAP fidelity checks.
+
+Verification:
+- Merge commit `e3df40c`; deployment `dpl_H827WkruszuKqUBCeV58DRER4LyU`
+- `bun run lint` clean; 26 unit tests; 59 API checks; `bun run build` passed
+- Production health: `clerkConfigured: true`, `legacyAuthMode: "off"`, 1 user, 50 programs
+- Public pages `200`; protected/admin/legacy/webhook checks returned the expected statuses
+- Clerk production: 1 verified owner, Email OTP + Google, Google credentials present
+
+Stage Summary:
+- P0 and P1 are complete, deployed and accepted.
+- Remaining project work is outside P1: dormant legacy-code cleanup, type-check debt, UI/accessibility automation, the final acceptance report and owner-approved Modern ABAP/P2 scope.
+- Modern ABAP remains paused; Standard GUI and Modern ABAP were not changed by this task.
