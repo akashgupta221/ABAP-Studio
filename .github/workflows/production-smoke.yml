@@ -66,6 +66,16 @@ jobs:
           echo "POST /api/execute -> $code"
           test "$code" = "401"
 
+      - name: Test-only session broker is hidden
+        run: |
+          set -euo pipefail
+          BASE="${BASE_URL%/}"
+          for path in /api/test/session /api/test/users; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' "$BASE$path")"
+            echo "POST $path -> $code (expected 404)"
+            test "$code" = "404"
+          done
+
       - name: Retired legacy authentication
         run: |
           set -euo pipefail
