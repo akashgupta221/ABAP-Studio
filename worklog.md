@@ -1123,3 +1123,39 @@ Stage Summary:
 - P0 and P1 are complete, deployed and accepted.
 - Remaining project work is outside P1: dormant legacy-code cleanup, type-check debt, UI/accessibility automation, the final acceptance report and owner-approved Modern ABAP/P2 scope.
 - Modern ABAP remains paused; Standard GUI and Modern ABAP were not changed by this task.
+
+---
+
+Task ID: 41
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Restore the TypeScript gate, fix ABAP constructor defects and verify the deployed quality build
+
+Work Log:
+- Removed the temporary `typescript.ignoreBuildErrors` bypass from `next.config.ts`; `next build` now fails on TypeScript errors.
+- Added `bun run typecheck` (`tsc --noEmit`), included it in `bun run test:all`, and declared Bun test types for TypeScript.
+- Excluded the unmaintained `examples/` tree from the application type-check and fixed the remaining application errors without weakening strict mode.
+- Type-checking and new regression coverage exposed real runtime defects:
+  - numeric `REDUCE ... FOR ... WHILE ... NEXT` returned the initial value instead of accumulating;
+  - `REDUCE ... FOR ... IN` returned a scope-entry object instead of the accumulated value;
+  - elementary `VALUE i( ( 1 ) ( 2 ) )` rows were built as empty structures;
+  - caught exception `get_text( )` returned blank because the message was passed as a length;
+  - `CATCH ... BEFORE UNWIND` referenced a missing cursor method and consumed its terminating dot.
+- Added regression tests for numeric `REDUCE`, elementary-row `REDUCE`, caught exception text and `CATCH BEFORE UNWIND`. Unit tests are now 30 (77 assertions).
+- Updated `README.md`, `DEPLOY.md` and `docs/MASTER-PROJECT-SPEC.md` so the type-check blocker is no longer reported as open.
+- Committed on branch `quality/typecheck-engine-regressions` as `ef19593`, fast-forward merged to `main`, and pushed.
+- Deployed `dpl_D4F1xdQYECvr6aRZd68LVEUU5PRV`; the custom domain alias points to that deployment.
+
+Verification:
+- `bun run lint` clean
+- `bun run typecheck` clean
+- `bun test tests` -> 30 pass, 0 fail (77 assertions)
+- `bun run test:api` -> 59 checks passed, 0 failed
+- `bun run build` passed with TypeScript validation enabled
+- Seeded `Z_COND_REDUCE` prints `5050` and `720` for its sum and factorial with the full database snapshot
+- Production smoke on `https://abap-studio.akashgupta.is-a.dev`: `/`, `/sign-in`, `/sign-up` -> `200`; anonymous `/api/auth/me` -> `{"user":null}`; anonymous `/api/admin/overview` and `/api/programs` -> `401`; legacy login -> `403`; registration -> `410`; unsigned webhook -> `400 Invalid webhook signature`; `/api/health` -> Turso, Clerk configured, `legacyAuthMode: "off"`, 1 user, 50 programs
+
+Stage Summary:
+- The type-check gate is restored and enforced by the production build.
+- The discovered ABAP constructor/exception defects are fixed and covered by regression tests.
+- P0/P1 remain accepted; production authentication, ownership and admin behavior were not changed.
+- Final project acceptance is still not claimed: UI/accessibility automation, dormant legacy-auth cleanup and owner-approved Modern ABAP/P2 scope remain open.

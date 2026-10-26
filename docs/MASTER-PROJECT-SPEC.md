@@ -234,6 +234,13 @@ obsolete global `Favorite` model is no longer used.
 - Current local gates: `bun run lint`, `bun run typecheck`, **30 unit tests** (77
   assertions), **59 API checks** and `bun run build` all pass. The seeded `Z_COND_REDUCE`
   example now prints `5050` and `720` for its sum and factorial.
+- **Deploy:** merged to `main` as `ef19593` and deployed as
+  `dpl_D4F1xdQYECvr6aRZd68LVEUU5PRV`; the custom domain alias points to that deployment.
+  Production smoke checks pass: `/`, `/sign-in` and `/sign-up` return `200`; anonymous
+  `/api/auth/me` returns `{"user":null}`; `/api/admin/overview` and `/api/programs` return
+  `401`; legacy login returns `403`; registration returns `410`; an unsigned Clerk webhook
+  returns `400`; `/api/health` reports Turso, Clerk configured,
+  `legacyAuthMode: "off"`, 1 user and 50 programs.
 
 ---
 
