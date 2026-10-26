@@ -217,6 +217,29 @@ function isClerkNotFound(error: unknown): boolean {
   )
 }
 
+/**
+ * Clerk's free plan does not include the native user-ban feature. The
+ * application's database suspension is authoritative for this app, so an
+ * unsupported plan must not prevent the local suspend/reactivate transaction
+ * or skip the session revocation that follows it.
+ */
+function isUnsupportedPlanFeature(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const candidate = error as {
+    code?: unknown
+    errors?: unknown
+    message?: unknown
+  }
+  if (candidate.code === 'unsupported_subscription_plan_features') return true
+  if (Array.isArray(candidate.errors) && candidate.errors.some(isUnsupportedPlanFeature)) {
+    return true
+  }
+  return (
+    typeof candidate.message === 'string' &&
+    /unsupported_subscription_plan_features|unsupported plan features/i.test(candidate.message)
+  )
+}
+
 /** Revoke every active Clerk session for a linked user. */
 export async function revokeClerkUserSessions(clerkId: string): Promise<number> {
   if (!clerkId || !clerkServerConfigured()) return 0
@@ -250,7 +273,14 @@ export async function banClerkUser(clerkId: string): Promise<void> {
   try {
     await client.users.banUser(clerkId)
   } catch (error) {
-    if (!isClerkNotFound(error)) throw error
+    if (isClerkNotFound(error)) return
+    if (isUnsupportedPlanFeature(error)) {
+      console.warn(
+        '[clerk] native user ban is unavailable on this plan; applying the database suspension instead',
+      )
+      return
+    }
+    throw error
   }
 }
 
@@ -260,7 +290,14 @@ export async function unbanClerkUser(clerkId: string): Promise<void> {
   try {
     await client.users.unbanUser(clerkId)
   } catch (error) {
-    if (!isClerkNotFound(error)) throw error
+    if (isClerkNotFound(error)) return
+    if (isUnsupportedPlanFeature(error)) {
+      console.warn(
+        '[clerk] native user unban is unavailable on this plan; the database remains authoritative',
+      )
+      return
+    }
+    throw error
   }
 }
 
