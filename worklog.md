@@ -1153,7 +1153,7 @@ Verification:
 - `bun run test:api` -> 59 checks passed, 0 failed
 - `bun run build` passed with TypeScript validation enabled
 - Seeded `Z_COND_REDUCE` prints `5050` and `720` for its sum and factorial with the full database snapshot
-- Production smoke on `https://abap-studio.akashgupta.is-a.dev`: `/`, `/sign-in`, `/sign-up` -> `200`; anonymous `/api/auth/me` -> `{"user":null}`; anonymous `/api/admin/overview` and `/api/programs` -> `401`; legacy login -> `403`; registration -> `410`; unsigned webhook -> `400 Invalid webhook signature`; `/api/health` -> Turso, Clerk configured, `legacyAuthMode: "off"`, 1 user, 50 programs
+- Production smoke on `https://abap-studio.akashgupta.is-a.dev`: `/`, `/sign-in`, `/sign-up` -> `200`; anonymous `/api/auth/me` -> `{"user":null}`; anonymous `/api/admin/overview` and `/api/programs` -> `401`; legacy login -> `403`; registration -> `410`; unsigned webhook -> `400 Invalid webhook signature`; `/api/health` -> Turso, Clerk configured, `legacyAuthMode: "off"`, 1 user. The live program count was 50 at the code-deploy smoke and 51 at the final docs smoke; no seed/`deploy:db` ran and the user count stayed at 1.
 
 Stage Summary:
 - The type-check gate is restored and enforced by the production build.

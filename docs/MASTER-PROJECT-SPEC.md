@@ -241,7 +241,9 @@ obsolete global `Favorite` model is no longer used.
   anonymous `/api/auth/me` returns `{"user":null}`; `/api/admin/overview` and
   `/api/programs` return `401`; legacy login returns `403`; registration returns `410`; an
   unsigned Clerk webhook returns `400`; `/api/health` reports Turso, Clerk configured,
-  `legacyAuthMode: "off"`, 1 user and 50 programs.
+  `legacyAuthMode: "off"` and 1 user. The live program count was 50 at the code-deploy
+  smoke and 51 at the final docs smoke; counts are live and no seed/`deploy:db` ran.
+  User count stayed at 1.
 
 ---
 
