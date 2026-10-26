@@ -32,6 +32,7 @@ import {
   NewObjectDialog, ObjectDirectoryDialog, SystemStatusDialog, TcodeRegistryDialog,
 } from './dialogs'
 import { LogonPad } from './logon-pad'
+import { BrowserFrame } from './browser-frame'
 import { getContextTitle } from './context-title'
 
 // ── SAP toolbar icons (inline SVG approximations of GUI icons) ─────────
@@ -873,9 +874,17 @@ export function SapShell() {
   const isEditorTab = activeTab?.kind === 'program' && !!activeProgramName
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#d6e0ec] text-[#1c2b3a]" data-app="abapforge">
-      {/* ── window title bar ── */}
-      <header className="sap-titlebar relative flex h-7 shrink-0 items-center gap-2 px-2 text-white" role="banner">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#1d1929]" data-app="abapforge">
+      <BrowserFrame
+        title={title}
+        onBack={back}
+        onHome={exitToHome}
+        onReload={() => window.location.reload()}
+      />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#d6e0ec] text-[#1c2b3a]">
+        <div className="h-[3px] shrink-0 bg-[#118ad8]" aria-hidden />
+        {/* ── window title bar ── */}
+        <header className="sap-titlebar relative flex h-7 shrink-0 items-center gap-2 px-2 text-white" role="banner">
         {/* System menu (hamburger) */}
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -1201,6 +1210,7 @@ export function SapShell() {
       <TcodeRegistryDialog />
       <CommandPalette />
       <Toaster position="bottom-right" richColors closeButton />
+      </div>
     </div>
   )
 }

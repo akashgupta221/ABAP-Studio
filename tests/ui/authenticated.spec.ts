@@ -120,7 +120,7 @@ test.describe('Modern ABAP workspace', () => {
     await expectNoSeriousA11y(page)
 
     await page.getByRole('button', { name: 'Standard workbench' }).click()
-    await expect(page.getByText('SAP Easy Access').first()).toBeVisible()
+    await expect(page.getByText('SAP Easy Access').filter({ visible: true }).first()).toBeVisible()
   })
 })
 
@@ -134,5 +134,80 @@ test.describe('ordinary user boundaries', () => {
     await expect(page).toHaveURL(/\/$/)
     await expect(page.locator('[data-app="abapforge"]')).toBeVisible()
     await expect(page.getByRole('heading', { name: /System Administration/ })).toHaveCount(0)
+  })
+})
+
+test.describe('Function Builder (SE37)', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAs(page, 'TESTOWNER')
+    await page.goto('/')
+    await page.getByRole('textbox', { name: 'Command field' }).fill('SE37')
+    await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
+    await expect(page.getByRole('heading', { name: 'Function Builder (SE37)' })).toBeVisible()
+  })
+
+  test('shared example function modules stay read-only and execute in the test console', async ({ page }) => {
+    await expect(page.getByTestId('browser-frame')).toBeVisible()
+    await expect(page.getByText('Simulated', { exact: true })).toBeVisible()
+
+    await page.locator('.sap-tree-row').filter({ hasText: 'Z_CALC_DISCOUNT' }).first().click()
+    await expect(page.getByText('shared example · read-only')).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'ABAP source editor' })).not.toBeEditable()
+
+    await page.getByRole('button', { name: 'Test', exact: true }).click()
+    await page.locator('#fm-input-PRICE').fill('100')
+    await page.locator('#fm-input-CUST_TYPE').fill('A')
+    await page.getByRole('button', { name: 'Execute', exact: true }).click()
+    await expect(page.getByText('Result values')).toBeVisible()
+    await expect(page.locator('tbody tr').filter({ hasText: 'DISCOUNT_PRICE' })).toContainText('90')
+    await expect(page.getByText('Function module Z_CALC_DISCOUNT executed successfully.')).toBeVisible()
+    await expectNoSeriousA11y(page)
+  })
+
+  test('owner can create a group and function module, activate it, test it and delete it', async ({ page }) => {
+    const suffix = Date.now().toString().slice(-6)
+    const group = `ZFG_UI_${suffix}`
+    const fm = `ZFM_UI_${suffix}`
+
+    await page.getByRole('button', { name: 'Create group' }).click()
+    const groupDialog = page.getByRole('dialog')
+    await expect(groupDialog.getByRole('heading', { name: 'Create function group' })).toBeVisible()
+    await groupDialog.getByLabel('Name').fill(group)
+    await groupDialog.getByLabel('Short text').fill('UI function group')
+    await groupDialog.getByRole('button', { name: 'Create group' }).click()
+    await expect(page.getByRole('button', { name: new RegExp(`${group} \\(0\\)`) })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Create function module' }).click()
+    const fmDialog = page.getByRole('dialog')
+    await expect(fmDialog.getByRole('heading', { name: 'Create function module' })).toBeVisible()
+    await fmDialog.getByLabel('Name').fill(fm)
+    await fmDialog.getByLabel('Short text').fill('UI function module')
+    await fmDialog.getByRole('button', { name: 'Create function module' }).click()
+    await expect(page.getByText(fm, { exact: true }).first()).toBeVisible()
+    await expect(page.getByTestId('function-builder').getByText('Inactive', { exact: true }).first()).toBeVisible()
+
+    await page.getByRole('textbox', { name: 'ABAP source editor' }).fill(
+      `FUNCTION ${fm.toLowerCase()}.\n  WRITE: / 'ui function module'.\nENDFUNCTION.`,
+    )
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(page.getByText(/saved — inactive until activated/)).toBeVisible()
+    await page.getByRole('button', { name: 'Activate', exact: true }).click()
+    await expect(page.getByText(/saved and activated/)).toBeVisible()
+    await expect(page.getByTestId('function-builder').getByText('Active', { exact: true }).first()).toBeVisible()
+
+    await page.getByRole('button', { name: 'Test', exact: true }).click()
+    await page.getByRole('button', { name: 'Execute', exact: true }).click()
+    await expect(page.getByText('Function module ' + fm + ' executed successfully.')).toBeVisible()
+    await expect(page.getByText('ui function module', { exact: true })).toBeVisible()
+    await expectNoSeriousA11y(page)
+
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(page.getByText(fm, { exact: true })).toHaveCount(0)
+
+    page.once('dialog', (dialog) => { void dialog.accept() })
+    await page.getByRole('button', { name: `Delete function group ${group}` }).click()
+    await expect(page.getByRole('button', { name: new RegExp(`${group} \\(0\\)`) })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: `Delete function group ${group}` })).toHaveCount(0)
   })
 })

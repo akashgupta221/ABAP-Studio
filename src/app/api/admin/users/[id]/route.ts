@@ -102,8 +102,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 }
 
 // DELETE /api/admin/users/[id] — permanent deletion with explicit confirmation.
-// Programs and favorites are removed; execution logs are retained without a
-// user/program link for aggregate metrics. Audit records are immutable.
+// Programs, function modules/groups and favorites are removed; execution logs
+// are retained without a user/program link for aggregate metrics. Audit
+// records are immutable.
 // Cleanup is explicit so it also works where additive migration could not add
 // SQL foreign keys (Turso).
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -158,6 +159,8 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
         data: { userId: null, programId: null },
       }),
       db.userFavorite.deleteMany({ where: { userId: target.id } }),
+      db.functionModule.deleteMany({ where: { ownerId: target.id } }),
+      db.functionGroup.deleteMany({ where: { ownerId: target.id } }),
       db.program.deleteMany({ where: { ownerId: target.id } }),
       db.user.delete({ where: { id: target.id } }),
     ])

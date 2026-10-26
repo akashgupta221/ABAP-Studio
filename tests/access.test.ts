@@ -1,5 +1,16 @@
 import { describe, expect, test } from 'bun:test'
-import { canEditProgram, canViewProgram, isLegacyProgram, programListWhere } from '../src/lib/access'
+import {
+  canEditFunction,
+  canEditFunctionGroup,
+  canEditProgram,
+  canViewFunction,
+  canViewFunctionGroup,
+  canViewProgram,
+  functionGroupListWhere,
+  functionListWhere,
+  isLegacyProgram,
+  programListWhere,
+} from '../src/lib/access'
 import { SANDBOX_LABEL, sandboxName } from '../src/lib/sandbox'
 
 const alice = { id: 'alice-id', username: 'ALICE' }
@@ -53,5 +64,50 @@ describe('private practice sandbox', () => {
     expect(b).toBe('Z_MY_PRACTICE_BOB')
     expect(a).not.toBe(b)
     expect(a.length).toBeLessThanOrEqual(40)
+  })
+})
+
+
+describe('function module access rules', () => {
+  test('shared example function modules are visible to everyone but never editable', () => {
+    const example = { ownerId: null, isExample: true }
+    expect(canViewFunction(alice, example, false)).toBe(true)
+    expect(canViewFunction(bob, example, false)).toBe(true)
+    expect(canEditFunction(alice, example, false)).toBe(false)
+    expect(canEditFunction(bob, example, true)).toBe(false)
+  })
+
+  test('private function modules are visible and editable only by their creator', () => {
+    const fm = { ownerId: alice.id, isExample: false }
+    expect(canViewFunction(alice, fm, false)).toBe(true)
+    expect(canEditFunction(alice, fm, false)).toBe(true)
+    expect(canViewFunction(bob, fm, false)).toBe(false)
+    expect(canEditFunction(bob, fm, false)).toBe(false)
+  })
+
+  test('the designated owner may inspect and administer private function modules', () => {
+    const fm = { ownerId: alice.id, isExample: false }
+    expect(canViewFunction(bob, fm, true)).toBe(true)
+    expect(canEditFunction(bob, fm, true)).toBe(true)
+  })
+
+  test('function group ownership mirrors function module ownership', () => {
+    const group = { ownerId: alice.id, isExample: false }
+    const example = { ownerId: null, isExample: true }
+    expect(canViewFunctionGroup(alice, group, false)).toBe(true)
+    expect(canEditFunctionGroup(bob, group, false)).toBe(false)
+    expect(canViewFunctionGroup(bob, group, true)).toBe(true)
+    expect(canEditFunctionGroup(bob, example, true)).toBe(false)
+  })
+
+  test('ordinary list scope contains examples plus own function modules', () => {
+    expect(functionListWhere(alice, false)).toEqual({
+      OR: [{ isExample: true }, { ownerId: alice.id }],
+    })
+    expect(functionGroupListWhere(alice, false)).toEqual({
+      OR: [{ isExample: true }, { ownerId: alice.id }],
+    })
+    expect(functionListWhere(alice, true)).toEqual({})
+    expect(functionGroupListWhere(alice, true)).toEqual({})
   })
 })
