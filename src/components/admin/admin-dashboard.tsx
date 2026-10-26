@@ -6,6 +6,8 @@
 // trusted for authorization.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
+import { signOutClerkClient } from '@/lib/clerk-client'
 import {
   Activity,
   AlertTriangle,
@@ -164,6 +166,7 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
   const [userQuery, setUserQuery] = useState('')
   const [programQuery, setProgramQuery] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [busyProgramId, setBusyProgramId] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -248,6 +251,39 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
     [load],
   )
 
+  const removeProgram = useCallback(
+    async (program: ProgramRow) => {
+      if (program.isExample) return
+      const owner = program.ownerUsername ?? 'legacy/unowned'
+      const typed = window.prompt(
+        `PERMANENT DELETE — ${program.name}\n\nOwner: ${owner}\n\nThis removes the program and detaches its execution history. Its source cannot be recovered.\n\nType the exact program name to confirm:`,
+      )
+      if (typed === null) return
+      if (typed !== program.name) {
+        setError('Deletion cancelled: the program name did not match exactly')
+        return
+      }
+      setBusyProgramId(program.id)
+      setNotice(null)
+      try {
+        const res = await fetch(`/api/admin/programs/${program.id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirmName: typed }),
+        })
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        if (!res.ok) throw new Error(body.error ?? 'Deletion failed')
+        setNotice(`${program.name} was permanently deleted`)
+        await load()
+      } catch (e) {
+        setError((e as Error).message)
+      } finally {
+        setBusyProgramId(null)
+      }
+    },
+    [load],
+  )
+
   const users = useMemo(() => {
     const q = userQuery.trim().toLowerCase()
     if (!data) return []
@@ -302,8 +338,23 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
             </Link>
             <button
               type="button"
-              onClick={() => {
-                void fetch('/api/auth/logout', { method: 'POST' }).finally(() => window.location.assign('/'))
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/auth/logout', { method: 'POST' })
+                  if (!res.ok) {
+                    const data = (await res.json().catch(() => ({}))) as { error?: string }
+                    toast.error(data.error ?? 'Logoff could not be completed')
+                    return
+                  }
+                  const clerkSignedOut = await signOutClerkClient()
+                  if (!clerkSignedOut) {
+                    toast.error('The secure session was revoked, but the browser sign-out did not complete — retry logoff')
+                    return
+                  }
+                  window.location.assign('/')
+                } catch {
+                  toast.error('Cannot reach the system — logoff was not confirmed')
+                }
               }}
               className="flex items-center gap-1 rounded border border-white/25 bg-white/10 px-2.5 py-1 hover:bg-white/20"
             >
@@ -613,6 +664,7 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
                         <th className="px-2 py-2 font-semibold">Access</th>
                         <th className="px-2 py-2 font-semibold">Runs</th>
                         <th className="px-2 py-2 font-semibold">Updated</th>
+                        <th className="px-3 py-2 text-right font-semibold">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -631,10 +683,25 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
                           </td>
                           <td className="px-2 py-1.5 tabular-nums">{p.executions}</td>
                           <td className="px-2 py-1.5 text-[#5b6b7c]">{when(p.updatedAt)}</td>
+                          <td className="px-3 py-1.5 text-right">
+                            {p.isExample ? (
+                              <span className="text-[10px] text-[#7c8b9a]">protected example</span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={busyProgramId === p.id}
+                                onClick={() => void removeProgram(p)}
+                                className="inline-flex items-center gap-1 rounded border border-red-300 bg-red-50 px-2 py-1 text-[10px] font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                                aria-label={`Delete program ${p.name}`}
+                              >
+                                <Trash2 className="h-3 w-3" /> Delete
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                       {programs.length === 0 && (
-                        <tr><td colSpan={6} className="px-3 py-8 text-center text-[#7c8b9a]">No programs match this search.</td></tr>
+                        <tr><td colSpan={7} className="px-3 py-8 text-center text-[#7c8b9a]">No programs match this search.</td></tr>
                       )}
                     </tbody>
                   </table>

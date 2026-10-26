@@ -9,6 +9,7 @@ export type AdminAction =
   | 'USER_DELETE'
   | 'PROGRAM_DELETE'
   | 'OWNER_ASSIGN'
+  | 'USER_EMAIL_MAP'
 
 /** Append an immutable audit entry. Never include passwords, tokens, or source. */
 export async function writeAudit(

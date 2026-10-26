@@ -63,6 +63,7 @@ async function migrateSchema(): Promise<void> {
   if (process.env.SKIP_AUTO_MIGRATE === '1') return
 
   await addColumn('User', 'email', 'TEXT')
+  await addColumn('User', 'clerkId', 'TEXT')
   await addColumn('User', 'role', "TEXT NOT NULL DEFAULT 'USER'")
   await addColumn('User', 'suspended', 'BOOLEAN NOT NULL DEFAULT false')
   await addColumn('User', 'sessionVersion', 'INTEGER NOT NULL DEFAULT 1')
@@ -94,6 +95,7 @@ async function migrateSchema(): Promise<void> {
 
   const statements = [
     'CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email")',
+    'CREATE UNIQUE INDEX IF NOT EXISTS "User_clerkId_key" ON "User"("clerkId")',
     'CREATE INDEX IF NOT EXISTS "Program_ownerId_idx" ON "Program"("ownerId")',
     'CREATE INDEX IF NOT EXISTS "ExecutionLog_userId_idx" ON "ExecutionLog"("userId")',
     'CREATE UNIQUE INDEX IF NOT EXISTS "UserFavorite_userId_objectType_objectName_key" ON "UserFavorite"("userId", "objectType", "objectName")',

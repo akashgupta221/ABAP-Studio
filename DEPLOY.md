@@ -10,13 +10,23 @@ What this gives you:
 
 Everything is free: Vercel **Hobby** + Turso **free**. No credit card needed.
 
-> **Current production status:** v0.3 is deployed and the anonymous API is closed. Owner
-> provisioning has run: `AKASH` has `role = OWNER`, the 12 legacy programs are claimed,
-> no legacy programs are unclaimed, and the Vercel owner gate is verified. The read-only
-> **Verify production** and controlled **Verify production isolation** checks pass; the
-> production legacy-favorites table is verified empty. See §1.6 and §4.2 of
-> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md). P0 is accepted; next is the
-> Clerk cutover, UI/accessibility automation, and final acceptance.
+> **Current production status:** the v0.3 security build is deployed and the anonymous API
+> is closed. Owner provisioning has run: `AKASH` has `role = OWNER`, the 12 legacy
+> programs are claimed, no legacy programs are unclaimed, and the Vercel owner gate is
+> verified. The read-only **Verify production** and controlled **Verify production
+> isolation** checks pass; the production legacy-favorites table is verified empty. P0 is
+> accepted. **P1 Clerk code is implemented on `clerk-migration` and passes the local
+> gates. Development Email OTP, owner/non-owner mapping, admin ban/unban/revoke/delete,
+> audit and client sign-out were verified with disposable test users (removed). The
+> original production root `abap-studio.is-a.dev` was denied and its appeal is closed. A
+> portfolio is live at <https://akashgupta221.github.io/>; the new is-a.dev root
+> `akashgupta.is-a.dev` is merged and redirects to it. The six nested app/Clerk records were
+> merged in PR #58363 and now resolve in DNS. The Clerk production instance has been moved and
+> its Frontend API is live; the Vercel hostname is verified and the P1 build is deployed.
+> Clerk mail DNS is now complete; production sign-in, Google OAuth, a real webhook test,
+> EU.org approval and legacy mapping remain pending, so P1 is not accepted.** See §1.6 and §4 of
+> [`docs/MASTER-PROJECT-SPEC.md`](MASTER-PROJECT-SPEC.md) and the owner guide
+> [`docs/CLERK-SETUP.md`](CLERK-SETUP.md).
 
 ---
 
@@ -68,10 +78,17 @@ turso db shell abap-studio ".dump" > abap-studio-backup-$(date +%Y%m%d).sql
    | `OWNER_EMAIL` | the verified owner email (authoritative when set) |
    | `OWNER_USERNAME` | interim fallback: the single owner account name (e.g. `AKASH`) |
 
-   `AUTH_SECRET` is required in production: the app refuses to sign sessions with a
-   public development fallback. Owner recognition fails closed if neither owner identity
-   is configured. If both are set, `OWNER_EMAIL` wins and must match the email stored on
-   the `OWNER` row.
+   `AUTH_SECRET` is required while the legacy fallback exists. Owner recognition fails
+   closed if neither owner identity is configured. If both are set, `OWNER_EMAIL` wins
+   and must match the verified email stored on the `OWNER` row.
+
+   **P1 Clerk cutover:** finish the domain DNS in
+   [`docs/FREE-DOMAIN-SETUP.md`](FREE-DOMAIN-SETUP.md) and Google OAuth in
+   [`docs/GOOGLE-OAUTH-SETUP.md`](GOOGLE-OAUTH-SETUP.md), then follow
+   [`docs/CLERK-SETUP.md`](CLERK-SETUP.md) and add the production
+   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`,
+   `LEGACY_AUTH_MODE=fallback` and `NEXT_PUBLIC_LEGACY_AUTH_MODE=fallback`. Do not use
+   development Clerk keys in production.
 
 4. Click **Deploy**. The database is still empty; Part 4 fixes that.
 
@@ -92,9 +109,10 @@ history. It then verifies every seeded example against the engine.
 ## Part 5 — Provision the owner and claim legacy data
 
 The owner is the account with server-managed `role = OWNER`, identified by
-`OWNER_EMAIL` (or `OWNER_USERNAME` until Clerk is integrated). Legacy non-example
-programs (created before ownership existed) are assigned to the owner; ordinary users
-must not see them.
+`OWNER_EMAIL` (or `OWNER_USERNAME` while the legacy fallback is active). Legacy
+non-example programs (created before ownership existed) are assigned to the owner;
+ordinary users must not see them. During the Clerk cutover the owner signs in through
+Clerk; the legacy password is only a temporary fallback.
 
 ### Option A — GitHub Actions (recommended; no secrets in chat)
 
@@ -102,8 +120,9 @@ must not see them.
    - `TURSO_DATABASE_URL` — the `libsql://` URL.
    - `TURSO_AUTH_TOKEN` — a Turso token.
    - `OWNER_EMAIL` — the verified owner email (recommended; authoritative when set).
-   - `OWNER_PASSWORD` — optional but recommended: a fresh owner password you have not
-     used anywhere else. GitHub masks it in logs; delete the secret after the run.
+   - `OWNER_PASSWORD` — **optional and not needed for P1.** It was deleted after P0
+     acceptance. Re-add it only if you deliberately need to rerun the legacy CI checks;
+     Clerk does not use it. GitHub masks it in logs; delete it after the run.
    You can add them from a terminal instead (the values are prompted, not written to
    shell history):
 
@@ -111,7 +130,8 @@ must not see them.
    gh secret set TURSO_DATABASE_URL --repo akashgupta221/ABAP-Studio
    gh secret set TURSO_AUTH_TOKEN --repo akashgupta221/ABAP-Studio
    gh secret set OWNER_EMAIL --repo akashgupta221/ABAP-Studio
-   gh secret set OWNER_PASSWORD --repo akashgupta221/ABAP-Studio
+   # Optional, legacy CI reruns only:
+   # gh secret set OWNER_PASSWORD --repo akashgupta221/ABAP-Studio
    ```
 
 2. Open **Actions → Provision owner → Run workflow** and enter:
@@ -123,8 +143,8 @@ must not see them.
 
 3. The workflow runs `owner:provision` and the read-only `owner:verify`. It fails unless
    exactly one owner exists and every legacy program is claimed. It never prints tokens
-   or the password. Delete the temporary `OWNER_PASSWORD` secret afterward; if you omitted
-   it, set the password locally with the command below.
+   or the password. Delete any temporary `OWNER_PASSWORD` secret afterward; if you omitted
+   it, set a legacy fallback password locally with the command below only if needed.
 
 ### Option B — local shell
 
@@ -140,7 +160,8 @@ The script is idempotent: it creates or updates the owner, claims ownerless non-
 programs, preserves examples as shared/read-only, and invalidates old owner sessions.
 If no password is supplied it generates a random one that is never displayed.
 
-Set the real owner password with hidden input (no shell history, no chat):
+Set a legacy fallback owner password with hidden input (no shell history, no chat) only
+if the cutover still needs it:
 
 ```bash
 CONFIRM_OWNER_PASSWORD=YES OWNER_USERNAME=AKASH \
@@ -157,14 +178,16 @@ TURSO_AUTH_TOKEN="eyJ..." bun run owner:verify
 
 ### Live owner acceptance
 
-After setting the Vercel owner environment and redeploying, run **Actions → Verify
-production**. It logs in with the `OWNER_PASSWORD` repository secret, checks
-`/api/auth/me` (`owner=true`), `/api/admin/overview` (`200`) and `/admin` (`200`), and
-prints only counts. It never prints the password, cookie or email. Then run **Actions →
-Verify production isolation** with `confirm=ISOLATION`; it creates one temporary regular
-user, checks owner/regular-user isolation, revocation, suspension and deletion, and
-deletes that same user. The temporary `OWNER_PASSWORD` secret was deleted after P0
-acceptance; re-add it only if you deliberately need to rerun these workflows.
+The P0 acceptance checks already passed. After setting the Vercel owner environment and
+redeploying, run **Actions → Verify production**. It uses the legacy fallback session and
+the `OWNER_PASSWORD` repository secret, checks `/api/auth/me` (`owner=true`),
+`/api/admin/overview` (`200`) and `/admin` (`200`), and prints only counts. It never prints
+the password, cookie or email. Then run **Actions → Verify production isolation** with
+`confirm=ISOLATION`; it creates one temporary regular user, checks owner/regular-user
+isolation, revocation, suspension and deletion, and deletes that same user. The temporary
+`OWNER_PASSWORD` secret was deleted after P0 acceptance; **do not re-add it solely for
+routine P1 work**. Use the Clerk browser checks in [`docs/CLERK-SETUP.md`](CLERK-SETUP.md)
+instead.
 
 ### Legacy favorites
 
@@ -197,6 +220,9 @@ to every user — they were never tied to an identity.
 5. Run a syntax check, an execution, a save, a favorite and a logout/login cycle.
 6. Confirm anonymous `/api/programs`, `/api/execute` and `/api/admin/overview` return `401`
    or `403`.
+7. **P1 Clerk:** verify Email OTP and Google sign-in, owner mapping to `AKASH`, a mapped
+   non-owner, a new `USER`, suspension/ban/force-logout/deletion, and the signed webhook.
+   See [`docs/CLERK-SETUP.md`](CLERK-SETUP.md) §5.
 
 Do not announce completion until every check passes against the deployed build.
 
@@ -222,9 +248,12 @@ step instead of changing this guarantee.
 - Local development uses `prisma/db/app.db` when `TURSO_*` is unset. The file is ignored
   by Git and created with `bun run db:push`.
 - Custom domain: Vercel → Project → Settings → Domains.
-- Clerk Email OTP + Google is **not** integrated yet; the built-in user master is the
-  interim authentication method. `OWNER_EMAIL` is already accepted by the owner gate so
-  the Clerk migration can keep the same server-side owner check.
+- Clerk Email OTP + Google is **implemented in code** on `clerk-migration`. Development
+  Email OTP and the owner/non-owner admin flows are verified, but the production
+  instance's DNS, Google OAuth, keys and webhooks remain pending; production sessions are
+  unverified and P1 is not accepted. Password, phone and username sign-in are disabled.
+  The built-in user master remains a temporary fallback. `OWNER_EMAIL` is already accepted
+  by the owner gate, so the Clerk migration keeps the same server-side owner check.
 
 ## Troubleshooting
 
@@ -243,3 +272,10 @@ step instead of changing this guarantee.
   confirm exactly one owner and zero unclaimed legacy programs.
 - **`AUTH_SECRET must be set in production`** — add the Vercel environment variable and
   redeploy.
+- **Clerk sign-in shows no form or no Google button** — confirm the Clerk keys are set in
+  the environment that built the deployment, wait for hydration and reload. Password,
+  phone and username sign-in are intentionally disabled; only Email OTP and Google should
+  be offered.
+- **Clerk session active but no SAP user** — the verified email is not mapped to an active
+  `User` row. Sign out of Clerk and use `bun run user:email` after verifying the address.
+- **Webhook returns 503** — set `CLERK_WEBHOOK_SECRET` in Vercel and redeploy.

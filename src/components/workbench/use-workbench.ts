@@ -3,6 +3,7 @@
 // ── Central workbench store (zustand) ─────────────────────────────────
 import { create } from 'zustand'
 import { toast } from 'sonner'
+import { signOutClerkClient } from '@/lib/clerk-client'
 import type {
   CheckIssue,
   Favorite,
@@ -740,14 +741,31 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   restoreSession: (session) => set({ session: { ...session, loggedIn: true } }),
 
   logoff: () => {
-    // end the server session (HTTP-only cookie) first, then show the logon
-    // pad — so the pad's session check can never silently log back in
+    // End the server session first, then show the logon pad, so the pad's
+    // session check can never silently log back in. Do not clear local state if
+    // the server could not revoke a Clerk session.
     void (async () => {
       try {
-        await fetch('/api/auth/logout', { method: 'POST' })
+        const res = await fetch('/api/auth/logout', { method: 'POST' })
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string }
+          toast.error(data.error ?? 'Logoff could not be completed')
+          return
+        }
       } catch {
-        /* offline — still clear the local state */
+        toast.error('Cannot reach the system — logoff was not confirmed')
+        return
       }
+
+      // A revoked Clerk session still has a valid browser JWT until it expires.
+      // Clear the Clerk cookies before returning to the logon pad so the user
+      // is not immediately signed back in by the stale client session.
+      const clerkSignedOut = await signOutClerkClient()
+      if (!clerkSignedOut) {
+        toast.error('The secure session was revoked, but the browser sign-out did not complete — retry logoff')
+        return
+      }
+
       set({
         session: { ...get().session, loggedIn: false },
         tabs: [],

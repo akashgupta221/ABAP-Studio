@@ -11,10 +11,18 @@ import {
   validateUsername,
 } from '@/lib/auth'
 import { clientKey, rateLimit, sameOrigin, serverError } from '@/lib/session'
+import { legacyRegistrationEnabled } from '@/lib/auth-mode'
 
-// POST /api/auth/register — create a user master record and log on.
-// Public registration can only ever create a USER; role is never read from input.
+// POST /api/auth/register — local/test fallback only. Public registration is
+// handled by Clerk after the cutover; role is never read from input.
 export async function POST(req: NextRequest) {
+  if (!legacyRegistrationEnabled()) {
+    return NextResponse.json(
+      { error: 'New accounts use Clerk secure sign-up — open /sign-up' },
+      { status: 410 },
+    )
+  }
+
   const csrf = sameOrigin(req)
   if (csrf) return csrf
 

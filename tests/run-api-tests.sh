@@ -28,6 +28,8 @@ DATABASE_URL="file:${DB_PATH}" \
 TURSO_DATABASE_URL="" \
 OWNER_USERNAME="TESTOWNER" \
 AUTH_SECRET="api-test-secret-not-for-production" \
+LEGACY_AUTH_MODE="full" \
+NEXT_PUBLIC_LEGACY_AUTH_MODE="full" \
 NODE_ENV="development" \
 bunx next dev -p "$PORT" >"$LOG" 2>&1 &
 SERVER_PID=$!

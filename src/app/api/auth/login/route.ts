@@ -10,9 +10,17 @@ import {
   verifyPassword,
 } from '@/lib/auth'
 import { clientKey, isOwner, rateLimit, sameOrigin, serverError } from '@/lib/session'
+import { legacyLoginEnabled } from '@/lib/auth-mode'
 
-// POST /api/auth/login — check user name + password against the user master
+// POST /api/auth/login — temporary legacy fallback during the Clerk cutover
 export async function POST(req: NextRequest) {
+  if (!legacyLoginEnabled()) {
+    return NextResponse.json(
+      { error: 'Legacy logon is disabled — use the secure Clerk sign-in' },
+      { status: 403 },
+    )
+  }
+
   const csrf = sameOrigin(req)
   if (csrf) return csrf
 

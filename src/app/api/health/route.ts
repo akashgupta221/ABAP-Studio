@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic' // never cached — reflects the current 
 
 import { NextResponse } from 'next/server'
 import { db, ensureSchema } from '@/lib/db'
+import { clerkServerConfigured, legacyAuthMode } from '@/lib/auth-mode'
 
 // GET /api/health — deployment diagnostics. Reports which database this deployment
 // targets, whether the credentials/tables are present, and the raw connection
@@ -15,6 +16,13 @@ export async function GET() {
     hasTursoToken: Boolean(process.env.TURSO_AUTH_TOKEN),
     hasDatasourceUrl: Boolean(process.env.DATABASE_URL),
     hasAuthSecret: Boolean(process.env.AUTH_SECRET),
+    hasClerkSecret: Boolean(process.env.CLERK_SECRET_KEY),
+    hasClerkPublishableKey: Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY),
+    hasClerkWebhookSecret: Boolean(
+      process.env.CLERK_WEBHOOK_SECRET ?? process.env.CLERK_WEBHOOK_SIGNING_SECRET,
+    ),
+    clerkConfigured: clerkServerConfigured(),
+    legacyAuthMode: legacyAuthMode(),
   }
 
   try {
