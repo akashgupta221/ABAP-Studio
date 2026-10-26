@@ -57,6 +57,9 @@ server.log
 # Skills directory
 /skills/
 
+# Impeccable: platform engine binary is downloaded per machine, not committed
+/.opencode/skills/impeccable/scripts/bin/
+
 # local SQLite databases contain identities and personal programs — never
 # publish them. A fresh clone creates the schema and auto-seeds
 # shared learning content on first request.
