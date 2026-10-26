@@ -203,6 +203,79 @@ async function main() {
   check('execution records the user', (await call('/api/recents', { cookie: cookieA })).data.recents?.length >= 1)
   check('one user cannot see another user recents', (await call('/api/recents', { cookie: cookieB })).data.recents?.length === 0)
 
+  console.log('\nABAP Debugger (stateless stepping) and ST22 dumps')
+  const debugSrc = `REPORT z_dbg_api.\nDATA lv_sum TYPE i.\nlv_sum = 21 * 2.\nWRITE: / lv_sum.\n`
+  check('debug rejects anonymous callers', (await call('/api/debug', { method: 'POST', body: { source: "WRITE 'x'." } })).status === 401)
+  check('dumps reject anonymous callers', (await call('/api/dumps')).status === 401)
+  const dbgStart = await call('/api/debug', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: `Z_DBG_${suffix}`, source: debugSrc, cmd: 'start' },
+  })
+  check('debug start pauses at the first executable statement', dbgStart.status === 200 && dbgStart.data.status === 'PAUSED')
+  check(
+    'the debug pause carries the line, statement and variables',
+    typeof dbgStart.data.stop?.line === 'number' &&
+      typeof dbgStart.data.stop?.statement === 'string' &&
+      Array.isArray(dbgStart.data.stop?.variables),
+  )
+  const dbgRun = await call('/api/debug', {
+    method: 'POST',
+    cookie: cookieA,
+    body: {
+      name: `Z_DBG_${suffix}`,
+      source: debugSrc,
+      cmd: 'continue',
+      stopIndex: dbgStart.data.stop?.stopIndex,
+      depth: dbgStart.data.stop?.depth,
+      breakpoints: [],
+    },
+  })
+  check('debug continue without breakpoints runs to completion', dbgRun.status === 200 && dbgRun.data.ended === true && dbgRun.data.status === 'SUCCESS')
+  check(
+    'the completed debug run produced the list output',
+    (dbgRun.data.list ?? []).some((l: any) => (l.segments ?? []).some((s: any) => String(s.text).includes('42'))),
+  )
+  const dbgB = await call('/api/debug', {
+    method: 'POST',
+    cookie: cookieB,
+    body: { name: `Z_DBG_${suffix}`, source: debugSrc, cmd: 'start' },
+  })
+  check('any authenticated user can debug their own source copy', dbgB.status === 200 && dbgB.data.status === 'PAUSED')
+
+  const dumpRun = await call('/api/execute', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: `Z_DUMP_${suffix}`, source: `REPORT z_dump_api.\nDATA lv_z TYPE i VALUE 0.\nDATA lv_r TYPE i.\nlv_r = 1 / lv_z.\n` },
+  })
+  check('a runtime error terminates the program', dumpRun.status === 200 && dumpRun.data.status === 'ERROR')
+  const dumpsA = await call('/api/dumps?limit=50', { cookie: cookieA })
+  const ownDump = (dumpsA.data.dumps ?? []).find((d: any) => d.programName === `Z_DUMP_${suffix}`)
+  check('the runtime error is listed as a short dump for its user', !!ownDump)
+  check('the dump records the ABAP error type', (ownDump?.errorType ?? '') === 'CX_SY_ZERODIVIDE', `errorType ${ownDump?.errorType}`)
+  const dumpsB = await call('/api/dumps?limit=50', { cookie: cookieB })
+  check('another user never sees foreign dumps', !(dumpsB.data.dumps ?? []).some((d: any) => d.programName === `Z_DUMP_${suffix}`))
+
+  console.log('\nSE16 selection criteria')
+  const unfiltered = await call('/api/tables/SFLIGHT?page=1&pageSize=200', { cookie: cookieA })
+  check('the SE16 endpoint serves a seeded table', unfiltered.status === 200 && (unfiltered.data.rows ?? []).length > 0)
+  const firstCarrid = unfiltered.data.rows?.[0]?.CARRID
+  const filtered = await call(
+    `/api/tables/SFLIGHT?page=1&pageSize=200&filters=${encodeURIComponent(JSON.stringify([{ field: 'CARRID', op: 'EQ', low: firstCarrid }]))}`,
+    { cookie: cookieA },
+  )
+  check(
+    'selection criteria narrow the result set',
+    filtered.status === 200 &&
+      (filtered.data.rows ?? []).length > 0 &&
+      (filtered.data.rows ?? []).length <= (unfiltered.data.rows ?? []).length &&
+      (filtered.data.rows ?? []).every((r: any) => r.CARRID === firstCarrid),
+  )
+  check(
+    'invalid selection criteria are rejected',
+    (await call(`/api/tables/SFLIGHT?filters=${encodeURIComponent('{bad')}`, { cookie: cookieA })).status === 400,
+  )
+
   console.log('\nModern ABAP workspace')
   check('Modern workspace rejects anonymous callers', (await call('/api/modern')).status === 401)
   check('Modern validation rejects anonymous callers', (await call('/api/modern/validate', {

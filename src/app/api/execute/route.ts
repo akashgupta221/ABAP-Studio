@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
           status: result.status === 'REQUIRES_INPUT' ? 'SUCCESS' : result.status,
           durationMs: result.durationMs,
           message: result.error?.message?.slice(0, 500) ?? '',
+          errorType: result.error?.abapType ?? null,
           errorLine: result.error?.line ?? null,
           listLines: result.list.length,
           hadAlv: !!result.alv,

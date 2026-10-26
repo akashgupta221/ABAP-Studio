@@ -1,12 +1,13 @@
 // ── ABAP Engine: entry points (run, syntax check) ──────────────────────
 import { parseAbap, Parser } from './parser'
 import { AbapSyntaxError, tokenize } from './tokenizer'
-import { Interpreter, DbSnapshot, type FmEntry } from './interpreter'
+import { Interpreter, DbSnapshot, type FmEntry, DebugPause, type DebugControl, type DebugSnapshot } from './interpreter'
 import type { RunResult, SelectionScreenItem } from './ast-types'
 
 export { DbSnapshot } from './interpreter'
 export type { DbField, DbTableDef } from './interpreter'
 export type { FmEntry } from './interpreter'
+export type { DebugControl, DebugStopContext, DebugSnapshot, DebugVariable } from './interpreter'
 export type { RunResult, ListLine, ListSegment, AlvGrid, MessageItem, SelectionScreenItem, ParamSpec, SelectOptionSpec } from './ast-types'
 
 export interface RunInput {
@@ -44,27 +45,31 @@ export function resolveIncludes(source: string, includes: Map<string, string>): 
   return out
 }
 
-export function runAbap(input: RunInput): RunResult {
+function syntaxErrorResult(e: unknown): RunResult {
+  if (e instanceof AbapSyntaxError) {
+    return {
+      status: 'ERROR',
+      error: { kind: 'SYNTAX', message: e.message, line: e.line, statement: e.statement },
+      list: [], messages: [], durationMs: 0,
+      stats: { steps: 0, linesWritten: 0, selects: 0, dbReads: 0 },
+    }
+  }
+  return {
+    status: 'ERROR',
+    error: { kind: 'SYNTAX', message: (e as Error)?.message || 'Syntax error', line: 0 },
+    list: [], messages: [], durationMs: 0,
+    stats: { steps: 0, linesWritten: 0, selects: 0, dbReads: 0 },
+  }
+}
+
+function buildInterpreter(input: RunInput, debug?: DebugControl): { source: string; repid: string; interp: Interpreter | null; error: RunResult | null } {
   const repid = input.repid ?? 'ZPROGRAM'
   const source = input.includes && input.includes.size ? resolveIncludes(input.source, input.includes) : input.source
   let prog
   try {
     prog = parseAbap(source)
-  } catch (e: any) {
-    if (e instanceof AbapSyntaxError) {
-      return {
-        status: 'ERROR',
-        error: { kind: 'SYNTAX', message: e.message, line: e.line, statement: e.statement },
-        list: [], messages: [], durationMs: 0,
-        stats: { steps: 0, linesWritten: 0, selects: 0, dbReads: 0 },
-      }
-    }
-    return {
-      status: 'ERROR',
-      error: { kind: 'SYNTAX', message: e.message || 'Syntax error', line: 0 },
-      list: [], messages: [], durationMs: 0,
-      stats: { steps: 0, linesWritten: 0, selects: 0, dbReads: 0 },
-    }
+  } catch (e) {
+    return { source, repid, interp: null, error: syntaxErrorResult(e) }
   }
   if (!prog.repid) prog.repid = repid
   const interp = new Interpreter(prog, {
@@ -74,8 +79,42 @@ export function runAbap(input: RunInput): RunResult {
     includes: input.includes ?? new Map(),
     functionModules: input.functionModules ?? new Map(),
     parameters: input.parameters,
+    debug,
   })
-  return interp.run()
+  return { source, repid, interp, error: null }
+}
+
+export function runAbap(input: RunInput): RunResult {
+  const { interp, error } = buildInterpreter(input)
+  return error ?? interp!.run()
+}
+
+export interface DebugRunOutcome {
+  paused: DebugSnapshot | null
+  result: RunResult | null
+}
+
+/**
+ * Run a program under debugger control. The engine stays stateless: the caller
+ * (API route) re-invokes this for every step, advancing the stop target, and the
+ * deterministic interpreter reproduces the same execution each time.
+ */
+export function runAbapDebug(input: RunInput, control: DebugControl): DebugRunOutcome {
+  const { interp, error } = buildInterpreter(input, control)
+  if (error || !interp) return { paused: null, result: error }
+  try {
+    const result = interp.run()
+    return { paused: null, result }
+  } catch (e) {
+    if (e instanceof DebugPause) {
+      interp.flushLine()
+      const snap = e.snapshot
+      snap.list = interp.lines
+      snap.messages = interp.messages
+      return { paused: snap, result: null }
+    }
+    throw e
+  }
 }
 
 export interface SyntaxIssue {

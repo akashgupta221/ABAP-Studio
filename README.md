@@ -41,10 +41,15 @@ user.
 
 ## Features
 
-### 🖥️ Authentic Standard SAP GUI
+### 🖥️ Authentic Standard SAP GUI (App 2 chrome)
 - SAP-style **logon pad** and the real `MER` / client `105` system identity
-- **Firefox/WebGUI outer frame** (desktop): tab strip, navigation bar with SAP URL — hidden on mobile for clean viewport
-- Full workbench shell: menu bar, standard toolbar, command field, status bar and tabs
+- **Real SAP GUI for HTML window chrome**: 5px blue accent, `#99b7d7` title bar with the SAP logo,
+  centered screen title, `MER (105)` system dropdown and new-session chevron
+- Screen menu bar with the **OK-code command field** and Find / Print / Exit on the right,
+  standard toolbar, application toolbar, tabs — no fake browser wrapper
+- **Dark status bar** (`#333d47`): colored message area with icons, `INS/OVR` toggle,
+  transaction, system, user, date and live clock
+- The simulated Firefox wrapper was removed as a design mistake; the SAP window is the product
 - **Easy Access** tree, command palette and transactions (SE38, SE11, SE16N, **SE37**, SE24, …)
 - Real SAP button sets, field help, dirty-state awareness and keyboard shortcuts
 - The Standard screenshot-fidelity work is preserved; the Modern workspace is a separate
@@ -61,6 +66,21 @@ user.
 - **Test console** (F8) — input parameters → Execute → structured result grid + `sy-subrc` + list output
 - **Full isolation** — private FMs visible/editable only to creator; examples shared read-only; owner sees all
 - **Engine-scoped** — `CALL FUNCTION` from ABAP programs only resolves active FMs the caller may access
+
+### 🐛 ABAP Debugger, ST22 Dump Analysis and Pretty Printer (new)
+- **ABAP Debugger** (`/h` + F8, or the editor **Debug** button) — the SAP New Debugger workflow:
+  stops at the first executable statement, **F5** step, **F6** step over (skips FORM/FM/method bodies),
+  **F8** continue to a breakpoint, variable table refreshed on every stop, list output so far
+- **Line breakpoints** — click a line number in the debugger source pane to toggle
+- **Stateless debug engine** — every step re-runs the deterministic engine server-side and pauses at
+  the requested statement, so it works on serverless deployments without an engine session registry
+  and never leaves the tenant context the server
+- **ST22 ABAP Dump Analysis** (`ST22`) — your own runtime errors with ABAP error type
+  (e.g. `CX_SY_ZERODIVIDE`), short text, source line and list lines produced before the dump
+- **Pretty Printer** (Shift+F1 / toolbar) — upper-cases ABAP keywords outside string literals and
+  re-indents `IF`/`LOOP`/`FORM`/`METHOD`/`CLASS` blocks (replaces the earlier demo stub)
+- **SE16 selection criteria (SE16N-style)** — per-field options `EQ`, `NE`, `GT`, `LT`, `GE`, `LE`,
+  `BT` (low/high) and `CP` (`*`/`+` wildcards), combined per table query
 
 ### ⚙️ A real ABAP engine — from scratch
 - Hand-written **tokenizer → parser → tree-walking interpreter** (`src/lib/abap/`)
@@ -342,6 +362,8 @@ tests/                   Unit tests, disposable API suite, Playwright UI/axe sui
 | `POST /api/modern/validate` | Validate ABAP or CDS/RAP/AMDP source |
 | `GET /api/topics` · `programs` · `tables` · `functions` · `search` | Repository and DDIC content (Standard list only) |
 | `GET/POST /api/functions`, `GET/PUT/DELETE /api/functions/[name]`, `POST /api/functions/test` | **SE37 Function Module CRUD + test execution** (tenant-scoped) |
+| `POST /api/debug` | **ABAP Debugger stepping** (stateless: start/stepInto/stepOver/continue with breakpoints) |
+| `GET /api/dumps` | **ST22 short dump list** (the caller's own runtime errors) |
 | `GET/POST /api/function-groups`, `DELETE /api/function-groups/[name]` | **Function Group CRUD** (tenant-scoped) |
 | `GET/POST /api/favorites` · `GET /api/recents` | Per-user workbench state |
 | `POST /api/sandbox` | Get or create the current user's private sandbox |
@@ -359,7 +381,8 @@ tests/                   Unit tests, disposable API suite, Playwright UI/axe sui
   remain deliberately unsupported and are labelled as such.
 - **Broader ABAP:** additional OO/RAP/AMDP constructs can be added with tests; the current
   subset is verified, not a full SAP kernel.
-- **Explicitly out of scope (App 2 features not ported):** SHDB, Debugger, ST22, BDC, AL11, SE51, SE91, SAT, SE93, multi-tab Firefox sessions, real SAP connectivity.
+- **P4 App 2 Integration Round 2 (Debugger, ST22, Pretty Printer, SE16N selection criteria):** implemented, all local gates pass; deploy and production smoke pending.
+- **Explicitly out of scope (App 2 features not ported):** SHDB transaction recorder, BDC sessions/SM35, dynpro/module pools (PBO/PAI), AL11, SE51, SE91, SAT runtime analysis, multi-tab Firefox sessions, real SAP connectivity.
 
 ## Credits
 

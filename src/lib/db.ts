@@ -71,6 +71,7 @@ async function migrateSchema(): Promise<void> {
   await addColumn('Program', 'environment', "TEXT NOT NULL DEFAULT 'STANDARD'")
   await addColumn('Program', 'modernKind', "TEXT NOT NULL DEFAULT 'ABAP'")
   await addColumn('ExecutionLog', 'userId', 'TEXT')
+  await addColumn('ExecutionLog', 'errorType', 'TEXT')
   await addColumn('FunctionModule', 'ownerId', 'TEXT')
   await addColumn('FunctionModule', 'active', 'BOOLEAN NOT NULL DEFAULT true')
   await addColumn('FunctionModule', 'createdBy', "TEXT NOT NULL DEFAULT 'SAP'")

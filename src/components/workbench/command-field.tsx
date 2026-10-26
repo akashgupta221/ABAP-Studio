@@ -8,7 +8,7 @@ import { useWorkbench } from './use-workbench'
 import { api } from './use-workbench'
 import type { ProgramListItem } from './types'
 
-const TCODES = ['SE38', 'SE80', 'SE11', 'SE16', 'SE24', 'SE37', 'SE93', 'SLG1', 'SEARCH', 'MODERN']
+const TCODES = ['SE38', 'SE80', 'SE11', 'SE16', 'SE24', 'SE37', 'SE93', 'SLG1', 'ST22', 'SEARCH', 'MODERN']
 
 export function CommandField() {
   const [value, setValue] = useState('')
@@ -71,6 +71,16 @@ export function CommandField() {
         st().addMessage('I', 'Session list: MER (1) — this is session 1')
         return
       }
+      if (lower === '/h') {
+        st().setDebugArmed(true)
+        st().addMessage('S', 'Debugging switched on — the next execution (F8) stops in the ABAP Debugger')
+        return
+      }
+      if (lower === '/hx' || lower === '/hoff') {
+        st().setDebugArmed(false)
+        st().addMessage('S', 'Debugging switched off')
+        return
+      }
       v = v.replace(/^\/(n|o|\*)/i, '').trim()
       if (!v) return
 
@@ -130,6 +140,11 @@ export function CommandField() {
           case 'SLG1':
             useWorkbench.setState({ view: 'home' })
             addMessage('S', 'Recent executions are shown on the SAP Easy Access screen')
+            return
+          case 'ST22':
+            useWorkbench.setState({ lastTcode: 'ST22' })
+            navigate('dumps')
+            addMessage('S', 'ABAP Dump Analysis (ST22)')
             return
           case 'ADMIN':
             if (!useWorkbench.getState().session.owner) {
@@ -214,28 +229,44 @@ export function CommandField() {
 
   return (
     <div className="flex items-stretch" role="search" aria-label="Command field">
-      <div className="flex items-stretch border border-[#7f9db9] bg-white shadow-[inset_1px_1px_1px_rgba(0,0,0,0.07)]">
+      <div className="flex h-[24px] items-stretch overflow-hidden rounded-[2px] border border-[#7F9BB9] bg-white shadow-[inset_1px_1px_1px_rgba(0,0,0,0.07)]">
         <input
           ref={inputRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
           aria-label="Command field"
-          title="Command field (Ctrl+L) — t-codes: SE38, SE80, SE11, SE16, SE24, SE37, SE93, ADMIN · /n, /o, /i, /nend · or object name · or SEARCH <text>"
-          className="h-[24px] w-[170px] bg-transparent px-1.5 font-mono text-[12px] uppercase text-[#111827] outline-none md:w-[190px]"
+          title="Command field (Ctrl+L) — t-codes: SE38, SE80, SE11, SE16, SE24, SE37, SE93, ST22, ADMIN · /n, /o, /i, /nend, /nex, /h · or object name · or SEARCH <text>"
+          placeholder="OK code (SE38…)"
+          className="w-[128px] bg-transparent px-1.5 font-mono text-[11px] uppercase text-[#12263A] outline-none placeholder:font-sans placeholder:normal-case placeholder:text-[#9AA7B4] md:w-[150px]"
           spellCheck={false}
           autoComplete="off"
         />
+        <button
+          type="button"
+          aria-label="Run OK-code"
+          title="Execute command (Enter)"
+          onClick={() => {
+            void handleCommand(value)
+            setValue('')
+            setHistOpen(false)
+          }}
+          className="flex w-[24px] items-center justify-center bg-gradient-to-b from-[#5F7FA6] to-[#3D5C82] text-white hover:from-[#6d8cb2] hover:to-[#47688f]"
+        >
+          <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
+            <path d="M1 5 H8 M5.5 1.5 L9 5 L5.5 8.5" stroke="currentColor" strokeWidth="1.6" fill="none" />
+          </svg>
+        </button>
         <Popover open={histOpen} onOpenChange={setHistOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="flex min-h-[24px] w-[24px] min-w-[24px] items-center justify-center border-l border-[#d3dde8] text-[#33475c] hover:bg-[#e3edf9]"
+              className="flex w-[24px] items-center justify-center border-l border-[#d3dde8] text-[#33475c] hover:bg-[#e3edf9]"
               aria-label="Command field history"
               onClick={() => history.length && setHistOpen((o) => !o)}
               tabIndex={history.length ? 0 : -1}
             >
-              <ChevronDown className="h-3.5 w-3.5" />
+              <ChevronDown className="h-3 w-3" />
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-64 rounded-none border-[#8fa7bf] p-0.5" align="end" sideOffset={4}>
