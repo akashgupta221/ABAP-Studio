@@ -2,13 +2,9 @@
 
 This guide deploys the current ABAP-Studio build to a free Vercel Hobby project with a
 free Turso database. It covers production authentication, database seeding, owner
-provisioning, the Modern ABAP workspace and the verification gates.
+provisioning, the Modern ABAP workspace, **P3 App 2 Integration (Firefox/WebGUI shell + SE37 Function Builder)** and the verification gates.
 
-> **Current status:** P0 (security/ownership/admin) and P1 (Clerk authentication) are
-> deployed and accepted. The P2 Modern ABAP workspace, automated UI/axe checks and
-> permanent legacy-auth removal are implemented. Final project acceptance is the last
-> gate: deploy this build, run the production checks, publish the acceptance report and
-> obtain owner visual sign-off of the Modern workspace. Live counts are reported by
+> **Current status:** P0 (security/ownership/admin), P1 (Clerk authentication), P2 (Modern ABAP) and **P3 (App 2 Integration)** are deployed, production-verified and owner-signed-off. Live counts are reported by
 > `/api/health`; do not hard-code a program total in deployment notes.
 
 Production URL: **https://abap-studio.akashgupta.is-a.dev**
@@ -38,9 +34,9 @@ Run these from the repository root before deploying:
 bun install
 bun run lint
 bun run typecheck
-bun test tests/*.test.ts       # 35 unit tests, 118 assertions
-bun run test:api               # 87 disposable API/security checks
-bun run test:ui                # 12 Playwright + axe checks
+bun test tests/*.test.ts       # 40 unit tests, 136 assertions
+bun run test:api               # 124 disposable API/security checks
+bun run test:ui                # 14 Playwright + axe checks
 bun run seed                   # verifies 41 seeded objects
 bun run build                  # production build with TypeScript enforced
 ```
@@ -134,7 +130,7 @@ bun run deploy:db
 
 1. generates additive `CREATE TABLE IF NOT EXISTS`/index DDL;
 2. calls the application's `ensureSchema()` additive migration, which adds newer columns
-   such as `Program.environment` and `Program.modernKind` to existing tables;
+   such as `Program.environment`, `Program.modernKind`, **`FunctionGroup` table**, **`FunctionModule` ownership/activation fields** (`ownerId`, `active`, `createdBy`, `changedBy`, `changedOn`, `exceptions`) to existing tables;
 3. upserts the 10 topics, 11 demo tables/113 rows, function modules, 36 Standard
    examples, the shared INCLUDE and the 4 Modern examples;
 4. verifies every seeded ABAP/Modern object against the engine or validator.
@@ -206,19 +202,28 @@ The workflow also runs weekly on a schedule.
 1. Sign in with Clerk Email OTP and Google; confirm both map to the same owner identity.
 2. `/api/auth/me` → `username`, `role: OWNER`, `owner: true`.
 3. `/admin` loads; overview, users, programs, audit and 7-day chart render.
-4. Open **ABAP Training → Modern ABAP Workspace** or enter command `MODERN`.
-5. Open `Z_MD_CONSTRUCTORS`, click **Validate**, then **Execute**. Confirm output contains
+4. **Firefox/WebGUI frame visible on desktop** (top strip, tab strip, nav bar with SAP URL); **hidden on mobile** (≤640px).
+5. Open **ABAP Training → Modern ABAP Workspace** or enter command `MODERN`.
+6. Open `Z_MD_CONSTRUCTORS`, click **Validate**, then **Execute**. Confirm output contains
    the 7.40 constructor, `REDUCE 1..5 = 15`, `FOR ... WHERE` selection and the table
    expression result.
-6. Open `ZI_MD_FLIGHT`, `Z_MD_RAP_BEHAVIOR` and `ZCL_MD_AMDP`. Confirm **Execute** is
+7. Open `ZI_MD_FLIGHT`, `Z_MD_RAP_BEHAVIOR` and `ZCL_MD_AMDP`. Confirm **Execute** is
    disabled and **Validate** returns `VALID` with the structural-only explanation.
-7. Create a private Modern ABAP object, save, execute and delete it. Confirm it is private
+8. Create a private Modern ABAP object, save, execute and delete it. Confirm it is private
    to the owner and appears in `/admin` as a non-example program.
-8. Verify the Standard SAP GUI is unchanged: `MER / 105`, Easy Access, SE38 and status
-   bar.
-9. Verify a disposable ordinary user cannot see the owner's private objects, cannot open
-   `/admin`, and gets `404` for direct private Modern GET/PUT/DELETE.
-10. Confirm no `AUTH_SECRET`/legacy environment variables remain and `/api/health` reports
+9. **SE37 Function Builder:** Enter command `SE37` (or click SE37 in Easy Access).
+   - Function Group strip shows chips with counts; create a private group.
+   - Create a private FM in that group; starts **Inactive**.
+   - Edit Parameters (Import/Export/Changing/Tables), Exceptions, Source Code.
+   - **Check** passes; **Save** deactivates; **Activate** toggles Active.
+   - **Test** tab: fill inputs, Execute → Result grid + `sy-subrc` + List output.
+   - **Mobile (390×844):** frame hidden, tabs wrap, full functionality preserved.
+10. Verify the Standard SAP GUI is unchanged: `MER / 105`, Easy Access, SE38 and status
+    bar.
+11. Verify a disposable ordinary user cannot see the owner's private objects, cannot open
+    `/admin`, gets `404` for direct private Modern/FM GET/PUT/DELETE, and cannot call
+    another user's private FM via `CALL FUNCTION` or test console.
+12. Confirm no `AUTH_SECRET`/legacy environment variables remain and `/api/health` reports
     `passwordLogon: "retired"`.
 
 ### Legacy endpoint checks
