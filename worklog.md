@@ -1207,3 +1207,33 @@ Verification:
 Stage Summary:
 - Technical implementation, deployment and production verification are complete.
 - Final project acceptance still requires the owner's Modern/Standard visual sign-off and confirmation that the extra private program is expected; the final report remains marked pending until then.
+
+---
+
+Task ID: 43
+Agent: ZCode (GLM)
+Task: P4 — integrate App 2's ABAP Debugger, ST22 dump analysis, Pretty Printer and SE16N selection criteria into App 1 (selective integration, round 2)
+
+Work Log:
+- Re-audited both codebases. P3 already ported the Firefox/WebGUI shell and the SE37 Function Builder; the spec's "not ported" list named Debugger, ST22, BDC/SM35, dynpro, multi-tab sessions. This round ported the next tier of App 2's evidence-backed features.
+- Architecture decision for the debugger: App 2 keeps Engine objects in a module-level Map behind /api/abap (run/continue/debug). That requires a long-lived process and would break App 1's serverless/Vercel deployment. App 1's engine is a deterministic tree-walking interpreter executed statelessly, so the debugger was implemented as stateless step-by-re-execution: POST /api/debug re-runs the program per request with a stop predicate and pauses at the requested statement. ABAP DB writes stay inside the per-run in-memory snapshot, so re-execution never mutates persisted rows.
+- Engine changes (src/lib/abap/interpreter.ts, index.ts): RunOptions.debug stop hook in execStmt (single funnel; REPORT/INCLUDE/DATA/FORM/CLASS definitions never count as stops), call-frame depth tracking at the FORM/FM/method invocation sites for step-over, DebugPause signal, runAbapDebug entry point, debugVariables snapshots using the existing value serializers (elem/STRUCTURE/TABLE/OBJECT/REF with structured detail).
+- API: POST /api/debug (auth + CSRF + 240/min rate limit; start/stepInto/stepOver/continue, breakpoints, selection-screen round-trip, ExecutionLog written only for ended runs with the same canViewProgram attach contract as /api/execute). GET /api/dumps (caller's own ERROR runs).
+- UI: debugger-view.tsx (New Debugger layout: breakpoint gutter, current-line highlight, variable table, list output so far, F5/F6/F8/Stop toolbar), use-workbench debug session + debugArmed + prettyPrintActive, command field /h (arm) + /hx + ST22, editor toolbar Debug + Pretty Printer buttons (replaced both fake stubs), Shift+F1 shortcut, SE16 selection-criteria rows in data-browser.
+- Pretty Printer: adapted App 2's pretty.ts; fixed its real midliner bug (lines after ELSE/WHEN/CATCH kept the block indent), added METHOD/CLASS/INTERFACE handling; unit-tested including idempotency.
+- SE16: shared table-filters.ts (EQ/NE/GT/LT/GE/LE/BT/CP with */+ wildcards; parsed, validated, capped at 10 criteria), wired into /api/tables/[name]?filters= (400 on malformed JSON) and the data browser UI.
+- ST22: additive ExecutionLog.errorType column (prisma schema + db.ts addColumn), execute route now records the ABAP error type; dumps-view.tsx lists date/time, program, error type, short text with expand.
+- Fixed during testing: parseSelectionFilters returned null for "absent" and "invalid" alike, which made every plain SE16 request 400; CP wildcard regex escaped + before converting it; Playwright axe scan caught insufficient contrast and a non-keyboard-accessible scroll region in the new debugger view (both fixed to the project's established bar).
+- Documentation updated: README (new feature section, API rows, boundaries), docs/MASTER-PROJECT-SPEC.md (P4 section, evidence counts).
+
+Verification:
+- bun run lint PASS; bun run typecheck PASS
+- bun test tests/*.test.ts → 61 pass, 0 fail, 209 assertions (12 new debugger tests: start/step/stepOver/stepInto/continue/breakpoints/FM depth/REQUIRES_INPUT/dump-as-result; 9 new pretty/filters tests)
+- bun run test:api → 138 checks passed, 0 failed (14 new: debug auth/pause/continue/isolation, dump listing + errorType + cross-user invisibility, SE16 filters + invalid-criteria 400)
+- bun run test:ui → 18 pass (4 new: Debug button stepping + axe, /h + F8 arming, ST22 list, SE16 criteria narrowing)
+- bun run seed → 41 passed, 0 failed; bun run build → PASS (TypeScript enforced; /api/debug and /api/dumps present in the route manifest)
+- Known boundaries documented: multi-line statements highlight their final source line (parser convention); SY-UZEIT/time fields may differ between steps (fresh deterministic run per step).
+
+Stage Summary:
+- P4 selective integration is complete locally with all gates green; deployment and production smoke are pending the next release.
+- App 2 remains untouched; App 1 remains the primary product (identity, auth, ownership, admin, seed behavior unchanged).

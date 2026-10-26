@@ -1,12 +1,31 @@
 'use client'
 
-// ── Data Browser (SE16) ───────────────────────────────────────────────
+// ── Data Browser (SE16) with per-field selection criteria (SE16N) ─────
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Database, Search, Table2,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Database, FilterX, Plus, Search, Table2, Trash2,
 } from 'lucide-react'
 import { useWorkbench, api } from './use-workbench'
 import type { DdicTable, TableDetail } from './types'
+
+const SELECTION_OPS = ['EQ', 'NE', 'GT', 'LT', 'GE', 'LE', 'BT', 'CP'] as const
+type SelectionOp = (typeof SELECTION_OPS)[number]
+
+interface Criterion {
+  field: string
+  op: SelectionOp
+  low: string
+  high: string
+}
+
+const EMPTY_CRITERION: Criterion = { field: '', op: 'EQ', low: '', high: '' }
+
+function criteriaToFilters(criteria: Criterion[]): string | undefined {
+  const valid = criteria
+    .filter((c) => c.field && (c.low || c.op === 'CP'))
+    .map((c) => (c.op === 'BT' ? { field: c.field, op: c.op, low: c.low, high: c.high } : { field: c.field, op: c.op, low: c.low }))
+  return valid.length > 0 ? JSON.stringify(valid) : undefined
+}
 
 export function DataBrowserView() {
   const presetTable = useWorkbench((s) => s.browserTable)
@@ -18,6 +37,7 @@ export function DataBrowserView() {
   const [data, setData] = useState<TableDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [criteria, setCriteria] = useState<Criterion[]>([])
 
   useEffect(() => {
     api<{ tables: DdicTable[] }>('/api/tables')
@@ -31,18 +51,21 @@ export function DataBrowserView() {
       setTable(presetTable)
       setApplied(presetTable)
       setPage(1)
+      setCriteria([])
     }
   }, [presetTable, table])
 
   const load = useCallback(
-    async (tableName: string, pageNo: number, query: string) => {
+    async (tableName: string, pageNo: number, query: string, crits: Criterion[]) => {
       const name = tableName.trim().toUpperCase()
       if (!name) return
       setLoading(true)
       setError(null)
       try {
+        const filters = criteriaToFilters(crits)
         const r = await api<TableDetail>(
-          `/api/tables/${encodeURIComponent(name)}?page=${pageNo}&pageSize=50&q=${encodeURIComponent(query)}`,
+          `/api/tables/${encodeURIComponent(name)}?page=${pageNo}&pageSize=50&q=${encodeURIComponent(query)}` +
+            (filters ? `&filters=${encodeURIComponent(filters)}` : ''),
         )
         setData(r)
       } catch (e) {
@@ -57,7 +80,7 @@ export function DataBrowserView() {
 
   // initial / preset load
   useEffect(() => {
-    if (applied) void load(applied, 1, '')
+    if (applied) void load(applied, 1, '', [])
   }, [applied, load])
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
@@ -65,7 +88,7 @@ export function DataBrowserView() {
   const gotoPage = (p: number) => {
     const np = Math.min(Math.max(1, p), totalPages)
     setPage(np)
-    void load(applied, np, q)
+    void load(applied, np, q, criteria)
   }
 
   const submit = (e: React.FormEvent) => {
@@ -73,13 +96,23 @@ export function DataBrowserView() {
     setApplied(table.trim().toUpperCase())
     setPage(1)
     setQ('')
-    void load(table.trim().toUpperCase(), 1, '')
+    setCriteria([])
+    void load(table.trim().toUpperCase(), 1, '', [])
   }
 
   const submitFilter = (e: React.FormEvent) => {
     e.preventDefault()
     setPage(1)
-    void load(applied, 1, q)
+    void load(applied, 1, q, criteria)
+  }
+
+  const submitCriteria = () => {
+    setPage(1)
+    void load(applied, 1, q, criteria)
+  }
+
+  const updateCriterion = (idx: number, patch: Partial<Criterion>) => {
+    setCriteria((cs) => cs.map((c, i) => (i === idx ? { ...c, ...patch } : c)))
   }
 
   return (
@@ -90,7 +123,7 @@ export function DataBrowserView() {
           <Table2 className="h-5 w-5 text-[#8a6d1a]" />
           <div>
             <h1 className="text-[14px] font-bold text-[#12283c]">Data Browser (SE16)</h1>
-            <p className="text-[11.5px] text-[#7b8a9c]">Display table contents of the training database</p>
+            <p className="text-[11.5px] text-[#5b6d80]">Display table contents of the training database</p>
           </div>
         </div>
         <form onSubmit={submit} className="mt-2 flex flex-wrap items-center gap-2">
@@ -124,6 +157,108 @@ export function DataBrowserView() {
           )}
         </form>
       </div>
+
+      {/* selection criteria (SE16N-style per-field options) */}
+      {applied && data && (
+        <div className="border-b border-[#c3d0e0] bg-white px-4 py-2">
+          <div className="mx-auto max-w-[1200px]">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[12px] font-semibold text-[#3f5468]">Selection Criteria</span>
+              <span className="text-[11px] text-[#5b6d80]">
+                Field · Option (EQ, NE, GT, LT, GE, LE, BT, CP with * wildcard) · Value
+              </span>
+              <div className="ml-auto flex items-center gap-1.5">
+                <button
+                  type="button"
+                  className="sap-btn"
+                  onClick={() => setCriteria((cs) => (cs.length < 10 ? [...cs, { ...EMPTY_CRITERION }] : cs))}
+                  disabled={criteria.length >= 10}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Criterion
+                </button>
+                {criteria.length > 0 && (
+                  <button
+                    type="button"
+                    className="sap-btn"
+                    title="Remove all criteria and reload the full table"
+                    onClick={() => {
+                      setCriteria([])
+                      setPage(1)
+                      void load(applied, 1, q, [])
+                    }}
+                  >
+                    <FilterX className="h-3.5 w-3.5" />
+                    Clear
+                  </button>
+                )}
+                <button type="button" className="sap-btn sap-btn-primary" onClick={submitCriteria}>
+                  <Table2 className="h-3.5 w-3.5" />
+                  Execute (F8)
+                </button>
+              </div>
+            </div>
+            {criteria.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                {criteria.map((c, idx) => (
+                  <div key={idx} className="flex flex-wrap items-center gap-1.5">
+                    <select
+                      className="h-[28px] w-[180px] rounded-[3px] border border-[#7f9db9] bg-white px-1 font-mono text-[12px] uppercase outline-none focus:border-[#0a6ed1]"
+                      value={c.field}
+                      onChange={(e) => updateCriterion(idx, { field: e.target.value.toUpperCase() })}
+                      aria-label={`Criterion ${idx + 1}: field`}
+                    >
+                      <option value="">Field…</option>
+                      {(data?.fields ?? []).map((f) => (
+                        <option key={f.name} value={f.name}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="h-[28px] w-[72px] rounded-[3px] border border-[#7f9db9] bg-white px-1 font-mono text-[12px] outline-none focus:border-[#0a6ed1]"
+                      value={c.op}
+                      onChange={(e) => updateCriterion(idx, { op: e.target.value as SelectionOp })}
+                      aria-label={`Criterion ${idx + 1}: option`}
+                    >
+                      {SELECTION_OPS.map((op) => (
+                        <option key={op} value={op}>
+                          {op}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      className="h-[28px] w-[170px] rounded-[3px] border border-[#7f9db9] bg-white px-2 font-mono text-[12px] outline-none focus:border-[#0a6ed1]"
+                      value={c.low}
+                      onChange={(e) => updateCriterion(idx, { low: e.target.value })}
+                      placeholder={c.op === 'CP' ? 'pattern e.g. AA*' : c.op === 'BT' ? 'Low' : 'Value'}
+                      aria-label={`Criterion ${idx + 1}: low value`}
+                    />
+                    {c.op === 'BT' && (
+                      <input
+                        className="h-[28px] w-[170px] rounded-[3px] border border-[#7f9db9] bg-white px-2 font-mono text-[12px] outline-none focus:border-[#0a6ed1]"
+                        value={c.high}
+                        onChange={(e) => updateCriterion(idx, { high: e.target.value })}
+                        placeholder="High"
+                        aria-label={`Criterion ${idx + 1}: high value`}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className="rounded-sm p-1 text-[#5b6d80] hover:bg-[#dbe8f8] hover:text-[#c4302f]"
+                      onClick={() => setCriteria((cs) => cs.filter((_, i) => i !== idx))}
+                      aria-label={`Remove criterion ${idx + 1}`}
+                      title="Remove this criterion"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* data grid */}
       <div className="wb-scroll min-h-0 flex-1 overflow-auto p-4">
@@ -215,7 +350,7 @@ export function DataBrowserView() {
                   <tbody>
                     {data.rows.length === 0 && (
                       <tr>
-                        <td colSpan={data.fields.length + 1} className="px-3 py-8 text-center text-[13px] text-[#7b8a9c]">
+                        <td colSpan={data.fields.length + 1} className="px-3 py-8 text-center text-[13px] text-[#5b6d80]">
                           No entries found{q ? ` for "${q}"` : ''}.
                         </td>
                       </tr>

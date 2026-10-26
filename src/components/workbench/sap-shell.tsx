@@ -26,6 +26,8 @@ import { FunctionBuilderView } from './function-builder'
 import { ClassBuilderView } from './class-builder'
 import { SelectionScreen } from './selection-screen'
 import { ModernWorkspace } from './modern-workspace'
+import { DebuggerView } from './debugger-view'
+import { DumpsView } from './dumps-view'
 import { CommandPalette } from './command-palette'
 import {
   AboutDialog, ConfirmCreateDialog, ConfirmDeleteDialog, LogoffConfirmDialog,
@@ -509,7 +511,7 @@ export function SapShell() {
         {
           label: 'Utilities',
           items: [
-            { label: 'Pretty Printer', shortcut: 'Shift+F1', run: () => w().addMessage('I', 'Pretty printer: source is re-indented on save (demo)') },
+            { label: 'Pretty Printer', shortcut: 'Shift+F1', run: () => w().prettyPrintActive() },
             { sep: true },
             { label: 'Text Elements', disabled: true },
             { label: 'Version Management', disabled: true },
@@ -825,6 +827,14 @@ export function SapShell() {
       } else if (e.key === 'F8' && s.view === 'se38') {
         e.preventDefault()
         void s.se38Display('display')
+      } else if (s.view === 'debugger' && ['F5', 'F6', 'F8'].includes(e.key)) {
+        e.preventDefault()
+        if (e.key === 'F5') void s.debugStep('stepInto')
+        else if (e.key === 'F6') void s.debugStep('stepOver')
+        else void s.debugStep('continue')
+      } else if (e.shiftKey && e.key === 'F1' && prog && s.view === 'tab') {
+        e.preventDefault()
+        s.prettyPrintActive()
       } else if (e.key === 'F8' && prog && s.view === 'tab') {
         e.preventDefault()
         void s.runProgram(prog)
@@ -1101,10 +1111,19 @@ export function SapShell() {
           <button
             type="button"
             className="sap-tool-textbtn"
-            title="Pretty Printer (Shift+F1)"
-            onClick={() => useWorkbench.getState().addMessage('I', 'Pretty printer: source is formatted automatically when you execute')}
+            title="Pretty Printer (Shift+F1) — upper-case keywords and re-indent blocks"
+            onClick={() => useWorkbench.getState().prettyPrintActive()}
           >
             Pretty Printer
+          </button>
+          <span className="sap-toolbar-sep" aria-hidden />
+          <button
+            type="button"
+            className="sap-tool-textbtn"
+            title="Debug this program (/h + F8)"
+            onClick={() => activeProgramName && void useWorkbench.getState().startDebug(activeProgramName)}
+          >
+            Debug
           </button>
         </div>
       )}
@@ -1192,6 +1211,8 @@ export function SapShell() {
             {view === 'classes' && <ClassBuilderView />}
             {view === 'functions' && <FunctionBuilderView />}
             {view === 'modern' && <ModernWorkspace />}
+            {view === 'debugger' && <DebuggerView />}
+            {view === 'dumps' && <DumpsView />}
           </div>
         </main>
       </div>

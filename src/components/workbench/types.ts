@@ -298,6 +298,48 @@ export type ViewKind =
   | 'classes'
   | 'functions'
   | 'modern'
+  | 'debugger' // ABAP Debugger (/h or Debug button)
+  | 'dumps' // ABAP Dump Analysis (ST22)
+
+// ── ABAP Debugger (mirrors /api/debug; stateless step-by-re-execution) ──
+export interface DebugVariable {
+  name: string
+  kind: string // ABAP type letter, STRUCTURE, TABLE, OBJECT, REF
+  value: string
+  level: number // 0 = innermost frame
+  detail?: unknown // structured preview for structures / first table rows
+}
+
+export interface DebugStopState {
+  stopIndex: number
+  line: number
+  depth: number
+  kind: string
+  statement: string
+  variables: DebugVariable[]
+}
+
+export interface DebugSessionState {
+  programName: string
+  source: string
+  parameters?: Record<string, string | string[]>
+  stop: DebugStopState
+  breakpoints: number[]
+  list: ListLine[]
+  busy: boolean
+}
+
+export interface DumpEntry {
+  id: number
+  programName: string
+  status: string
+  durationMs: number
+  message: string
+  errorType: string | null
+  errorLine: number | null
+  listLines: number
+  createdAt: string
+}
 
 export interface SystemMessage {
   id: number

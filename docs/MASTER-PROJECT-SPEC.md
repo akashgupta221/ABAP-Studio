@@ -22,6 +22,7 @@ acceptance gates. Historical Task IDs and deployment evidence are kept in
 | Legacy password authentication removal | **Complete** — code and UI deleted; permanent endpoint stubs |
 | P2 — approved Modern ABAP environment | **Implemented, deployed, production-verified and owner-signed-off** |
 | **P3 — App 2 Integration (Firefox/WebGUI shell + SE37 Function Builder)** | **Implemented, deployed, production-verified and owner-signed-off** |
+| **P4 — App 2 Integration Round 2 (Debugger, ST22, Pretty Printer, SE16N criteria)** | **Implemented locally; lint/typecheck/61 unit/138 API/18 UI gates pass; deploy pending** |
 | UI/accessibility automation | **Complete** — 14 Playwright tests with axe serious/critical threshold |
 | Documentation/worklog/CI | **Updated for the final release** |
 | Final acceptance report | **Published** with technical evidence; owner visual sign-off recorded |
@@ -194,6 +195,34 @@ The workspace supports:
 The engine regression `FOR ... WHERE ( iterator-field = ... )` was fixed: the loop
 iterator is now in scope during the `WHERE` predicate, matching ABAP semantics.
 
+
+## 5b. App 2 Integration Round 2 (P4) — Debugger, ST22, Pretty Printer, SE16N Criteria
+
+**Scope:** the next tier of App 2's evidence-backed features, adapted to App 1's stateless
+serverless architecture rather than copied from App 2's long-lived in-process engine.
+
+| Component | App 2 Mechanism | App 1 Adaptation |
+|---|---|---|
+| **ABAP Debugger** | In-memory `Engine` registry (`Map<runId, Engine>`) on a long-lived node server; explicit VM with instruction pointer, `paused`, `hooks.onStep`; `/api/abap` actions run/continue/debug | **Stateless step-by-re-execution**: `POST /api/debug` re-runs the deterministic engine per request with a stop predicate (`start`/`stepInto`/`stepOver`/`continue` + breakpoints); pause state (stop ordinal, line, depth, variables) travels through the client. Works on Vercel serverless; no session registry; ABAP DB writes stay inside the per-run in-memory snapshot, so re-execution never touches persisted rows |
+| **Debugger UI** | `DebuggerScreen` with server session id | `debugger-view.tsx`: breakpoint gutter (click a line), current-line highlight, variable table (kind/value/structured detail), list output so far, F5/F6/F8 keyboard map, `/h` arm + editor Debug button, REQUIRES_INPUT round-trip through the existing selection dialog |
+| **ST22 Dump Analysis** | `writeDump` + `St22Screen` (own dump table) | Additive `ExecutionLog.errorType` column; `GET /api/dumps` (caller's own ERROR runs only); `dumps-view.tsx` ST22 list with ABAP error type, short text, source line |
+| **Pretty Printer** | `pretty.ts` token-based formatter | Adapted to `src/lib/abap/pretty.ts`; fixed the midliner (ELSE/WHEN/CATCH) indentation so block bodies keep their level; extended keyword sets (METHOD/CLASS/INTERFACE); wired to the previously fake menu stub + toolbar button + Shift+F1 |
+| **SE16N selection criteria** | SE16 screen with per-field ranges | Shared `src/lib/table-filters.ts` (EQ/NE/GT/LT/GE/LE/BT/CP with `*`/`+` wildcards, validated, unit-tested); `/api/tables/[name]?filters=`; criteria rows in the data browser |
+
+**Engine touch points (no behavior change without `debug` option):** `RunOptions.debug`
+stop hook in `execStmt` (single funnel; declarations/structural statements never count as
+stops), call-frame depth tracking at FORM/FM/method invocation sites, `DebugPause` signal,
+`runAbapDebug` entry point, variable snapshots via the existing value serializers.
+
+**Known boundary:** the parser attributes multi-line statements (e.g. `CALL FUNCTION`
+spanning lines) to their final source line, so the debugger highlights the statement's end
+line; single-line statements — the norm in the training corpus — are exact. Time-based
+system fields (`SY-UZEIT`, `GET TIME STAMP`) can differ between steps because each step is a
+fresh deterministic run.
+
+**Still not ported from App 2:** SHDB recorder, BDC sessions/SM35, dynpro/module pools
+(PBO/PAI screen flow), AL11, SE51, SE91, SAT runtime analysis, multi-tab Firefox sessions.
+
 ## 5. Authentication, authorization and administration
 
 - **Clerk is the only identity provider.** Email OTP and Google are enabled; password,
@@ -268,9 +297,9 @@ instead of nested interactive elements.
 |---|---|
 | `bun run lint` | pass |
 | `bun run typecheck` | pass |
-| `bun test tests/*.test.ts` | **40 pass, 0 fail, 136 assertions** |
-| `bun run test:api` | **124 checks pass** on disposable DB |
-| `bun run test:ui` | **14 pass** (Playwright + axe) |
+| `bun test tests/*.test.ts` | **61 pass, 0 fail, 209 assertions** (incl. 12 debugger, 9 pretty/filters) |
+| `bun run test:api` | **138 checks pass** on disposable DB (incl. debug, dumps, SE16 criteria) |
+| `bun run test:ui` | **18 pass** (Playwright + axe; incl. debugger stepping, /h, ST22, SE16 criteria) |
 | `bun run seed` | **41 passed, 0 failed** |
 | `bun run build` | pass with TypeScript enforced |
 | CI | `.github/workflows/ci.yml` runs the same gates with no secrets |

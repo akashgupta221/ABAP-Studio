@@ -8,7 +8,7 @@ import { useWorkbench } from './use-workbench'
 import { api } from './use-workbench'
 import type { ProgramListItem } from './types'
 
-const TCODES = ['SE38', 'SE80', 'SE11', 'SE16', 'SE24', 'SE37', 'SE93', 'SLG1', 'SEARCH', 'MODERN']
+const TCODES = ['SE38', 'SE80', 'SE11', 'SE16', 'SE24', 'SE37', 'SE93', 'SLG1', 'ST22', 'SEARCH', 'MODERN']
 
 export function CommandField() {
   const [value, setValue] = useState('')
@@ -71,6 +71,16 @@ export function CommandField() {
         st().addMessage('I', 'Session list: MER (1) — this is session 1')
         return
       }
+      if (lower === '/h') {
+        st().setDebugArmed(true)
+        st().addMessage('S', 'Debugging switched on — the next execution (F8) stops in the ABAP Debugger')
+        return
+      }
+      if (lower === '/hx' || lower === '/hoff') {
+        st().setDebugArmed(false)
+        st().addMessage('S', 'Debugging switched off')
+        return
+      }
       v = v.replace(/^\/(n|o|\*)/i, '').trim()
       if (!v) return
 
@@ -130,6 +140,11 @@ export function CommandField() {
           case 'SLG1':
             useWorkbench.setState({ view: 'home' })
             addMessage('S', 'Recent executions are shown on the SAP Easy Access screen')
+            return
+          case 'ST22':
+            useWorkbench.setState({ lastTcode: 'ST22' })
+            navigate('dumps')
+            addMessage('S', 'ABAP Dump Analysis (ST22)')
             return
           case 'ADMIN':
             if (!useWorkbench.getState().session.owner) {

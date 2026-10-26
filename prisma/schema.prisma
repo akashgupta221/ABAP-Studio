@@ -137,6 +137,8 @@ model ExecutionLog {
   status      String // SUCCESS | ERROR | SYNTAX_ERROR
   durationMs  Int      @default(0)
   message     String   @default("")
+  // ABAP runtime error id (e.g. CX_SY_ZERODIVIDE) for the ST22 dump analysis
+  errorType   String?
   errorLine   Int?
   listLines   Int      @default(0)
   hadAlv      Boolean  @default(false)

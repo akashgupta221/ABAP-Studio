@@ -4,9 +4,13 @@
 import { create } from 'zustand'
 import { toast } from 'sonner'
 import { signOutClerkClient } from '@/lib/clerk-client'
+import { prettyPrintAbap } from '@/lib/abap/pretty'
 import type {
   CheckIssue,
+  DebugSessionState,
+  DebugStopState,
   Favorite,
+  ListLine,
   MessageType,
   Paradigm,
   ProgramFull,
@@ -47,6 +51,22 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 interface PendingSelection {
   programName: string
   items: SelectionScreenItem[]
+  debug?: boolean // submit back into the debugger instead of a normal run
+}
+
+// /api/debug response — either a pause, a selection-screen request, or the
+// final RunResult (with ended:true) when the program completed
+interface DebugApiResponse {
+  status?: 'PAUSED' | 'REQUIRES_INPUT'
+  ended?: boolean
+  stop?: DebugStopState
+  list?: ListLine[]
+  selectionScreen?: SelectionScreenItem[]
+  // RunResult passthrough when ended
+  error?: RunResult['error']
+  durationMs?: RunResult['durationMs']
+  stats?: RunResult['stats']
+  alv?: RunResult['alv']
 }
 
 interface NewDialogState {
@@ -103,6 +123,16 @@ interface WorkbenchState {
   aboutOpen: boolean
   tcodeDialogOpen: boolean
   favorites: Favorite[]
+
+  // ── ABAP Debugger ───────────────────────────────────────────────────
+  debugSession: DebugSessionState | null
+  debugArmed: boolean
+  setDebugArmed: (v: boolean) => void
+  startDebug: (name: string, parameters?: Record<string, string | string[]>) => Promise<void>
+  debugStep: (cmd: 'stepInto' | 'stepOver' | 'continue') => Promise<void>
+  debugAbort: () => void
+  toggleBreakpoint: (line: number) => void
+  prettyPrintActive: () => void
 
   // ── SAP session / logon pad ─────────────────────────────────────────
   session: SapSession
@@ -237,6 +267,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   aboutOpen: false,
   tcodeDialogOpen: false,
   favorites: [],
+  debugSession: null,
+  debugArmed: false,
 
   session: { user: 'DEVELOPER', client: '105', language: 'EN', loggedIn: false },
   insertMode: 'INS',
@@ -425,6 +457,12 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
 
   // ── execute ─────────────────────────────────────────────────────────
   runProgram: async (name) => {
+    // /h semantics: the next execution starts in the debugger
+    if (get().debugArmed) {
+      set({ debugArmed: false })
+      await get().startDebug(name)
+      return
+    }
     const prog = get().programs[name]
     if (!prog || prog.running) return
     const seq = ++runSeq
@@ -465,6 +503,11 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     if (!pending) return
     runSeq++ // supersede any in-flight run response
     const { programName: name } = pending
+    if (pending.debug) {
+      set({ pendingSelection: null })
+      await get().startDebug(name, parameters)
+      return
+    }
     const prog = get().programs[name]
     if (prog) set((s) => ({ programs: { ...s.programs, [name]: { ...prog, running: true } } }))
     set({ selectionBusy: true })
@@ -504,6 +547,152 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       const p = get().programs[pending.programName]
       if (p) set((s) => ({ programs: { ...s.programs, [pending.programName]: { ...p, running: false } } }))
     }
+  },
+
+  // ── ABAP Debugger (stateless: every step re-runs server-side) ───────
+  setDebugArmed: (v) => set({ debugArmed: v }),
+
+  startDebug: async (name, parameters) => {
+    const prog = get().programs[name]
+    if (!prog) return
+    set({ debugArmed: false })
+    try {
+      const res = await api<DebugApiResponse>('/api/debug', {
+        method: 'POST',
+        body: JSON.stringify({ name, source: prog.source, parameters, cmd: 'start' }),
+      })
+      if (res.status === 'REQUIRES_INPUT') {
+        // selection screen first; submitSelection restarts the debugger with values
+        set({ pendingSelection: { programName: name, items: res.selectionScreen ?? [], debug: true } })
+        return
+      }
+      if (!res.stop) {
+        // ran to completion without a stop (no executable statements)
+        get().setOutput(name, res as RunResult)
+        const outTab = tabOf('output', name)
+        set((s) => ({
+          tabs: s.tabs.some((t) => t.key === outTab.key) ? s.tabs : [...s.tabs, outTab],
+          activeTabKey: outTab.key,
+          view: 'tab',
+        }))
+        get().addMessage('S', `Program ${name} executed (${res.durationMs ?? 0} ms)`)
+        return
+      }
+      set({
+        debugSession: {
+          programName: name,
+          source: prog.source,
+          parameters,
+          stop: res.stop,
+          breakpoints: [],
+          list: res.list ?? [],
+          busy: false,
+        },
+        view: 'debugger',
+        lastTcode: 'DEBUGGER',
+      })
+      get().addMessage('S', `Debugger switched on — ${name} stopped at line ${res.stop.line}`)
+    } catch (e) {
+      toast.error((e as Error).message)
+      get().addMessage('E', (e as Error).message)
+    }
+  },
+
+  debugStep: async (cmd) => {
+    const s = get().debugSession
+    if (!s || s.busy) return
+    set({ debugSession: { ...s, busy: true } })
+    try {
+      const res = await api<DebugApiResponse>('/api/debug', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: s.programName,
+          source: s.source,
+          parameters: s.parameters,
+          cmd,
+          stopIndex: s.stop.stopIndex,
+          depth: s.stop.depth,
+          breakpoints: s.breakpoints,
+        }),
+      })
+      if (!res.stop) {
+        // the run completed (or hit a runtime error) — show the final output
+        const result = res as RunResult
+        get().setOutput(s.programName, result)
+        const outTab = tabOf('output', s.programName)
+        set((st) => ({
+          tabs: st.tabs.some((t) => t.key === outTab.key) ? st.tabs : [...st.tabs, outTab],
+          activeTabKey: outTab.key,
+          view: 'tab',
+          debugSession: null,
+        }))
+        if (result.status === 'ERROR') {
+          get().addMessage(
+            'E',
+            `${s.programName}: ${result.error?.abapType ?? result.error?.kind} — ${result.error?.message ?? ''}`,
+          )
+        } else {
+          get().addMessage('S', `Program ${s.programName} executed (${result.durationMs} ms)`)
+        }
+        return
+      }
+      set((st) =>
+        st.debugSession
+          ? {
+              debugSession: {
+                ...st.debugSession,
+                stop: res.stop!,
+                list: res.list ?? st.debugSession.list,
+                busy: false,
+              },
+            }
+          : {},
+      )
+    } catch (e) {
+      toast.error((e as Error).message)
+      get().addMessage('E', (e as Error).message)
+      const cur = get().debugSession
+      if (cur) set({ debugSession: { ...cur, busy: false } })
+    }
+  },
+
+  debugAbort: () => {
+    set({ debugSession: null })
+    get().addMessage('S', 'Debug session ended')
+  },
+
+  toggleBreakpoint: (line) =>
+    set((s) => {
+      if (!s.debugSession) return {}
+      const has = s.debugSession.breakpoints.includes(line)
+      const breakpoints = has
+        ? s.debugSession.breakpoints.filter((l) => l !== line)
+        : [...s.debugSession.breakpoints, line].sort((a, b) => a - b)
+      return { debugSession: { ...s.debugSession, breakpoints } }
+    }),
+
+  // ── Pretty Printer (Shift+F1, real re-format of the open editor source) ──
+  prettyPrintActive: () => {
+    const s = get()
+    const tab = s.tabs.find((t) => t.key === s.activeTabKey)
+    if (!tab || tab.kind !== 'program') {
+      s.addMessage('I', 'Pretty Printer: open a program in the ABAP Editor first')
+      return
+    }
+    const prog = s.programs[tab.programName]
+    if (!prog) return
+    if (prog.isExample) {
+      s.addMessage('W', 'Example programs are read-only — Pretty Printer cannot change them. Use Save As first.')
+      toast.info('Example is read-only', { description: 'Create your own copy with Save As, then format it.' })
+      return
+    }
+    const formatted = prettyPrintAbap(prog.source)
+    if (formatted === prog.source) {
+      s.addMessage('S', `Pretty Printer: ${prog.name} is already formatted`)
+      return
+    }
+    s.updateSource(prog.name, formatted)
+    s.addMessage('S', `Pretty Printer: ${prog.name} reformatted (keywords upper-cased, blocks indented)`)
   },
 
   // ── check ───────────────────────────────────────────────────────────
@@ -787,6 +976,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         systemStatusOpen: false,
         confirmDelete: null,
         whereUsed: { program: '', open: false, loading: false, hits: [] },
+        debugSession: null,
+        debugArmed: false,
       })
     })()
   },

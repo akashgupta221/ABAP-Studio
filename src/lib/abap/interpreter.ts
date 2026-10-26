@@ -124,6 +124,52 @@ export class RtFatal extends Error {
     this.msgType = msgType
   }
 }
+
+// ── debugger ───────────────────────────────────────────────────────────
+// The debugger works by deterministic re-execution: every debug request runs
+// the program from the start with a stop predicate and pauses at the Nth
+// executable statement (see runAbapDebug). The engine itself stays stateless.
+export interface DebugVariable {
+  name: string
+  kind: string // ABAP type letter, STRUCTURE, TABLE, OBJECT, REF
+  value: string
+  level: number // 0 = innermost frame scope
+  detail?: unknown // structured preview (struct fields / first table rows)
+}
+
+export interface DebugStopContext {
+  stopIndex: number // 1-based ordinal of the executable statement
+  line: number // source line (best known)
+  depth: number // call-frame depth (0 = main program)
+  kind: string // statement tag (st.t)
+}
+
+export interface DebugControl {
+  shouldStop(ctx: DebugStopContext): boolean
+}
+
+export interface DebugSnapshot {
+  stopIndex: number
+  line: number
+  depth: number
+  kind: string
+  statement: string
+  variables: DebugVariable[]
+  // attached by the debug runner when the pause surfaces
+  list?: ListLine[]
+  messages?: MessageItem[]
+}
+
+export class DebugPause extends Error {
+  constructor(public snapshot: DebugSnapshot) {
+    super('DEBUG_PAUSE')
+  }
+}
+
+// statements that only declare or register — the SAP debugger never steps on them
+const DEBUG_NON_EXEC_KINDS = new Set([
+  'report', 'include', 'vardecl', 'event', 'form', 'functiondef', 'classdef', 'classimpl', 'tables',
+])
 type Signal = { type: 'none' } | { type: 'continue' } | { type: 'exit' } | { type: 'exitForm' } | { type: 'leaveProgram' }
 const SIG_NONE: Signal = { type: 'none' }
 
@@ -185,6 +231,7 @@ export interface RunOptions {
   parameters?: Record<string, string | string[]>
   stepLimit?: number
   timeLimitMs?: number
+  debug?: DebugControl
 }
 
 const BUILTIN_EXC_HIER: Record<string, string[]> = {
@@ -247,6 +294,11 @@ export class Interpreter {
   currentClassName: string | null = null
   currentSelf: RtOref | null = null
   currentFormScope: Scope | null = null
+  // debugger state
+  callDepth = 0 // FORM / FUNCTION / METHOD frames
+  stopOrdinal = 0 // 1-based counter over executable statements
+  private lastLine = 0
+  private sourceLines: string[] = []
 
   constructor(prog: AbapProgram, opts: RunOptions) {
     this.prog = prog
@@ -255,6 +307,7 @@ export class Interpreter {
     this.fms = opts.functionModules ?? new Map()
     this.stepLimit = opts.stepLimit ?? 8_000_000
     this.timeLimitMs = opts.timeLimitMs ?? 12_000
+    if (opts.debug) this.sourceLines = opts.source.split('\n')
     this.classes = prog.classes
     this.interfaces = prog.interfaces
     this.impls = prog.impls
@@ -297,6 +350,7 @@ export class Interpreter {
       this.runEventIfExists('END-OF-SELECTION')
       result.status = this.aborted ? 'ERROR' : 'SUCCESS'
     } catch (e: any) {
+      if (e instanceof DebugPause) throw e // surfaced by runAbapDebug, not an ABAP error
       if (e instanceof AbapSyntaxError) {
         result.status = 'ERROR'
         result.error = { kind: 'SYNTAX', message: e.message, line: e.line, statement: e.statement }
@@ -749,8 +803,73 @@ export class Interpreter {
     }
   }
 
+  // ── debugger variable snapshot ──────────────────────────────────────
+  private debugVariables(innermost: Scope, limit = 80): DebugVariable[] {
+    const out: DebugVariable[] = []
+    const seen = new Set<string>()
+    let s: Scope | undefined = innermost
+    for (let level = 0; s && out.length < limit; s = s.parent, level++) {
+      for (const [name, entry] of s.vars) {
+        if (seen.has(name) || /^[&%]/.test(name)) continue
+        seen.add(name)
+        out.push(this.describeDebugValue(name, entry.value, level))
+        if (out.length >= limit) break
+      }
+    }
+    return out
+  }
+
+  private describeDebugValue(name: string, v: RtValue, level: number): DebugVariable {
+    const maxDetail = 4000
+    if (v.kind === 'elem') {
+      return { name, kind: v.type, value: formatElem(v), level }
+    }
+    if (v.kind === 'struct') {
+      const json = JSON.stringify(serializeForClient(v)) ?? ''
+      return {
+        name, kind: 'STRUCTURE', level,
+        value: json.length > 120 ? `${json.slice(0, 117)}…` : json,
+        detail: json.length < maxDetail ? JSON.parse(json) : undefined,
+      }
+    }
+    if (v.kind === 'table') {
+      const rows = serializeForClient(v) as unknown[]
+      const preview = rows.slice(0, 5)
+      return {
+        name, kind: 'TABLE', level,
+        value: `${v.rows.length} row${v.rows.length === 1 ? '' : 's'}`,
+        detail: rows.length > 0 ? preview : undefined,
+      }
+    }
+    if (v.kind === 'oref') {
+      return { name, kind: 'OBJECT', value: v.clsName ? `{class=${v.clsName}}` : '{initial}', level }
+    }
+    return { name, kind: 'REF', value: v.target ? `{ref → ${v.target.kind}}` : '{initial}', level }
+  }
+
   execStmt(st: Stmt, scope: Scope): Signal {
     this.tick()
+    if (this.opts.debug && !DEBUG_NON_EXEC_KINDS.has(st.t)) {
+      this.stopOrdinal++
+      const declared = (st as { line?: number }).line
+      if (typeof declared === 'number' && declared > 0) this.lastLine = declared
+      const ctx: DebugStopContext = {
+        stopIndex: this.stopOrdinal,
+        line: this.lastLine,
+        depth: this.callDepth,
+        kind: st.t,
+      }
+      if (this.opts.debug.shouldStop(ctx)) {
+        throw new DebugPause({
+          stopIndex: ctx.stopIndex,
+          line: ctx.line,
+          depth: ctx.depth,
+          kind: st.t,
+          statement: (this.sourceLines[ctx.line - 1] ?? '').trim(),
+          variables: this.debugVariables(scope),
+        })
+      }
+    }
     switch (st.t) {
       case 'report': {
         if (st.lineSize) this.listWidth = Math.min(500, this.exprNum(st.lineSize, scope))
@@ -1732,7 +1851,13 @@ export class Interpreter {
     bindParams(form.params.filter((p) => p.kind === 'using'), st.using, false)
     bindParams(form.params.filter((p) => p.kind === 'changing'), st.changing, true)
     bindParams(form.params.filter((p) => p.kind === 'tables'), st.tables, true)
-    const sig = this.execStmts(form.body, formScope)
+    this.callDepth++
+    let sig: Signal
+    try {
+      sig = this.execStmts(form.body, formScope)
+    } finally {
+      this.callDepth--
+    }
     // write back ref params
     const refBoxes: Map<string, Box> = (formScope as any).refBoxes ?? new Map()
     for (const [name, box] of refBoxes) {
@@ -1803,6 +1928,7 @@ export class Interpreter {
     const fnDef = [...fmProg.functions.values()][0]
     const prevForm = this.currentFormScope
     this.currentFormScope = fmScope
+    this.callDepth++
     try {
       const sig = this.execStmts(fnDef.body, fmScope)
     } catch (e) {
@@ -1821,6 +1947,7 @@ export class Interpreter {
       throw e
     } finally {
       this.currentFormScope = prevForm
+      this.callDepth--
     }
     // write back ref params
     for (const [name, box] of refBoxes) {
@@ -2210,11 +2337,13 @@ export class Interpreter {
     const prevSelf = this.currentSelf
     this.currentClassName = clsName
     this.currentSelf = self ?? null
+    this.callDepth++
     try {
       const sig = this.execStmts(methodImpl.body, mScope)
     } finally {
       this.currentClassName = prevCls
       this.currentSelf = prevSelf
+      this.callDepth--
     }
     // write back refs
     for (const [name, box] of refBoxes) {
@@ -2374,11 +2503,13 @@ export class Interpreter {
     const prevSelf = this.currentSelf
     this.currentClassName = clsName
     this.currentSelf = self
+    this.callDepth++
     try {
       this.execStmts(methodImpl.body, mScope)
     } finally {
       this.currentClassName = prevCls
       this.currentSelf = prevSelf
+      this.callDepth--
     }
     return initialElem('C', 1)
   }
