@@ -978,3 +978,36 @@ Stage Summary:
 - PR #58415 is correct and ready for maintainer review.
 - Wait for the merge; do not comment or ping. Then verify DNS, trigger Clerk's mail/DNS check and retry owner Email OTP.
 - P1 remains **not accepted**; `main` remains at P0 and production still runs the P1 branch build.
+
+---
+
+Task ID: 37
+Agent: OpenCode (DeepSeek V4.1 Flash Free)
+Task: Verify the merged Clerk mail/DKIM DNS PR and trigger Clerk verification
+
+Work Log:
+- Confirmed [PR #58415](https://github.com/is-a-dev/register/pull/58415) is **MERGED** (`mergedAt: 2026-10-25T20:07:00Z`, merge commit `54aa4bdea27f61843e8012832ab3a2790efe8f13`). All four checks passed.
+- Verified the three records now resolve to the current production mail tenant:
+  - `clkmail...` -> `mail.nefqx6afwufx.clerk.services`
+  - `clk._domainkey...` -> `dkim1.nefqx6afwufx.clerk.services`
+  - `clk2._domainkey...` -> `dkim2.nefqx6afwufx.clerk.services`
+- Triggered Clerk's production domain DNS check via the Platform API.
+- Clerk now reports:
+  - `status: complete`
+  - `dns.status: complete`
+  - `mail.status: complete`
+  - `ssl.status: complete`
+  - all five CNAMEs verified
+- Email OTP delivery is no longer blocked by DNS. The next required check is a real production owner Email OTP sign-in.
+- Updated the docs and worklog. No app code, Vercel setting or secret was changed.
+
+Verification:
+- `gh pr view 58415` -> `state: MERGED`, merge commit `54aa4bdea27f61843e8012832ab3a2790efe8f13`
+- `dig` for the three hostnames -> new `nefqx6afwufx` targets
+- Clerk domain status -> `status: complete`, `dns: complete`, `mail: complete`, `ssl: complete`
+- No secret or OTP was printed or handled
+
+Stage Summary:
+- The Clerk mail/DKIM blocker is cleared.
+- The owner should retry the production Email OTP sign-in at `https://abap-studio.akashgupta.is-a.dev/sign-in`.
+- P1 remains **not accepted**; `main` remains at P0 and production still runs the P1 branch build.

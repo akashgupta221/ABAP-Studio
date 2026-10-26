@@ -78,11 +78,12 @@ Vercel domain reports `configured-correctly` and the app returns HTTP `200` at
 `https://abap-studio.akashgupta.is-a.dev`. The P1 deployment
 `dpl_GLQLQvazo3cYfWdBV5KmjM6U4ujb` is aliased to the custom domain; `/sign-in` and
 `/sign-up` return `200`. The Clerk keys, `OWNER_EMAIL`, webhook secret and fallback flags are
-set in Vercel. **Clerk mail delivery is still blocked:** its production domain expects updated
-mail/DKIM CNAME targets, while the live DNS still points at the old tenant. Email OTP cannot
-be delivered until [PR #58415](https://github.com/is-a-dev/register/pull/58415) is merged. Google
-production credentials, the real production sign-in/webhook test and legacy account mapping
-also remain pending. No production Clerk session has been exercised.
+set in Vercel. [PR #58415](https://github.com/is-a-dev/register/pull/58415) merged on
+25.10.2026 at 20:07 UTC; the three Clerk mail/DKIM CNAMEs now point at the current
+`nefqx6afwufx` tenant, Clerk reports `status: complete`, `dns: complete`, `mail: complete`
+and `ssl: complete`, so Email OTP delivery is unblocked. Google production credentials, the
+real production sign-in/webhook test and legacy account mapping remain pending. No
+production Clerk session has been exercised yet.
 
 Vercel required this ownership verification:
 
@@ -296,10 +297,10 @@ files as [PR #58363](https://github.com/is-a-dev/register/pull/58363). It was
 `bb86038f7e5004fd36e55f43b41fed286a69c707`); all four checks passed. The six
 hostnames now resolve. The Clerk production instance has been moved and its
 Frontend API/account portal are live. Vercel verification and the app certificate are
-complete. Clerk's current production domain configuration, however, reports the old
-`vedhnrhsrdju` mail/DKIM targets as invalid and `mail.status: not_started`; the owner must
-submit [PR #58415](https://github.com/is-a-dev/register/pull/58415) with the current `nefqx6afwufx` targets before Email OTP
-can be delivered.
+complete. The earlier Clerk mail/DKIM mismatch was fixed by
+[PR #58415](https://github.com/is-a-dev/register/pull/58415), which merged on 25.10.2026 at
+20:07 UTC. All five Clerk CNAMEs are verified and Clerk reports the domain, DNS, mail and
+SSL as `complete`, so Email OTP delivery is unblocked.
 
 The files and matching PR body are in `is-a-dev-akashgupta/nested/`; the local
 is-a.dev suite passed 13/13 and the template check passed. Do not comment or
@@ -314,11 +315,10 @@ ping maintainers about any PR.
 | `domains/clk._domainkey.abap-studio.akashgupta.json` | `clk._domainkey.abap-studio.akashgupta.is-a.dev` | `CNAME` → `dkim1.nefqx6afwufx.clerk.services` |
 | `domains/clk2._domainkey.abap-studio.akashgupta.json` | `clk2._domainkey.abap-studio.akashgupta.is-a.dev` | `CNAME` → `dkim2.nefqx6afwufx.clerk.services` |
 
-The Clerk mail/DKIM targets above are the values currently returned by the production
-domain status for instance `ins_3LAf6uu766aoTCwlI8nX5faMFQA`. Do not reuse the old
-`vedhnrhsrdju` values; they resolve but fail Clerk's verification. Confirm the values in the
-Clerk dashboard before changing DNS because a replacement instance can have different
-targets.
+The Clerk mail/DKIM targets above are the values now verified for production instance
+`ins_3LAf6uu766aoTCwlI8nX5faMFQA`. Do not reuse the old `vedhnrhsrdju` values. Confirm the
+values in the Clerk dashboard before changing DNS because a replacement instance can have
+different targets.
 
 Example JSON for the application domain:
 

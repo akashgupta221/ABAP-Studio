@@ -77,10 +77,10 @@ practice sandbox**; training examples are shared and read-only.
   to the new hostname and its Frontend API is live with Email OTP + Google only. Vercel
   verifies the hostname, and the P1 build is deployed; `/sign-in` and `/sign-up` return
   `200`. The Clerk account portal is live. The EU.org request is still awaiting approval.
-  Clerk's production mail/DKIM CNAMEs are stale, so Email OTP delivery is blocked until
-  [PR #58415](https://github.com/is-a-dev/register/pull/58415) is merged. Production Google OAuth, a real
-  production sign-in/webhook event and legacy mapping also remain pending, so P1 is not
-  accepted. The built-in scrypt logon remains
+  Clerk's mail/DKIM DNS was fixed by [PR #58415](https://github.com/is-a-dev/register/pull/58415),
+  and Clerk reports domain/DNS/mail/SSL complete, so Email OTP delivery is unblocked.
+  Production Google OAuth, a real production sign-in/webhook event and legacy mapping also
+  remain pending, so P1 is not accepted. The built-in scrypt logon remains
   a temporary fallback during cutover. Guides:
   [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md),
   [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) and
@@ -195,8 +195,8 @@ closed; a portfolio is live at <https://akashgupta221.github.io/> and the new is
 `akashgupta.is-a.dev` is merged and redirects to it. The six nested app/Clerk records were
 merged in PR #58363 and now resolve in DNS. The Clerk production instance has been moved and
 its Frontend API is live; the Vercel hostname is verified and the P1 build is deployed.
-Email OTP delivery is blocked by stale Clerk mail/DKIM DNS; Google OAuth, a real webhook
-test and legacy mapping also remain pending, so P1 is **not accepted**. Read
+Clerk mail DNS is now complete, but production sign-in, Google OAuth, a real webhook test and
+legacy mapping remain pending, so P1 is **not accepted**. Read
 [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md) and
 [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md) before the cutover. The ownership migration
 changes who can see legacy programs and invalidates old sessions; the production
