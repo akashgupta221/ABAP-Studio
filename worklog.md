@@ -1143,7 +1143,8 @@ Work Log:
 - Added regression tests for numeric `REDUCE`, elementary-row `REDUCE`, caught exception text and `CATCH BEFORE UNWIND`. Unit tests are now 30 (77 assertions).
 - Updated `README.md`, `DEPLOY.md` and `docs/MASTER-PROJECT-SPEC.md` so the type-check blocker is no longer reported as open.
 - Committed on branch `quality/typecheck-engine-regressions` as `ef19593`, fast-forward merged to `main`, and pushed.
-- Deployed `dpl_D4F1xdQYECvr6aRZd68LVEUU5PRV`; the custom domain alias points to that deployment.
+- Deployed `dpl_D4F1xdQYECvr6aRZd68LVEUU5PRV`; the custom domain alias was verified on that build.
+- Docs-only follow-up `8e840a1` deployed as `dpl_HPRKzkG3J5u3kg9MVrJdShRaVNjj`; it does not change application code.
 
 Verification:
 - `bun run lint` clean
