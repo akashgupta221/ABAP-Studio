@@ -18,7 +18,7 @@
 //   SE11 ABAP Dictionary, SE37 Function Builder, SE24 Class Builder.
 import { Fragment, useEffect, useState } from 'react'
 import {
-  BookOpen, ChevronDown, FolderClosed, FolderOpen,
+  BookOpen, ChevronDown, FolderClosed, FolderOpen, Sparkles,
   LogOut, MoreHorizontal, Pencil, Play, Printer, Search, Settings, Star,
 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -145,7 +145,7 @@ function Leaf({
       <span className="flex h-4 w-4 shrink-0 items-center justify-center">{icon}</span>
       <span className="truncate text-[13.5px] text-[#0b4fa8] group-hover:underline">{label}</span>
       {meta && (
-        <span className="ml-auto max-w-[45%] shrink-0 truncate pl-3 text-[11.5px] text-[#98a4b2]">{meta}</span>
+        <span className="ml-auto max-w-[45%] shrink-0 truncate pl-3 text-[11.5px] text-[#55677a]">{meta}</span>
       )}
       {badge}
     </button>
@@ -163,6 +163,10 @@ export function EasyAccess() {
   const navigate = useWorkbench((s) => s.navigate)
   const openBrowserFor = useWorkbench((s) => s.openBrowserFor)
   const openSyllabusTopic = useWorkbench((s) => s.openSyllabusTopic)
+  const openModern = () => {
+    useWorkbench.setState({ lastTcode: 'MODERN' })
+    navigate('modern')
+  }
 
   const [topics, setTopics] = useState<Topic[] | null>(null)
   const [recents, setRecents] = useState<RecentExecution[] | null>(null)
@@ -353,7 +357,7 @@ export function EasyAccess() {
         {/* Favorites */}
         <TreeFolder level={0} label="Favorites" open={open('favorites')} onToggle={() => toggle('favorites')}>
           {favorites.length === 0 ? (
-            <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(1)}>
+            <p className="py-1 text-[12.5px] italic text-[#55677a]" style={indent(1)}>
               No favorites yet — star a program in the editor.
             </p>
           ) : (
@@ -383,7 +387,7 @@ export function EasyAccess() {
               ))}
             </div>
           ) : recents.length === 0 ? (
-            <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(1)}>
+            <p className="py-1 text-[12.5px] italic text-[#55677a]" style={indent(1)}>
               No executions yet — press F8 in the editor.
             </p>
           ) : (
@@ -412,7 +416,7 @@ export function EasyAccess() {
         <TreeFolder level={0} label="SAP Menu" open={open('sapmenu')} onToggle={() => toggle('sapmenu')}>
           {STANDARD_FOLDERS_BEFORE_TOOLS.map((label) => (
             <TreeFolder key={label} level={1} label={label} open={open(label)} onToggle={() => toggle(label)}>
-              <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(2)}>
+              <p className="py-1 text-[12.5px] italic text-[#55677a]" style={indent(2)}>
                 {EMPTY_NOTE}
               </p>
             </TreeFolder>
@@ -472,7 +476,7 @@ export function EasyAccess() {
                   open={open('user-interface')}
                   onToggle={() => toggle('user-interface')}
                 >
-                  <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(5)}>
+                  <p className="py-1 text-[12.5px] italic text-[#55677a]" style={indent(5)}>
                     {UI_NOTE}
                   </p>
                 </TreeFolder>
@@ -524,7 +528,7 @@ export function EasyAccess() {
                 open={open('programming')}
                 onToggle={() => toggle('programming')}
               >
-                <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(4)}>
+                <p className="py-1 text-[12.5px] italic text-[#55677a]" style={indent(4)}>
                   {PROGRAMMING_NOTE}
                 </p>
               </TreeFolder>
@@ -535,7 +539,7 @@ export function EasyAccess() {
                 open={open('enhancement')}
                 onToggle={() => toggle('enhancement')}
               >
-                <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(4)}>
+                <p className="py-1 text-[12.5px] italic text-[#55677a]" style={indent(4)}>
                   {EMPTY_NOTE}
                 </p>
               </TreeFolder>
@@ -546,7 +550,7 @@ export function EasyAccess() {
                 open={open('switch')}
                 onToggle={() => toggle('switch')}
               >
-                <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(4)}>
+                <p className="py-1 text-[12.5px] italic text-[#55677a]" style={indent(4)}>
                   {EMPTY_NOTE}
                 </p>
               </TreeFolder>
@@ -564,7 +568,7 @@ export function EasyAccess() {
 
           {STANDARD_FOLDERS_AFTER_TOOLS.map((label) => (
             <TreeFolder key={label} level={1} label={label} open={open(label)} onToggle={() => toggle(label)}>
-              <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(2)}>
+              <p className="py-1 text-[12.5px] italic text-[#55677a]" style={indent(2)}>
                 {EMPTY_NOTE}
               </p>
             </TreeFolder>
@@ -582,6 +586,14 @@ export function EasyAccess() {
             meta="Z_MY_PRACTICE"
             hint="Your own private practice program — examples stay read-only; write, run and save your code here"
             onClick={() => void openSandbox()}
+          />
+          <Leaf
+            level={1}
+            icon={<Sparkles className="h-4 w-4" style={{ color: C_TABLE }} />}
+            label="Modern ABAP Workspace"
+            meta="7.40 · CDS · RAP · AMDP"
+            hint="Executable 7.40 examples, validated CDS/RAP definitions and simulated AMDP — with explicit unsupported boundaries"
+            onClick={openModern}
           />
           <Leaf
             level={1}
@@ -615,7 +627,7 @@ export function EasyAccess() {
                     onToggle={() => toggle(`topic-${t.id}`)}
                   >
                     {t.examples.length === 0 ? (
-                      <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(3)}>
+                      <p className="py-1 text-[12.5px] italic text-[#55677a]" style={indent(3)}>
                         No example programs in this topic yet.
                       </p>
                     ) : (
@@ -639,7 +651,7 @@ export function EasyAccess() {
             </TreeFolder>
           ))}
           {topics !== null && topics.length === 0 && (
-            <p className="py-1 text-[12.5px] italic text-[#8395a8]" style={indent(1)}>
+            <p className="py-1 text-[12.5px] italic text-[#55677a]" style={indent(1)}>
               The training content is being seeded — topics will appear here shortly.
             </p>
           )}

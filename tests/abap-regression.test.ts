@@ -6,6 +6,8 @@ import { SANDBOX_SOURCE } from '../src/lib/sandbox'
 import { topics, tables } from '../scripts/seed-content'
 import { programsPart1 } from '../scripts/seed-programs-1'
 import { programsPart2, functions, includeProgram } from '../scripts/seed-programs-2'
+import { modernPrograms } from '../scripts/seed-modern'
+import { MODERN_TEMPLATES, validateModernSource } from '../src/lib/modern'
 import type { DbTableDef, FmEntry } from '../src/lib/abap'
 
 function snapshot(): DbSnapshot {
@@ -108,6 +110,24 @@ describe('Standard ABAP regression suite', () => {
     expect(text).toContain('MER')
   })
 
+  test('WRITE / resets every list line to column 1', () => {
+    const result = runAbap({
+      source:
+        "REPORT Z_WRITE_COLUMNS.\n" +
+        "WRITE: / 'first line'.\n" +
+        "WRITE: / 'second line'.\n" +
+        "WRITE: / 'third line'.",
+      repid: 'Z_WRITE_COLUMNS',
+      db: new DbSnapshot(),
+    })
+    expect(result.status).toBe('SUCCESS')
+    const rows = result.list.filter((line) => line.segments.length > 0)
+    expect(rows).toHaveLength(3)
+    expect(rows[0]?.segments[0]?.x).toBe(1)
+    expect(rows[1]?.segments[0]?.x).toBe(1)
+    expect(rows[2]?.segments[0]?.x).toBe(1)
+  })
+
   test('syntax check reports a broken statement', () => {
     const issues = checkSyntax('REPORT Z_BROKEN.\nWRITE .')
     expect(issues.some((i) => i.kind === 'E')).toBe(true)
@@ -202,6 +222,81 @@ describe('Standard ABAP regression suite', () => {
       db: new DbSnapshot(),
     })
     expect(result.status).toBe('SUCCESS')
+  })
+
+  test('the executable Modern ABAP example runs and uses FOR ... WHERE', () => {
+    const modern = modernPrograms.find((p) => p.name === 'Z_MD_CONSTRUCTORS')
+    expect(modern).toBeTruthy()
+    const result = runExample(modern!.source, modern!.name)
+    expect(result.status).toBe('SUCCESS')
+    const text = result.list.map((l) => l.segments.map((s) => s.text).join('')).join('\n')
+    expect(text).toContain('REDUCE 1..5 = 15')
+    expect(text).toContain('First IT row via table expression: ARJUN')
+    expect(text).not.toContain('MEERA')
+  })
+
+  test('FOR ... WHERE can read iterator components', () => {
+    const result = runAbap({
+      source:
+        "REPORT Z_FOR_WHERE.\n" +
+        'TYPES: BEGIN OF ty_row, name TYPE string, dept TYPE string, END OF ty_row.\n' +
+        'TYPES tt_rows TYPE STANDARD TABLE OF ty_row WITH EMPTY KEY.\n' +
+        "DATA(lt_rows) = VALUE tt_rows(\n" +
+        "  ( name = 'ARJUN' dept = 'IT' )\n" +
+        "  ( name = 'MEERA' dept = 'HR' )\n" +
+        "  ( name = 'VIKRAM' dept = 'IT' ) ).\n" +
+        'DATA(lt_it) = VALUE tt_rows(\n' +
+        "  FOR row IN lt_rows WHERE ( row-dept = 'IT' )\n" +
+        '  ( name = row-name dept = row-dept ) ).\n' +
+        'LOOP AT lt_it INTO DATA(ls_it).\n' +
+        '  WRITE ls_it-name.\n' +
+        'ENDLOOP.',
+      repid: 'Z_FOR_WHERE',
+      db: new DbSnapshot(),
+    })
+    expect(result.status).toBe('SUCCESS')
+    const text = result.list.map((l) => l.segments.map((s) => s.text).join('')).join('\n')
+    expect(text).toContain('ARJUN')
+    expect(text).toContain('VIKRAM')
+    expect(text).not.toContain('MEERA')
+  })
+
+  test('all seeded Modern definitions validate', () => {
+    for (const modern of modernPrograms) {
+      const validation = validateModernSource(modern.modernKind, modern.source)
+      expect(validation.status, `${modern.name}: ${JSON.stringify(validation.issues)}`).not.toBe('INVALID')
+      if (modern.modernKind !== 'ABAP') expect(validation.status).toBe('VALID')
+    }
+    expect(modernPrograms.length).toBe(4)
+  })
+
+  test('the private Modern starter templates are usable', () => {
+    const result = runExample(MODERN_TEMPLATES.ABAP, 'Z_MD_SCRATCH')
+    expect(result.status).toBe('SUCCESS')
+    const text = result.list.map((l) => l.segments.map((s) => s.text).join('')).join('\n')
+    expect(text).toContain('Hello Modern ABAP')
+    expect(text).toContain('Total: 6')
+    expect(validateModernSource('CDS', MODERN_TEMPLATES.CDS).status).toBe('VALID')
+    expect(validateModernSource('RAP', MODERN_TEMPLATES.RAP).status).toBe('VALID')
+    expect(validateModernSource('AMDP', MODERN_TEMPLATES.AMDP).status).toBe('VALID')
+  })
+
+  test('malformed Modern definitions are rejected', () => {
+    expect(validateModernSource('CDS', 'define view entity ZI_BAD as select from sflight').status).toBe('INVALID')
+    expect(
+      validateModernSource(
+        'RAP',
+        'define behavior for ZI_Bad alias Bad\n{\n  create;\n}',
+      ).status,
+    ).toBe('INVALID')
+    expect(
+      validateModernSource(
+        'AMDP',
+        'CLASS zcl_bad DEFINITION.\nENDCLASS.\nCLASS zcl_bad IMPLEMENTATION.\nENDCLASS.',
+      ).status,
+    ).toBe('INVALID')
+    expect(validateModernSource('ABAP', '').status).toBe('INVALID')
+    expect(validateModernSource('ABAP', 'REPORT Z_OK.').status).toBe('EXECUTABLE')
   })
 
   test('training content is still present in the seed payload', () => {

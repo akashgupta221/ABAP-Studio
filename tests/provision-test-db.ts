@@ -1,6 +1,5 @@
 // Prepare a disposable API-test database. Never point this at production.
 import { db, ensureSchema } from '../src/lib/db'
-import { hashPassword } from '../src/lib/auth'
 
 const url = process.env.DATABASE_URL ?? ''
 if (!url.includes('api-test')) {
@@ -24,7 +23,8 @@ async function main() {
   await db.user.create({
     data: {
       username: 'TESTOWNER',
-      passwordHash: await hashPassword('TestOwnerPass123!'),
+      // Retained for schema compatibility; test sessions use the test broker.
+      passwordHash: '',
       displayName: 'Test Owner',
       role: 'OWNER',
     },

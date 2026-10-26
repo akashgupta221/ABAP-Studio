@@ -9,11 +9,13 @@ import { db, ensureSchema } from '../src/lib/db'
 import { topics, tables } from './seed-content'
 import { programsPart1 } from './seed-programs-1'
 import { programsPart2, functions, includeProgram } from './seed-programs-2'
+import { modernPrograms } from './seed-modern'
 import { runAbap, DbSnapshot, type FmEntry, type DbTableDef } from '../src/lib/abap/index'
+import { validateModernSource } from '../src/lib/modern'
 import { parseAbap } from '../src/lib/abap/parser'
 import type { AbapProgram } from '../src/lib/abap/ast-types'
 
-const programs = [...programsPart1, ...programsPart2, includeProgram].filter(
+const programs = [...programsPart1, ...programsPart2, includeProgram, ...modernPrograms].filter(
   (p) => p.name !== 'Z_MY_PRACTICE',
 )
 
@@ -66,6 +68,8 @@ async function seed() {
         const data = {
           title: p.title, description: p.description,
           type: p.type, paradigm: p.paradigm, source: p.source,
+          environment: p.environment ?? 'STANDARD',
+          modernKind: p.modernKind ?? 'ABAP',
           isExample: p.isExample ?? true, tags: p.tags ?? '',
           topicId: p.topicCode ? topicIds.get(p.topicCode) ?? null : null,
         }
@@ -154,6 +158,20 @@ async function verify() {
   let pass = 0
   let fail = 0
   for (const p of programs as any[]) {
+    if (p.environment === 'MODERN' && p.modernKind !== 'ABAP') {
+      const validation = validateModernSource(p.modernKind, p.source)
+      if (validation.status === 'VALID') {
+        console.log(`✓ ${p.name} (${p.modernKind} validated — no runtime)`)
+        pass++
+      } else {
+        console.log(`✗ ${p.name} — ${p.modernKind} validation failed`)
+        for (const issue of validation.issues.filter((i) => i.severity === 'E')) {
+          console.log(`    line ${issue.line}: ${issue.message}`)
+        }
+        fail++
+      }
+      continue
+    }
     if (p.type === 'INCLUDE') {
       // includes are verified transitively via Z_INCLUDE_DEMO; just parse-check
       try {

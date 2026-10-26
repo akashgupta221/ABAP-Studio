@@ -4,7 +4,7 @@
 // remain database-authoritative.
 import { clerkClient } from '@clerk/nextjs/server'
 import { db, ensureSchema } from '@/lib/db'
-import { clerkServerConfigured } from '@/lib/auth-mode'
+import { clerkServerConfigured } from '@/lib/auth-config'
 import {
   baseUsernameFromEmail,
   clerkIdentityFromUser,
@@ -147,7 +147,8 @@ export async function syncClerkIdentity(identity: ClerkIdentity) {
     const created = await db.user.create({
       data: {
         username,
-        passwordHash: 'clerk-only',
+        // Retained for schema compatibility; no password path reads this column.
+        passwordHash: '',
         clerkId: identity.id,
         email: identity.email,
         displayName: identity.displayName,

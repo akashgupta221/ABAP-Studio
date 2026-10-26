@@ -17,7 +17,9 @@ export async function GET(req: NextRequest) {
       orderBy: { srNo: 'asc' },
       include: {
         programs: {
-          where: programListWhere(auth.user, isOwner(auth.user)),
+          where: {
+            AND: [programListWhere(auth.user, isOwner(auth.user)), { environment: 'STANDARD' }],
+          },
           select: { id: true, name: true, title: true, type: true, paradigm: true, isExample: true },
         },
       },

@@ -68,6 +68,8 @@ async function migrateSchema(): Promise<void> {
   await addColumn('User', 'suspended', 'BOOLEAN NOT NULL DEFAULT false')
   await addColumn('User', 'sessionVersion', 'INTEGER NOT NULL DEFAULT 1')
   await addColumn('Program', 'ownerId', 'TEXT')
+  await addColumn('Program', 'environment', "TEXT NOT NULL DEFAULT 'STANDARD'")
+  await addColumn('Program', 'modernKind', "TEXT NOT NULL DEFAULT 'ABAP'")
   await addColumn('ExecutionLog', 'userId', 'TEXT')
 
   await db.$executeRawUnsafe(`

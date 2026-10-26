@@ -331,9 +331,11 @@ input[type='radio'].sap-radio:checked::after {
 /* toolbar icon button (classic SAP tool strip) */
 .sap-tool-btn {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 26px;
+  min-width: 26px;
   height: 24px;
   border: 1px solid transparent;
   border-radius: 2px;

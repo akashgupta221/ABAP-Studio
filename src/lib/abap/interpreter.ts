@@ -1294,6 +1294,10 @@ export class Interpreter {
     }
     this.curSegments = []
     this.lineOpen = true
+    // A new list line always starts in column 1. Without this reset, every
+    // `WRITE / ...` inherited the previous line's end column and subsequent
+    // lines drifted to the right across the list page.
+    this.curCol = 1
   }
 
   flushLine() {
@@ -3503,9 +3507,12 @@ export class Interpreter {
         if (table.kind === 'table') {
           t.lineType = table.lineType
           for (const row of table.rows) {
-            if (l.where && !this.truthy(this.evalExpr(l.where, scope, row))) continue
+            // The iterator must be visible inside WHERE as well as inside the
+            // projected row. Previously WHERE was evaluated in the outer scope,
+            // so `FOR ls IN it WHERE ( ls-field = ... )` reported LS unknown.
             const loopScope = new Scope('form', scope)
             loopScope.declare(l.iterVar, row)
+            if (l.where && !this.truthy(this.evalExpr(l.where, loopScope, row))) continue
             if (l.lines.length === 0) {
               t.rows.push(deepCopyValue(row))
             } else {

@@ -1,0 +1,61 @@
+name: Deploy database
+
+# Manual, secret-safe production schema/content update. Shared example names
+# may appear in logs; private programs and credentials never do.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to apply additive schema + shared content to production Turso'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-database
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+    steps:
+      - name: Guard confirmation and branch
+        run: |
+          if [ "${{ inputs.confirm }}" != "DEPLOY" ]; then
+            echo "::error::Set confirm=DEPLOY to update the production database."
+            exit 1
+          fi
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Run this workflow from main only."
+            exit 1
+          fi
+          if [ -z "$TURSO_DATABASE_URL" ] || [ -z "$TURSO_AUTH_TOKEN" ]; then
+            echo "::error::Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN repository secret."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Apply additive schema and seed shared content
+        env:
+          NODE_ENV: production
+        run: bun run deploy:db
+
+      - name: Verify owner state
+        env:
+          NODE_ENV: production
+        run: bun run owner:verify

@@ -3,8 +3,7 @@
 const BASE = process.env.BASE_URL ?? 'http://localhost:3100'
 const ORIGIN = BASE
 const OWNER_USER = 'TESTOWNER'
-const OWNER_PASS = 'TestOwnerPass123!'
-const USER_PASS = 'UserPass123!'
+const E2E_SECRET = process.env.E2E_TEST_SECRET ?? ''
 
 interface Result {
   status: number
@@ -19,6 +18,7 @@ async function call(
     cookie?: string | null
     body?: unknown
     origin?: string | null
+    testAuth?: boolean
   } = {},
 ): Promise<Result> {
   const headers: Record<string, string> = {}
@@ -26,6 +26,10 @@ async function call(
   const origin = opts.origin === undefined ? ORIGIN : opts.origin
   if (origin) headers.origin = origin
   if (opts.cookie) headers.cookie = opts.cookie
+  if (opts.testAuth) {
+    if (!E2E_SECRET) throw new Error('E2E_TEST_SECRET is required for test auth')
+    headers['x-e2e-secret'] = E2E_SECRET
+  }
 
   const res = await fetch(`${BASE}${path}`, {
     method: opts.method ?? 'GET',
@@ -61,6 +65,22 @@ function check(name: string, condition: boolean, detail = ''): void {
   }
 }
 
+async function createTestUser(username: string, extra: Record<string, unknown> = {}) {
+  return call('/api/test/users', {
+    method: 'POST',
+    testAuth: true,
+    body: { username, ...extra },
+  })
+}
+
+async function testSession(username: string) {
+  return call('/api/test/session', {
+    method: 'POST',
+    testAuth: true,
+    body: { username },
+  })
+}
+
 async function main() {
   const suffix = Date.now().toString().slice(-7)
   const userA = `T${suffix}A`
@@ -73,31 +93,38 @@ async function main() {
   check('execution rejects anonymous callers', (await call('/api/execute', { method: 'POST', body: { source: "WRITE 'x'." } })).status === 401)
   check('admin overview rejects anonymous callers', (await call('/api/admin/overview')).status === 401)
   check('seed endpoint rejects anonymous callers', (await call('/api/seed', { method: 'POST', body: {} })).status === 401)
-
-  const ownerLogin = await call('/api/auth/login', {
+  check('test-session broker is hidden without its secret', (await call('/api/test/session', {
     method: 'POST',
-    body: { username: OWNER_USER, password: OWNER_PASS },
-  })
-  check('owner can log on', ownerLogin.status === 200, `status ${ownerLogin.status}`)
-  check('owner login flag is returned for the dashboard UI', ownerLogin.data.user?.owner === true)
+    body: { username: OWNER_USER },
+  })).status === 404)
+  check('password logon is permanently retired', (await call('/api/auth/login', {
+    method: 'POST',
+    body: { username: OWNER_USER, password: 'anything' },
+  })).status === 403)
+  check('password registration is permanently retired', (await call('/api/auth/register', {
+    method: 'POST',
+    body: { username: `S${suffix}X`, password: 'anything' },
+  })).status === 410)
+
+  const ownerLogin = await testSession(OWNER_USER)
+  check('owner test session is available', ownerLogin.status === 200, `status ${ownerLogin.status}`)
+  check('owner session flag is returned for the dashboard UI', ownerLogin.data.user?.owner === true)
   const owner = ownerLogin.cookie
 
-  const regA = await call('/api/auth/register', {
-    method: 'POST',
-    body: { username: userA, password: USER_PASS, role: 'OWNER' },
-  })
-  check('public registration creates a USER, ignoring a client-supplied role', regA.status === 200 && regA.data.user.role === 'USER')
-  check('public registration is never flagged as owner', regA.data.user?.owner !== true)
-  const cookieA = regA.cookie
+  const createA = await createTestUser(userA, { role: 'OWNER' })
+  check('a test user can be created', createA.status === 201, JSON.stringify(createA.data))
+  check('test users can never choose the OWNER role', createA.data.user?.role === 'USER')
+  const sessionA = await testSession(userA)
+  check('user A can establish a test session', sessionA.status === 200)
+  const cookieA = sessionA.cookie
 
-  const regB = await call('/api/auth/register', {
-    method: 'POST',
-    body: { username: userB, password: USER_PASS },
-  })
-  check('second public user can register', regB.status === 200)
-  const cookieB = regB.cookie
+  const createB = await createTestUser(userB)
+  check('second test user can be created', createB.status === 201)
+  const sessionB = await testSession(userB)
+  check('user B can establish a test session', sessionB.status === 200)
+  const cookieB = sessionB.cookie
 
-  check('short passwords are rejected', (await call('/api/auth/register', { method: 'POST', body: { username: `S${suffix}X`, password: 'short' } })).status === 400)
+  check('invalid SAP user names are rejected by the test broker', (await createTestUser(`1${suffix}`)).status === 400)
   check('cross-origin mutation is rejected', (await call('/api/programs', {
     method: 'POST',
     cookie: cookieA,
@@ -176,6 +203,113 @@ async function main() {
   check('execution records the user', (await call('/api/recents', { cookie: cookieA })).data.recents?.length >= 1)
   check('one user cannot see another user recents', (await call('/api/recents', { cookie: cookieB })).data.recents?.length === 0)
 
+  console.log('\nModern ABAP workspace')
+  check('Modern workspace rejects anonymous callers', (await call('/api/modern')).status === 401)
+  check('Modern validation rejects anonymous callers', (await call('/api/modern/validate', {
+    method: 'POST',
+    body: { kind: 'CDS', source: 'define view entity ZI_X as select from sflight { key carrid }' },
+  })).status === 401)
+  const modernOwner = await call('/api/modern', { cookie: owner })
+  check('owner can list the Modern workspace', modernOwner.status === 200)
+  const modernExamples = (modernOwner.data.programs ?? []).filter((p: any) => p.isExample)
+  check('four Modern examples are seeded', modernExamples.length === 4, JSON.stringify(modernExamples.map((p: any) => p.name)))
+  check(
+    'the Modern examples cover ABAP, CDS, RAP and AMDP',
+    new Set(modernExamples.map((p: any) => p.modernKind)).size === 4,
+  )
+  check(
+    'the classic program list never contains Modern artefacts',
+    !(await call('/api/programs', { cookie: cookieA })).data.programs?.some((p: any) => p.environment === 'MODERN'),
+  )
+  const constructors = modernExamples.find((p: any) => p.name === 'Z_MD_CONSTRUCTORS')
+  const constructorDetail = constructors
+    ? await call(`/api/modern/${constructors.id}`, { cookie: cookieA })
+    : null
+  check('a Modern ABAP example can be opened', constructorDetail?.status === 200)
+  const modernRun = await call('/api/execute', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: 'Z_MD_CONSTRUCTORS', source: constructorDetail?.data.program.source ?? '' },
+  })
+  check(
+    'the executable Modern ABAP example runs in the engine',
+    modernRun.status === 200 && modernRun.data.status === 'SUCCESS' && modernRun.data.list.length > 0,
+    JSON.stringify(modernRun.data?.error ?? {}),
+  )
+
+  const cdsExample = modernExamples.find((p: any) => p.name === 'ZI_MD_FLIGHT')
+  const cdsDetail = cdsExample ? await call(`/api/modern/${cdsExample.id}`, { cookie: cookieA }) : null
+  const cdsValidation = await call('/api/modern/validate', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { kind: 'CDS', source: cdsDetail?.data.program.source ?? '' },
+  })
+  check('the CDS example validates', cdsValidation.status === 200 && cdsValidation.data.validation?.status === 'VALID', JSON.stringify(cdsValidation.data))
+  const badCds = await call('/api/modern/validate', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { kind: 'CDS', source: 'define view entity ZI_BAD as select from sflight' },
+  })
+  check('invalid CDS DDL is rejected', badCds.data.validation?.status === 'INVALID')
+  const amdpExample = modernExamples.find((p: any) => p.name === 'ZCL_MD_AMDP')
+  const amdpDetail = amdpExample ? await call(`/api/modern/${amdpExample.id}`, { cookie: cookieA }) : null
+  const amdpValidation = await call('/api/modern/validate', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { kind: 'AMDP', source: amdpDetail?.data.program.source ?? '' },
+  })
+  check('the AMDP example validates structurally', amdpValidation.data.validation?.status === 'VALID')
+
+  const modernName = `Z_MDMOD_${suffix}`
+  const modernCreate = await call('/api/modern', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: modernName, modernKind: 'ABAP' },
+  })
+  check('a user can create a private Modern object', modernCreate.status === 201, JSON.stringify(modernCreate.data))
+  const modernId = modernCreate.data?.program?.id
+  check('private Modern objects record STANDARD/MODERN ownership fields',
+    modernCreate.data?.program?.environment === 'MODERN' &&
+    modernCreate.data?.program?.modernKind === 'ABAP' &&
+    modernCreate.data?.program?.ownerId != null)
+  check('invalid Modern kinds are rejected', (await call('/api/modern', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: `Z_MDMOD_BAD_${suffix}`, modernKind: 'DYNPRO' },
+  })).status === 400)
+  check('duplicate Modern names are rejected', (await call('/api/modern', {
+    method: 'POST',
+    cookie: cookieA,
+    body: { name: modernName, modernKind: 'ABAP' },
+  })).status === 409)
+  const modernB = await call('/api/modern', { cookie: cookieB })
+  check('user B does not see user A private Modern object', !(modernB.data.programs ?? []).some((p: any) => p.id === modernId))
+  check('user B cannot open user A private Modern object', (await call(`/api/modern/${modernId}`, { cookie: cookieB })).status === 404)
+  check('user B cannot save user A private Modern object', (await call(`/api/modern/${modernId}`, {
+    method: 'PUT',
+    cookie: cookieB,
+    body: { source: "WRITE 'stolen'." },
+  })).status === 404)
+  check('user B cannot delete user A private Modern object', (await call(`/api/modern/${modernId}`, {
+    method: 'DELETE',
+    cookie: cookieB,
+  })).status === 404)
+  const modernOwnerSave = await call(`/api/modern/${modernId}`, {
+    method: 'PUT',
+    cookie: owner,
+    body: { source: "WRITE 'owner reviewed modern'." },
+  })
+  check('the owner can edit a private Modern object', modernOwnerSave.status === 200)
+  check('a Modern object kind is immutable', (await call(`/api/modern/${modernId}`, {
+    method: 'PUT',
+    cookie: cookieA,
+    body: { modernKind: 'CDS' },
+  })).status === 400)
+  check('the owner can delete a private Modern object', (await call(`/api/modern/${modernId}`, {
+    method: 'DELETE',
+    cookie: owner,
+  })).status === 200)
+
   console.log('\nOwner administration')
   check('ordinary user is denied admin overview', (await call('/api/admin/overview', { cookie: cookieA })).status === 403)
   const overview = await call('/api/admin/overview', { cookie: owner })
@@ -233,7 +367,11 @@ async function main() {
     body: { action: 'suspend' },
   })).status === 200)
   check('suspension invalidates an existing session', (await call('/api/programs', { cookie: cookieB })).status === 401)
-  check('suspended user cannot log on', (await call('/api/auth/login', { method: 'POST', body: { username: userB, password: USER_PASS } })).status === 403)
+  check('suspended user cannot mint a test session', (await testSession(userB)).status === 403)
+  check('suspended user cannot use the retired password endpoint', (await call('/api/auth/login', {
+    method: 'POST',
+    body: { username: userB, password: 'anything' },
+  })).status === 403)
   check('owner can reactivate user B', (await call(`/api/admin/users/${bUser.id}`, {
     method: 'PATCH',
     cookie: owner,

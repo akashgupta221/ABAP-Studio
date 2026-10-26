@@ -1,0 +1,81 @@
+name: Production smoke
+
+# Public, read-only verification of the deployed site. No credentials or
+# repository secrets are used, so this can run on a schedule or on demand.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Production origin'
+        required: true
+        default: 'https://abap-studio.akashgupta.is-a.dev'
+        type: string
+  schedule:
+    - cron: '17 6 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_URL: ${{ inputs.base_url || 'https://abap-studio.akashgupta.is-a.dev' }}
+    steps:
+      - name: Public health and configuration
+        run: |
+          set -euo pipefail
+          BASE="${BASE_URL%/}"
+          health="$(curl -fsS --retry 3 --retry-delay 2 "$BASE/api/health")"
+          echo "$health" | jq -e '
+            .ok == true and
+            .dbTarget == "turso" and
+            .clerkConfigured == true and
+            .authProvider == "clerk" and
+            .passwordLogon == "retired" and
+            .users >= 1 and
+            .programs >= 41
+          ' >/dev/null
+          echo "Health OK: $(echo "$health" | jq -c '{dbTarget,clerkConfigured,users,programs}')"
+
+      - name: Public pages
+        run: |
+          set -euo pipefail
+          BASE="${BASE_URL%/}"
+          for path in / /sign-in /sign-up; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --retry 3 "$BASE$path")"
+            echo "$path -> $code"
+            test "$code" = "200"
+          done
+
+      - name: Anonymous protection
+        run: |
+          set -euo pipefail
+          BASE="${BASE_URL%/}"
+          for path in /api/programs /api/modern /api/admin/overview; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE$path")"
+            echo "GET $path -> $code"
+            test "$code" = "401"
+          done
+          code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' "$BASE/api/execute")"
+          echo "POST /api/execute -> $code"
+          test "$code" = "401"
+
+      - name: Retired legacy authentication
+        run: |
+          set -euo pipefail
+          BASE="${BASE_URL%/}"
+          login="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"username":"x","password":"x"}' "$BASE/api/auth/login")"
+          register="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"username":"x","password":"x"}' "$BASE/api/auth/register")"
+          webhook="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' "$BASE/api/webhooks/clerk")"
+          echo "legacy login -> $login (expected 403)"
+          echo "legacy register -> $register (expected 410)"
+          echo "unsigned webhook -> $webhook (expected 400)"
+          test "$login" = "403"
+          test "$register" = "410"
+          test "$webhook" = "400"

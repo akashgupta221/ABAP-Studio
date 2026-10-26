@@ -31,7 +31,9 @@ export async function GET(req: NextRequest) {
     // ── programs / classes / includes / function groups ──
     if (types.some((t) => ['PROGRAM', 'CLASS', 'INCLUDE', 'FUNCTION_GROUP'].includes(t))) {
       const programs = await db.program.findMany({
-        where: programListWhere(auth.user, isOwner(auth.user)),
+        where: {
+          AND: [programListWhere(auth.user, isOwner(auth.user)), { environment: 'STANDARD' }],
+        },
         include: { topic: true },
       })
       const programTypes = types.filter((t) => ['PROGRAM', 'REPORT', 'CLASS', 'INCLUDE', 'FUNCTION_GROUP'].includes(t))

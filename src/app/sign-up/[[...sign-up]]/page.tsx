@@ -2,7 +2,7 @@ import { SignUp } from '@clerk/nextjs'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { ClerkSessionNotice } from '@/components/auth/clerk-session-notice'
-import { clerkPublishableConfigured } from '@/lib/auth-mode'
+import { clerkPublishableConfigured } from '@/lib/auth-config'
 
 export default function SignUpPage() {
   return (
@@ -12,7 +12,7 @@ export default function SignUpPage() {
           <span className="flex h-4 w-4 items-center justify-center rounded-[2px] bg-white/15 text-[9px] font-black">
             S
           </span>
-          <span className="text-[12.5px] font-semibold">SAP — Create User</span>
+          <h1 className="text-[12.5px] font-semibold">SAP — Create User</h1>
           <span className="ml-auto text-[10.5px] text-white/80">MER · Client 105</span>
         </div>
         <div className="border-b border-[#cfd6dd] bg-[#e8ebef] px-5 py-2 text-[11.5px] text-[#44586c]">
@@ -27,8 +27,8 @@ export default function SignUpPage() {
             </Suspense>
           ) : (
             <div className="max-w-[420px] text-[12.5px] text-[#8a1f1f]">
-              Clerk is not configured on this deployment. Use the temporary legacy logon on the workbench
-              or set the Clerk environment variables.
+              Clerk is not configured on this deployment. Set the Clerk environment variables to
+              enable secure verified-email registration.
             </div>
           )}
         </div>

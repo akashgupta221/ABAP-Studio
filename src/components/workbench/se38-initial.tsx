@@ -363,6 +363,7 @@ function InitialScreen() {
       </div>
 
       <div className="sap-screen min-h-0 flex-1 overflow-auto">
+        <h1 className="sr-only">ABAP Editor: Initial Screen</h1>
         <div className="grid w-full max-w-[780px] grid-cols-[110px_minmax(0,1fr)] items-start gap-x-2 gap-y-5 px-4 pt-9">
           {/* Program */}
           <label htmlFor="se38-program" className="pt-1 text-[12.5px] text-[#1c2b3a]">

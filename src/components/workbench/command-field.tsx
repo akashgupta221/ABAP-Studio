@@ -8,7 +8,7 @@ import { useWorkbench } from './use-workbench'
 import { api } from './use-workbench'
 import type { ProgramListItem } from './types'
 
-const TCODES = ['SE38', 'SE80', 'SE11', 'SE16', 'SE24', 'SE37', 'SE93', 'SLG1', 'SEARCH']
+const TCODES = ['SE38', 'SE80', 'SE11', 'SE16', 'SE24', 'SE37', 'SE93', 'SLG1', 'SEARCH', 'MODERN']
 
 export function CommandField() {
   const [value, setValue] = useState('')
@@ -146,6 +146,11 @@ export function CommandField() {
             useWorkbench.setState({ lastTcode: 'SEARCH', searchQuery: arg, view: 'search' })
             return
           }
+          case 'MODERN':
+            useWorkbench.setState({ lastTcode: 'MODERN' })
+            navigate('modern')
+            addMessage('S', 'Modern ABAP Workspace (7.40, CDS, RAP, AMDP)')
+            return
         }
       }
 
@@ -217,7 +222,7 @@ export function CommandField() {
           onKeyDown={onKeyDown}
           aria-label="Command field"
           title="Command field (Ctrl+L) — t-codes: SE38, SE80, SE11, SE16, SE24, SE37, SE93, ADMIN · /n, /o, /i, /nend · or object name · or SEARCH <text>"
-          className="h-[20px] w-[170px] bg-transparent px-1.5 font-mono text-[12px] uppercase text-[#111827] outline-none md:w-[190px]"
+          className="h-[24px] w-[170px] bg-transparent px-1.5 font-mono text-[12px] uppercase text-[#111827] outline-none md:w-[190px]"
           spellCheck={false}
           autoComplete="off"
         />
@@ -225,7 +230,7 @@ export function CommandField() {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="flex w-[18px] items-center justify-center border-l border-[#d3dde8] text-[#33475c] hover:bg-[#e3edf9]"
+              className="flex min-h-[24px] w-[24px] min-w-[24px] items-center justify-center border-l border-[#d3dde8] text-[#33475c] hover:bg-[#e3edf9]"
               aria-label="Command field history"
               onClick={() => history.length && setHistOpen((o) => !o)}
               tabIndex={history.length ? 0 : -1}

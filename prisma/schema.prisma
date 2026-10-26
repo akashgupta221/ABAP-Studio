@@ -35,6 +35,8 @@ model Program {
   description String         @default("")
   type        String         @default("REPORT") // REPORT | CLASS | INCLUDE | FUNCTION_GROUP
   paradigm    String         @default("BOTH") // POP | OOP | BOTH
+  environment String         @default("STANDARD") // STANDARD | MODERN
+  modernKind  String         @default("ABAP") // ABAP | CDS | RAP | AMDP
   source      String         @default("")
   isExample   Boolean        @default(false)
   tags        String         @default("")

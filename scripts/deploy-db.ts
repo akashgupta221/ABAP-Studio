@@ -20,7 +20,18 @@ if (!url || !url.startsWith('libsql://')) {
   process.exit(1)
 }
 
-console.log(`Target database: ${url}`)
+function safeHost(value: string): string {
+  try {
+    return new URL(value.replace('libsql://', 'https://')).host
+  } catch {
+    return 'configured-remote'
+  }
+}
+
+// Never print the full database URL: it can contain a database name and is
+// copied into public workflow logs. The host alone is already exposed by the
+// public /api/health endpoint.
+console.log(`Target database: ${safeHost(url)} (Turso/libSQL)`)
 
 // 1) DDL from the Prisma schema (no DB connection needed)
 const ddl = execSync(

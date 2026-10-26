@@ -365,6 +365,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         title: program.title,
         type: program.type,
         paradigm: program.paradigm,
+        environment: program.environment,
+        modernKind: program.modernKind,
         isExample: program.isExample,
         version: program.version,
         executions: program.executions,

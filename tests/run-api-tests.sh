@@ -8,6 +8,7 @@ DB_PATH="$(pwd)/prisma/db/api-test.db"
 PORT=3100
 BASE="http://localhost:${PORT}"
 LOG="$(mktemp -t abap-api-test.XXXXXX.log)"
+E2E_SECRET="api-test-only-$(openssl rand -hex 24)"
 
 cleanup() {
   if [[ -n "${SERVER_PID:-}" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
@@ -27,9 +28,11 @@ echo "── Starting test server on ${PORT} ──"
 DATABASE_URL="file:${DB_PATH}" \
 TURSO_DATABASE_URL="" \
 OWNER_USERNAME="TESTOWNER" \
-AUTH_SECRET="api-test-secret-not-for-production" \
-LEGACY_AUTH_MODE="full" \
-NEXT_PUBLIC_LEGACY_AUTH_MODE="full" \
+OWNER_EMAIL="" \
+E2E_TEST_MODE="1" \
+E2E_TEST_SECRET="$E2E_SECRET" \
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="" \
+CLERK_SECRET_KEY="" \
 NODE_ENV="development" \
 bunx next dev -p "$PORT" >"$LOG" 2>&1 &
 SERVER_PID=$!
@@ -51,7 +54,7 @@ if ! curl -sf "$BASE/api/health" >/dev/null 2>&1; then
 fi
 
 set +e
-BASE_URL="$BASE" bun tests/api-security.ts
+BASE_URL="$BASE" E2E_TEST_SECRET="$E2E_SECRET" bun tests/api-security.ts
 STATUS=$?
 set -e
 

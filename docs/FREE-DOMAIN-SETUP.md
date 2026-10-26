@@ -77,8 +77,8 @@ the Clerk production instance serves its Frontend API and account portal on the 
 hostname. is-a.dev PR #58410 was merged; Vercel reports `configured-correctly`, and the app
 returns HTTP `200` at `https://abap-studio.akashgupta.is-a.dev`. The merged `main` build
 (`e3df40c`) is deployed; `/sign-in`, `/sign-up` and `/api/health` report the expected
-configuration. Clerk keys, `OWNER_EMAIL`, webhook secret and both legacy flags (`off`) are
-set in Vercel. [PR #58415](https://github.com/is-a-dev/register/pull/58415) merged on
+configuration. Clerk keys, `OWNER_EMAIL` and the webhook secret are set in Vercel; the
+obsolete legacy-auth flags have been removed. [PR #58415](https://github.com/is-a-dev/register/pull/58415) merged on
 25.10.2026 at 20:07 UTC; the three Clerk mail/DKIM CNAMEs point at the current
 `nefqx6afwufx` tenant, and Clerk reports domain/DNS/mail/SSL complete. Production owner
 Email OTP and Google sign-in, non-owner isolation, administration, signed webhook delivery
@@ -112,7 +112,7 @@ The TXT/CNAME records are live and `vercel domains verify` reports
 | `https://clerk.abap-studio.akashgupta.is-a.dev/v1/environment` | HTTP `200`; production instance; Email OTP + Google; password/phone/username disabled |
 | `https://accounts.abap-studio.akashgupta.is-a.dev` | Valid TLS certificate; Cloudflare browser challenge to curl (expected); production Clerk sign-in verified through the app |
 | Vercel verification | [PR #58410](https://github.com/is-a-dev/register/pull/58410) merged 25.10.2026 18:42 UTC; TXT/CNAME live; `vercel domains verify` says `configured-correctly`; project `abap-studio-rd9d` verified |
-| Production P1 config | `/api/health` reports `clerkConfigured: true`, `legacyAuthMode: "off"`, webhook secret present, 1 user, 50 programs; unsigned webhook request returns `400` |
+| Production P1 config | `/api/health` reports `clerkConfigured: true`, `passwordLogon: "retired"`, webhook secret present, one user, current live object count; unsigned webhook request returns `400` |
 | Production sign-in | Owner Email OTP and Google verified; `/admin` loads; non-owner isolation, suspend/reactivate/force-logout/delete and webhook delivery verified |
 | `https://abap-studio.is-a.dev` | `302` to `https://is-a.dev/available?d=abap-studio` |
 | is-a.dev PR #58254 | closed, `status: denied`, `reason: not dev related`; no domain registered |
@@ -120,7 +120,7 @@ The TXT/CNAME records are live and `vercel domains verify` reports
 | `dig NS abap-studio.eu.org` | no records |
 | `dig SOA abap-studio.eu.org` | no records |
 | Clerk production instance | Moved to `abap-studio.akashgupta.is-a.dev` (Secondary application); Frontend API live; account portal has a valid certificate and a Cloudflare challenge |
-| Production Vercel env | has `OWNER_EMAIL`, production Clerk publishable/secret keys, `CLERK_WEBHOOK_SECRET`, Turso credentials, `AUTH_SECRET` (dormant); both legacy flags are `off` |
+| Production Vercel env | has `OWNER_EMAIL`, production Clerk publishable/secret keys, `CLERK_WEBHOOK_SECRET` and Turso credentials; obsolete `AUTH_SECRET`/legacy-auth flags have been removed |
 | Production Google OAuth | configured with a production Google Cloud client; owner Google sign-in verified and linked as `oauth_google` |
 
 ## Why the first is-a.dev root was denied
@@ -507,7 +507,7 @@ production instances without a cutover plan.
    current records, but Clerk may issue different mail/DKIM targets after the
    move.
 3. Add the production Clerk keys, `CLERK_WEBHOOK_SECRET`, `OWNER_EMAIL`,
-   `AUTH_SECRET` (dormant) and both legacy flags (`off`) to Vercel production.
+   and the Clerk/Turso variables to Vercel production. Do not set `AUTH_SECRET` or legacy-auth flags; the code no longer reads them.
 4. Create the Clerk webhook:
    - Path A: `https://abap-studio.akashgupta.is-a.dev/api/webhooks/clerk`
    - Path B: `https://abap-studio.eu.org/api/webhooks/clerk`
@@ -543,8 +543,8 @@ production instances without a cutover plan.
       `https://abap-studio.akashgupta.is-a.dev`, choosing **Secondary
       application**. The Frontend API is live, returns the correct Email OTP +
       Google configuration, and the account portal has a valid certificate.
-- [x] Set the production Clerk keys, `OWNER_EMAIL`, `CLERK_WEBHOOK_SECRET` and both
-      legacy flags to `off` in Vercel.
+- [x] Set the production Clerk keys, `OWNER_EMAIL` and `CLERK_WEBHOOK_SECRET` in Vercel;
+      remove the obsolete legacy-auth flags.
 - [x] Merge and deploy the P1 build (`main`, `e3df40c`) to the custom domain.
       `/sign-in`, `/sign-up` and `/api/health` report the expected configuration.
 - [x] Complete the production owner Email OTP sign-in, `/admin` and non-owner

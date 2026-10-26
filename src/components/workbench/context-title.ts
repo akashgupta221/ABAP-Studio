@@ -51,6 +51,8 @@ export function getContextTitle(input: TitleInput): string {
       return 'Repository Information System: Search'
     case 'syllabus':
       return 'ABAP Training: Syllabus'
+    case 'modern':
+      return 'Modern ABAP Workspace'
     default:
       return 'SAP Easy Access'
   }

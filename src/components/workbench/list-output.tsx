@@ -43,6 +43,7 @@ export function ListOutput({ list }: { list: ListLine[] }) {
       style={{ lineHeight: `${LINE_H}px` }}
       role="region"
       aria-label="Classical list output"
+      tabIndex={0}
     >
       {list.map((line, li) => (
         <div

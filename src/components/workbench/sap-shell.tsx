@@ -25,6 +25,7 @@ import { DataBrowserView } from './data-browser'
 import { FunctionBuilderView } from './function-builder'
 import { ClassBuilderView } from './class-builder'
 import { SelectionScreen } from './selection-screen'
+import { ModernWorkspace } from './modern-workspace'
 import { CommandPalette } from './command-palette'
 import {
   AboutDialog, ConfirmCreateDialog, ConfirmDeleteDialog, LogoffConfirmDialog,
@@ -878,7 +879,7 @@ export function SapShell() {
         {/* System menu (hamburger) */}
         <DropdownMenu>
           <DropdownMenuTrigger
-            className="flex h-5 w-5 items-center justify-center rounded-[2px] text-[13px] leading-none text-white/90 outline-none hover:bg-white/15 focus-visible:bg-white/15"
+            className="flex h-6 w-6 items-center justify-center rounded-[2px] text-[13px] leading-none text-white/90 outline-none hover:bg-white/15 focus-visible:bg-white/15"
             title="System menu"
             aria-label="System menu"
           >
@@ -905,7 +906,7 @@ export function SapShell() {
         {/* Back (F3) */}
         <button
           type="button"
-          className="flex h-5 w-5 items-center justify-center rounded-[2px] text-[15px] leading-none text-white/90 hover:bg-white/15"
+          className="flex h-6 w-6 items-center justify-center rounded-[2px] text-[15px] leading-none text-white/90 hover:bg-white/15"
           title="Back (F3)"
           aria-label="Back"
           onClick={back}
@@ -926,25 +927,11 @@ export function SapShell() {
               <UserButton appearance={{ elements: { avatarBox: 'h-5 w-5' } }} />
             </span>
           ) : null}
+          <span className="px-1 opacity-80" aria-hidden title="Minimize">–</span>
+          <span className="px-1 opacity-80" aria-hidden title="Maximize">▢</span>
           <button
             type="button"
-            className="cursor-default px-1.5 opacity-80 hover:opacity-100"
-            title="Minimize"
-            aria-label="Minimize"
-          >
-            –
-          </button>
-          <button
-            type="button"
-            className="cursor-default px-1.5 opacity-80 hover:opacity-100"
-            title="Maximize"
-            aria-label="Maximize"
-          >
-            ▢
-          </button>
-          <button
-            type="button"
-            className="sap-titlebar-close cursor-default rounded-[2px] px-1.5 opacity-90 hover:text-white"
+            className="sap-titlebar-close flex h-6 w-6 cursor-default items-center justify-center rounded-[2px] opacity-90 hover:text-white"
             title="Log Off"
             aria-label="Log Off"
             onClick={() => setLogoffConfirm(true)}
@@ -955,7 +942,7 @@ export function SapShell() {
       </header>
 
       {/* ── menu bar ── */}
-      <nav className="sap-menubar flex h-[26px] shrink-0 items-center px-1" role="menubar" aria-label="Main menu">
+      <nav className="sap-menubar flex h-[26px] shrink-0 items-center px-1" aria-label="Main menu">
         {menus.map((m) => (
           <DropdownMenu key={m.label}>
             <DropdownMenuTrigger className="sap-menu-item outline-none">{m.label}</DropdownMenuTrigger>
@@ -971,7 +958,7 @@ export function SapShell() {
       </nav>
 
       {/* ── standard toolbar ── */}
-      <div className="sap-toolbar flex h-[30px] shrink-0 items-center gap-0.5 px-1.5">
+      <div className="sap-toolbar flex h-[30px] min-w-0 shrink-0 items-center gap-0.5 overflow-x-auto overflow-y-hidden px-1.5">
         <ToolBtn
           icon={I.enter}
           title="Enter"
@@ -1120,11 +1107,12 @@ export function SapShell() {
           className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[2px] border border-[#9db2cc] bg-white"
           role="main"
         >
+          <h1 className="sr-only">ABAP Studio Workbench</h1>
           {hasTabs && (
             <div className="sap-tabstrip flex min-h-[28px] items-end gap-1 overflow-x-auto px-1.5 pt-1">
               <button
                 type="button"
-                className={`sap-tab shrink-0 ${view === 'home' ? 'bg-white' : ''}`}
+                className={`sap-tab min-h-[26px] shrink-0 ${view === 'home' ? 'bg-white' : ''}`}
                 data-active={view === 'home'}
                 onClick={() => useWorkbench.getState().navigate('home')}
                 title="SAP Easy Access"
@@ -1136,37 +1124,36 @@ export function SapShell() {
                 const isActive = view === 'tab' && tab.key === activeTabKey
                 const dirty = !!useWorkbench.getState().programs[tab.programName]?.dirty
                 return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    className="sap-tab shrink-0"
-                    data-active={isActive}
-                    onClick={() => activateTab(tab.key)}
-                    onAuxClick={(e) => {
-                      if (e.button === 1) closeTab(tab.key)
-                    }}
-                    title={tab.kind === 'program' ? tab.programName : `List: ${tab.programName}`}
-                  >
-                    <span className="truncate font-mono">{tab.programName}</span>
-                    {tab.kind === 'output' && (
-                      <span className="text-[9.5px] font-semibold uppercase text-[#7b8a9c]">list</span>
-                    )}
-                    {tab.kind === 'program' && dirty && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#e0a33e]" title="Inactive (unsaved changes)" />
-                    )}
-                    <span
-                      role="button"
-                      tabIndex={-1}
-                      className="ml-0.5 rounded-sm px-0.5 hover:bg-[#c7d8ec] hover:text-[#c4302f]"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        closeTab(tab.key)
+                  <div key={tab.key} className="flex shrink-0 items-end">
+                    <button
+                      type="button"
+                      className="sap-tab min-h-[26px] rounded-r-none border-r-0 pr-1.5"
+                      data-active={isActive}
+                      onClick={() => activateTab(tab.key)}
+                      onAuxClick={(e) => {
+                        if (e.button === 1) closeTab(tab.key)
                       }}
+                      title={tab.kind === 'program' ? tab.programName : `List: ${tab.programName}`}
+                    >
+                      <span className="truncate font-mono">{tab.programName}</span>
+                      {tab.kind === 'output' && (
+                        <span className="text-[9.5px] font-semibold uppercase text-[#7b8a9c]">list</span>
+                      )}
+                      {tab.kind === 'program' && dirty && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#e0a33e]" title="Inactive (unsaved changes)" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="sap-tab min-h-[26px] min-w-[26px] justify-center rounded-l-none border-l-0 px-1.5 text-[12px] hover:bg-[#c7d8ec] hover:text-[#c4302f]"
+                      data-active={isActive}
+                      onClick={() => closeTab(tab.key)}
                       aria-label={`Close ${tab.programName}`}
+                      title={`Close ${tab.programName}`}
                     >
                       ✕
-                    </span>
-                  </button>
+                    </button>
+                  </div>
                 )
               })}
             </div>
@@ -1195,6 +1182,7 @@ export function SapShell() {
             {view === 'browser' && <DataBrowserView />}
             {view === 'classes' && <ClassBuilderView />}
             {view === 'functions' && <FunctionBuilderView />}
+            {view === 'modern' && <ModernWorkspace />}
           </div>
         </main>
       </div>

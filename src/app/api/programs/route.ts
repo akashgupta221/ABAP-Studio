@@ -22,8 +22,11 @@ export async function GET(req: NextRequest) {
     const type = sp.get('type')
     const topicId = sp.get('topicId')
     const q = sp.get('q')
-
     const filters: Record<string, unknown>[] = [programListWhere(auth.user, owner)]
+    // The classic workbench lists STANDARD objects only. Modern artefacts live
+    // in the dedicated workspace and are fetched through /api/modern; there is
+    // deliberately no query-string override here.
+    filters.push({ environment: 'STANDARD' })
     if (type) filters.push({ type })
     if (topicId) filters.push({ topicId: parseInt(topicId) })
     if (q) {
@@ -50,6 +53,8 @@ export async function GET(req: NextRequest) {
         description: p.description,
         type: p.type,
         paradigm: p.paradigm,
+        environment: p.environment,
+        modernKind: p.modernKind,
         isExample: p.isExample,
         tags: p.tags,
         executions: p.executions,
@@ -120,6 +125,8 @@ export async function POST(req: NextRequest) {
         description,
         type,
         paradigm,
+        environment: 'STANDARD',
+        modernKind: 'ABAP',
         topicId: typeof topicId === 'number' && Number.isInteger(topicId) ? topicId : null,
         source,
         tags,

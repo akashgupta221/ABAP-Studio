@@ -1,27 +1,30 @@
 import { clerkMiddleware } from '@clerk/nextjs/server'
-import { NextResponse } from 'next/server'
-import { clerkServerConfigured } from '@/lib/auth-mode'
+import { NextFetchEvent, NextRequest, NextResponse } from 'next/server'
+import { clerkServerConfigured } from '@/lib/auth-config'
 
 function isAdminPage(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/')
 }
 
 // Clerk supplies the session; the admin page and every admin API still perform
-// their own database role/identity check. During the approved fallback window a
-// valid legacy cookie is allowed through to that server-side gate as well.
+// their own database role/identity check.
 const clerkProxy = clerkMiddleware(async (auth, req) => {
-  const { userId } = await auth()
-  if (isAdminPage(req.nextUrl.pathname) && !req.cookies.has('sap_session')) {
+  if (isAdminPage(req.nextUrl.pathname)) {
     await auth.protect()
   }
-  const response = NextResponse.next()
-  // Once a Clerk session exists, the legacy cookie must not be able to
-  // resurface when the Clerk session is later signed out in the browser.
-  if (userId) response.cookies.delete('sap_session')
-  return response
+  return NextResponse.next()
 })
 
-export default clerkServerConfigured() ? clerkProxy : () => NextResponse.next()
+export default function proxy(req: NextRequest, event: NextFetchEvent) {
+  // Disposable local/CI test runs authenticate through /api/test/session.
+  // The test broker itself refuses Vercel/Turso deployments; this bypass only
+  // matters when E2E_TEST_MODE is explicitly set on a non-cloud machine.
+  if (process.env.E2E_TEST_MODE === '1' && !process.env.VERCEL) {
+    return NextResponse.next()
+  }
+  if (!clerkServerConfigured()) return NextResponse.next()
+  return clerkProxy(req, event)
+}
 
 export const config = {
   matcher: [

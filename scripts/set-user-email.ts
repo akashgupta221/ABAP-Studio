@@ -8,7 +8,7 @@
 //
 // Remote databases additionally require TURSO_DATABASE_URL/TURSO_AUTH_TOKEN.
 import { db, ensureSchema } from '../src/lib/db'
-import { normalizeUsername } from '../src/lib/auth'
+import { normalizeUsername } from '../src/lib/username'
 import { writeAudit } from '../src/lib/admin'
 
 function fail(message: string): never {

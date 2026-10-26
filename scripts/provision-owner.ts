@@ -1,20 +1,17 @@
 // Provision the single owner administrator and claim pre-ownership legacy data.
 //
 // Usage (local):
-//   OWNER_USERNAME=AKASH bun run scripts/provision-owner.ts
-//   OWNER_USERNAME=AKASH bun run scripts/set-owner-password.ts   # hidden input
+//   OWNER_USERNAME=AKASH OWNER_EMAIL=owner@example.com bun run owner:provision
 //
 // Production (only after a verified backup and explicit authorization):
-//   CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=... bun run scripts/provision-owner.ts
+//   CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=... OWNER_EMAIL=... \
+//     bun run scripts/provision-owner.ts
 //
-// Do not pass a real password on the command line (shell history). The optional
-// OWNER_PASSWORD environment variable exists for automation; prefer
-// set-owner-password.ts, which never echoes the value.
+// Identity is Clerk-only. This script never creates or stores a password.
 import { db, ensureSchema } from '../src/lib/db'
-import { hashPassword, normalizeUsername, validateUsername } from '../src/lib/auth'
+import { normalizeUsername, validateUsername } from '../src/lib/username'
 import { writeAudit } from '../src/lib/admin'
 import { SANDBOX_SOURCE, SANDBOX_TAGS, SANDBOX_TITLE, SANDBOX_DESCRIPTION } from '../src/lib/sandbox'
-import { randomBytes } from 'node:crypto'
 
 function fail(message: string): never {
   console.error(`✗ ${message}`)
@@ -23,17 +20,18 @@ function fail(message: string): never {
 
 async function main() {
   const username = normalizeUsername(process.env.OWNER_USERNAME ?? '')
-  const password = process.env.OWNER_PASSWORD ?? ''
   const email = (process.env.OWNER_EMAIL ?? '').trim().toLowerCase() || null
 
   if (!username) fail('Set OWNER_USERNAME')
   const nameError = validateUsername(username)
   if (nameError) fail(nameError)
-  if (password && password.length < 8) fail('OWNER_PASSWORD must have at least 8 characters')
 
   const remote = Boolean(process.env.TURSO_DATABASE_URL)
   if (remote && process.env.CONFIRM_OWNER_PROVISION !== 'YES') {
     fail('Remote database detected. Re-run with CONFIRM_OWNER_PROVISION=YES after taking a backup.')
+  }
+  if (remote && !email) {
+    fail('OWNER_EMAIL is required for remote provisioning; production owner access fails closed without it.')
   }
   console.log(`Target: ${remote ? 'remote Turso database' : 'local SQLite database'}`)
 
@@ -45,17 +43,10 @@ async function main() {
       fail(`OWNER_EMAIL is already linked to another account (${emailOwner.username})`)
     }
   }
-  const generated = !existing && !password ? randomBytes(24).toString('base64url') : null
-  const passwordHash = password
-    ? await hashPassword(password)
-    : generated
-      ? await hashPassword(generated)
-      : undefined
 
   const owner = await db.user.upsert({
     where: { username },
     update: {
-      ...(passwordHash ? { passwordHash } : {}),
       // Do not erase an owner email when provisioning runs without one.
       ...(email ? { email } : {}),
       role: 'OWNER',
@@ -64,7 +55,8 @@ async function main() {
     },
     create: {
       username,
-      passwordHash: passwordHash ?? '',
+      // Retained for schema compatibility; Clerk is the only identity path.
+      passwordHash: '',
       email,
       displayName: username,
       role: 'OWNER',
@@ -103,15 +95,24 @@ async function main() {
     }
   }
 
-  await writeAudit(owner, 'OWNER_ASSIGN', 'USER', owner.id, `${existing ? 'updated' : 'created'} owner · claimed ${claimed.count} legacy program(s)`)
+  await writeAudit(
+    owner,
+    'OWNER_ASSIGN',
+    'USER',
+    owner.id,
+    `${existing ? 'updated' : 'created'} owner · claimed ${claimed.count} legacy program(s)`,
+  )
 
-  console.log(`✓ Owner ${owner.username} is provisioned (${existing ? 'existing account updated' : 'account created'}).`)
+  console.log(
+    `✓ Owner ${owner.username} is provisioned (${existing ? 'existing account updated' : 'account created'}).`,
+  )
   console.log(`✓ ${claimed.count} legacy program(s) claimed by the owner.`)
-  if (generated) {
-    console.log('✓ A random temporary password was set and is intentionally not displayed.')
-    console.log(`  Run: OWNER_USERNAME=${owner.username} bun run scripts/set-owner-password.ts`)
+  console.log('✓ Previous sessions invalidated.')
+  if (email) {
+    console.log(`✓ Owner email is configured; sign in through Clerk with ${email}.`)
+  } else {
+    console.log('! OWNER_EMAIL is not set. Production owner access will fail closed until it is configured.')
   }
-  console.log('✓ Previous sessions invalidated. Log in with the owner credentials.')
   process.exit(0)
 }
 

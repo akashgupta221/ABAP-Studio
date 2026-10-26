@@ -34,7 +34,6 @@ jobs:
       TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
       OWNER_USERNAME: ${{ inputs.owner_username }}
       OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
-      OWNER_PASSWORD: ${{ secrets.OWNER_PASSWORD }}
       CONFIRM_OWNER_PROVISION: YES
     steps:
       - name: Confirm authorization
@@ -54,7 +53,8 @@ jobs:
             exit 1
           fi
           if [ -z "$OWNER_EMAIL" ]; then
-            echo "::warning::OWNER_EMAIL secret is not set; the Vercel owner gate must use OWNER_USERNAME or be fixed before admin access."
+            echo "::error::Missing repository secret OWNER_EMAIL. Production owner access fails closed without it."
+            exit 1
           fi
 
       - uses: actions/checkout@v4
@@ -78,4 +78,4 @@ jobs:
 
       - name: Security reminder
         if: always()
-        run: echo "::notice::If you set OWNER_PASSWORD, delete that temporary repository secret now."
+        run: echo "::notice::Provisioning stores no password. Clerk owns identity; do not add an OWNER_PASSWORD secret."

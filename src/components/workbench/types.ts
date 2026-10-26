@@ -98,6 +98,8 @@ export interface CheckIssue {
 export type ObjectType = 'REPORT' | 'CLASS' | 'INCLUDE' | 'FUNCTION_GROUP' | 'TABLE' | 'FM' | 'TOPIC'
 export type ProgramType = 'REPORT' | 'CLASS' | 'INCLUDE' | 'FUNCTION_GROUP'
 export type Paradigm = 'POP' | 'OOP' | 'BOTH'
+export type ModernKind = 'ABAP' | 'CDS' | 'RAP' | 'AMDP'
+export type ModernEnvironment = 'STANDARD' | 'MODERN'
 
 export interface ProgramListItem {
   id: string
@@ -106,6 +108,8 @@ export interface ProgramListItem {
   description: string
   type: ProgramType
   paradigm: Paradigm
+  environment: ModernEnvironment
+  modernKind: ModernKind
   isExample: boolean
   tags: string
   executions: number
@@ -258,6 +262,7 @@ export type ViewKind =
   | 'browser'
   | 'classes'
   | 'functions'
+  | 'modern'
 
 export interface SystemMessage {
   id: number
@@ -272,6 +277,8 @@ export interface ProgramTabData {
   title: string
   type: ProgramType
   paradigm: Paradigm
+  environment: ModernEnvironment
+  modernKind: ModernKind
   isExample: boolean
   version: number
   /** false = saved but not activated yet (classic SE38 Active/Inactive state) */

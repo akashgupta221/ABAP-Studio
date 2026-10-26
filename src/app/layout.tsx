@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { clerkPublishableConfigured } from "@/lib/auth-mode";
+import { clerkPublishableConfigured } from "@/lib/auth-config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "ABAPForge — The Modern ABAP Studio",
     description:
-      "Write, run and master ABAP in your browser — procedural + OO ABAP, ALV grids, simulated SAP database, 36 runnable examples. Free forever.",
+      "Write, run and master ABAP in your browser — procedural + OO ABAP, ALV grids, simulated SAP database and 41 runnable Standard + Modern examples. Free forever.",
     type: "website",
   },
 };

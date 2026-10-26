@@ -5,9 +5,13 @@ import { auth } from '@clerk/nextjs/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { db, ensureSchema } from '@/lib/db'
-import { parseSessionToken, SESSION_COOKIE } from '@/lib/auth'
-import { clerkServerConfigured, legacyLoginEnabled } from '@/lib/auth-mode'
+import { clerkServerConfigured } from '@/lib/auth-config'
 import { resolveClerkUser } from '@/lib/clerk-user'
+import {
+  parseTestSessionToken,
+  testAuthEnabled,
+  TEST_SESSION_COOKIE,
+} from '@/lib/test-auth'
 
 export interface AuthUser {
   id: string
@@ -22,20 +26,52 @@ export type AuthResult =
   | { user: AuthUser; response?: never }
   | { user?: never; response: NextResponse }
 
+async function cookieValue(req: NextRequest | undefined, name: string): Promise<string | undefined> {
+  const direct = req?.cookies.get(name)?.value
+  if (direct) return direct
+  try {
+    return (await cookies()).get(name)?.value
+  } catch {
+    // Outside a request context there is no cookie to inspect.
+    return undefined
+  }
+}
+
 /**
- * Resolve the signed-in user. Clerk is tried first; the legacy signed cookie is
- * accepted only while the cutover mode allows it. A Clerk session that cannot
- * be mapped fails closed rather than falling through to another identity.
+ * Resolve the signed-in user. Clerk is the only production identity provider.
+ * A disposable test session may be used only when the test broker is explicitly
+ * enabled against a local database. A Clerk session that cannot be mapped fails
+ * closed rather than falling through to another identity.
  */
 export async function getSessionUser(req?: NextRequest): Promise<AuthUser | null> {
+  if (testAuthEnabled()) {
+    const token = await cookieValue(req, TEST_SESSION_COOKIE)
+    if (token) {
+      const session = parseTestSessionToken(token)
+      if (!session) return null
+      await ensureSchema()
+      const user = await db.user.findUnique({
+        where: { id: session.uid },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          role: true,
+          suspended: true,
+          sessionVersion: true,
+        },
+      })
+      if (!user || user.suspended || user.sessionVersion !== session.sv) return null
+      return user
+    }
+  }
+
   if (clerkServerConfigured()) {
     let clerkUserId: string | null = null
     try {
       const session = await auth()
       clerkUserId = session.userId ?? null
     } catch (error) {
-      // `auth()` can throw when middleware is absent in local tooling. Log only
-      // the message and let the legacy fallback handle a legacy session.
       console.error('[clerk] session lookup failed:', error instanceof Error ? error.message : error)
     }
 
@@ -50,40 +86,7 @@ export async function getSessionUser(req?: NextRequest): Promise<AuthUser | null
     }
   }
 
-  if (!legacyLoginEnabled()) return null
-
-  let token = req?.cookies.get(SESSION_COOKIE)?.value
-  if (!token) {
-    try {
-      token = (await cookies()).get(SESSION_COOKIE)?.value
-    } catch {
-      // Outside a request context there is no cookie to inspect.
-    }
-  }
-  return getSessionUserFromToken(token)
-}
-
-/** Cookie-independent legacy variant, retained for scripts and the cutover. */
-export async function getSessionUserFromToken(token: string | undefined): Promise<AuthUser | null> {
-  const session = token ? parseSessionToken(token) : null
-  if (!session) return null
-
-  await ensureSchema()
-  const user = await db.user.findUnique({
-    where: { id: session.uid },
-    select: {
-      id: true,
-      username: true,
-      email: true,
-      role: true,
-      suspended: true,
-      sessionVersion: true,
-    },
-  })
-  if (!user) return null
-  if (user.suspended) return null
-  if (user.sessionVersion !== session.sv) return null
-  return user
+  return null
 }
 
 /** Require any signed-in user. Usage: `const auth = await requireUser(req); if (!auth.user) return auth.response`. */
@@ -106,11 +109,10 @@ function ownerEmail(): string {
 }
 
 /**
- * The single owner is identified by a server-managed role **and** an
- * environment-configured identity. `OWNER_EMAIL` is authoritative when set
- * (Clerk-ready); `OWNER_USERNAME` is the interim built-in-auth fallback. If
- * neither is configured, owner access fails closed, so a stray role value or
- * client-supplied field can never grant administration on its own.
+ * The single owner is identified by a server-managed role **and** a matching
+ * `OWNER_EMAIL`. Production fails closed when the email is missing: the
+ * username fallback exists only for non-production local/unit-test use.
+ * Client-supplied roles or Clerk metadata can never grant administration.
  */
 export function isOwner(
   user: Pick<AuthUser, 'username' | 'role'> & { email?: string | null },
@@ -120,6 +122,8 @@ export function isOwner(
   if (configuredEmail) {
     return Boolean(user.email && user.email.trim().toLowerCase() === configuredEmail)
   }
+  // Never fall back to a username on a production deployment.
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') return false
   const configuredUsername = ownerUsername()
   if (!configuredUsername) return false
   return user.username.trim().toUpperCase() === configuredUsername

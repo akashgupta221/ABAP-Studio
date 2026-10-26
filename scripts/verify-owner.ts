@@ -20,6 +20,10 @@ async function main() {
   if (owner.suspended) fail('The OWNER account is suspended')
 
   const configuredEmail = (process.env.OWNER_EMAIL ?? '').trim().toLowerCase()
+  const isProduction = Boolean(process.env.VERCEL || process.env.NODE_ENV === 'production')
+  if (isProduction && !configuredEmail) {
+    fail('OWNER_EMAIL is required in production; the owner gate fails closed without it')
+  }
   if (configuredEmail) {
     if (!owner.email || owner.email.trim().toLowerCase() !== configuredEmail) {
       fail('The OWNER account email does not match OWNER_EMAIL')

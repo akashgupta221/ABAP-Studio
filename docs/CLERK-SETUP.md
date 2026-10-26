@@ -18,7 +18,7 @@ never printed by the commands in this guide.
 | Clerk Frontend API | `https://clerk.abap-studio.akashgupta.is-a.dev` — live with a valid TLS certificate |
 | Sign-in methods | **Email OTP + Google only**; password, phone, username, Facebook and GitHub disabled |
 | P1 code | Merged into `main` as `e3df40c`; production code deployment `dpl_H827WkruszuKqUBCeV58DRER4LyU` |
-| Local gates | `lint`, **26 unit tests**, **59 API checks** and production `build` pass |
+| Local gates | `lint`, type-check, **35 unit tests**, **87 API checks**, **12 UI/axe tests** and production `build` pass |
 | Owner sign-in | Verified production Email OTP and Google; both linked to the same Clerk identity; `/api/auth/me` returns `AKASH` / `OWNER` / `owner: true` |
 | Non-owner isolation | Verified in production with disposable users: `/admin` redirects to `/`; `/api/admin/*` returns `403`; another user’s private program is invisible and direct GET/PUT/DELETE returns `404` |
 | Owner administration | Verified counts, users, programs, 7-day chart, recent activity, suspend/reactivate, force logout, delete and audit log. Owner-only program deletion is available in **All programs** and is audited as `PROGRAM_DELETE` |
@@ -26,8 +26,8 @@ never printed by the commands in this guide.
 | Google OAuth | Production Google Cloud client installed in Clerk; real owner Google sign-in completed and linked to the existing Clerk identity |
 | Clerk mail DNS | **Complete** — [PR #58415](https://github.com/is-a-dev/register/pull/58415) merged; all five Clerk CNAMEs verified; domain/DNS/mail/SSL all `complete` |
 | Free-plan limitation | Clerk’s free plan rejects native user bans (`app:ban_user`). Suspension is enforced by DB `suspended=true` plus Clerk session revocation; see below |
-| Legacy authentication | `LEGACY_AUTH_MODE=off` and `NEXT_PUBLIC_LEGACY_AUTH_MODE=off`; login returns `403`, registration `410`, legacy UI hidden |
-| Production accounts | **1 user / 50 programs**. The owner approved removal of the three remaining non-owner accounts and their data; only the linked owner remains |
+| Legacy authentication | **Permanently removed.** The scrypt/HMAC modules, legacy UI flags and password-reset script are deleted; `/api/auth/login` returns `403`, `/api/auth/register` returns `410` |
+| Production accounts | One linked owner and private data only. The owner approved removal of the three remaining non-owner accounts; live user/program counts are reported by `/api/health` |
 | Free domain | `https://abap-studio.akashgupta.is-a.dev` is the verified production domain. EU.org is not required and remains an unused backup path |
 
 Do not replace the selected Clerk application. Do not create a second production
@@ -67,18 +67,21 @@ configured `OWNER_EMAIL`; it fails closed if the email is missing or mismatched.
    sign-in, so the webhook is not the only path. Deletion in Clerk clears the link and
    suspends the database row; application data is retained until the owner deletes the row.
 
-## Cutover modes
+## Legacy authentication removal
 
-`LEGACY_AUTH_MODE` controls the dormant built-in scrypt/HMAC code:
+The built-in scrypt/HMAC implementation is gone. There is no environment flag that can
+re-open it:
 
-| Mode | Behaviour | Use |
-|---|---|---|
-| `full` | Legacy logon **and** registration | Disposable local/API tests only |
-| `fallback` | Legacy logon for existing accounts; registration blocked | Historical migration mode only |
-| `off` | Legacy endpoints retired | **Current production setting** |
+- `src/lib/auth.ts`, `src/lib/auth-mode.ts` and `scripts/set-owner-password.ts` are deleted.
+- `/api/auth/login` is a permanent `403` retirement stub.
+- `/api/auth/register` is a permanent `410` retirement stub.
+- The logon UI has no password/registration form.
+- `scripts/provision-owner.ts` never creates or stores a password.
+- API/UI tests use `src/lib/test-auth.ts`, a separate HMAC-signed **test-only** session
+  broker. It requires `E2E_TEST_MODE=1`, a secret of at least 16 characters and the
+  absence of `VERCEL`/`TURSO_DATABASE_URL`, so production fails closed.
 
-`NEXT_PUBLIC_LEGACY_AUTH_MODE=off` hides the legacy form in the UI. Production is `off`;
-do not set `fallback` again without an owner decision and a new migration plan.
+Do not re-add a password path as a fallback. Clerk is the only identity provider.
 
 ## Production configuration
 
@@ -120,9 +123,6 @@ is in `docs/FREE-DOMAIN-SETUP.md`.
 | `OWNER_EMAIL` | Verified owner email; must match the `AKASH` row |
 | `TURSO_DATABASE_URL` | Production libSQL URL |
 | `TURSO_AUTH_TOKEN` | Production Turso token |
-| `LEGACY_AUTH_MODE` | `off` |
-| `NEXT_PUBLIC_LEGACY_AUTH_MODE` | `off` |
-| `AUTH_SECRET` | Retained for the dormant legacy code; not used for Clerk sessions. Remove it when the legacy code is deleted |
 
 Clerk paths are `/sign-in`, `/sign-up`, `/` after sign-in/sign-up and `/` after sign-out.
 The production origin is allowed; do not use wildcard production origins.
@@ -142,7 +142,7 @@ The P1 branch was merged into `main` with merge commit `e3df40c` and deployed as
 `dpl_H827WkruszuKqUBCeV58DRER4LyU`. Earlier production deployments during the cutover were
 `dpl_ByZUX2BiqBcNr1gmRgBLmqKBMfqL` (secret/suspension fix) and
 `dpl_7yLpXYtHe4aVhfb9hsrP7ZapDFWs` (legacy off). `/api/health` reports
-`clerkConfigured: true`, `legacyAuthMode: "off"`, Turso, 1 user and 50 programs.
+`clerkConfigured: true`, `passwordLogon: "retired"`, Turso, one owner and the current live object count.
 
 ## Webhook
 
@@ -172,8 +172,7 @@ and troubleshooting are in `docs/GOOGLE-OAUTH-SETUP.md`.
 The production owner row has a verified email and is linked to Clerk. The owner reviewed
 the three remaining non-owner database accounts and explicitly approved permanent removal,
 including their private data. They were deleted through `/admin`; audit entries were
-written and the database returned to **1 user / 50 programs**. There are no unmapped
-legacy accounts remaining.
+written and only the linked owner remains. There are no unmapped legacy accounts.
 
 This path is historical and should not be used to reintroduce the fallback after P1:
 `bun run user:email` can attach an owner-verified address to an existing row before a
@@ -186,7 +185,7 @@ cutover. Never import scrypt hashes into Clerk and never send passwords through 
 | Owner Email OTP | Delivered; verified email; Clerk session created |
 | Owner Google OAuth | Completed; linked to the same Clerk identity; `oauth_google` external account present |
 | Owner authorization | `/api/auth/me` → `AKASH` / `OWNER` / `owner: true`; `/admin` loads |
-| Owner overview | 4 users / 50 programs and the 7-day execution chart were confirmed before the three non-owner accounts were removed |
+| Owner overview | The 4-user/50-program overview and 7-day execution chart were confirmed before the three non-owner accounts were removed; current counts are live in `/api/health` |
 | Non-owner `/admin` | Redirected to `/` |
 | Non-owner admin API | `/api/admin/overview` → `403` |
 | Private-program isolation | Another user’s program was absent from lists; direct GET/PUT/DELETE → `404` |
@@ -197,7 +196,7 @@ cutover. Never import scrypt hashes into Clerk and never send passwords through 
 | Audit log | `USER_SUSPEND`, `USER_REACTIVATE`, `USER_SESSION_REVOKE`, `USER_DELETE` and the later `PROGRAM_DELETE` verified by the owner |
 | Owner program deletion | A disposable private program was deleted from **All programs**; count returned to 50; `PROGRAM_DELETE` recorded |
 | Webhook | Real signed `user.created` delivered; unsigned POST → `400` |
-| Legacy retirement | `/api/auth/login` → `403`; `/api/auth/register` → `410`; legacy UI hidden |
+| Legacy retirement | `/api/auth/login` → `403`; `/api/auth/register` → `410`; legacy modules/UI deleted |
 | Standard ABAP fidelity | Owner confirmed the `MER / 105` Standard ABAP screen is unchanged after P1 |
 
 **Free-plan suspension behaviour.** Clerk’s free plan rejects native user bans with
@@ -216,8 +215,8 @@ and the Clerk dashboard “banned” state are not required for application secu
 - The webhook signature is verified before any database write.
 - Examples are shared/read-only. Private programs are creator-only; the owner can inspect
   and delete any non-example program. Deletion requires an exact typed name and is audited.
-- The legacy code remains dormant with `LEGACY_AUTH_MODE=off`; remove it and `AUTH_SECRET`
-  in a later cleanup. Do not re-enable fallback without an owner decision.
+- The legacy authentication code and environment flags are deleted. Do not reintroduce a
+  password fallback; use Clerk only.
 
 ## Local testing
 
@@ -225,16 +224,19 @@ Local `.env` may contain development Clerk keys. The required gates are:
 
 ```bash
 bun run lint
+bun run typecheck
 bun run test
 bun run test:api
+bun run test:ui
 bun run build
 ```
 
-The API suite intentionally runs with `LEGACY_AUTH_MODE=full` against a disposable
-database; it never touches production. It does not exercise real Clerk sessions, webhooks
-or Google. Production browser verification is recorded above.
+The API/UI suites use the disposable test-session broker against throwaway databases; they
+never touch production and do not exercise real Clerk sessions, webhooks or Google.
+Production browser verification is recorded above.
 
-Current local results: **lint clean, 26 unit tests, 59 API checks, build successful**.
+Current local results: **lint and type-check clean, 35 unit tests, 87 API checks, 12 UI/axe
+tests, build successful.**
 
 ## Troubleshooting
 

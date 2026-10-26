@@ -1,5 +1,5 @@
 // Auto-seed guard — ensures the pre-stored content (10 syllabus topics,
-// 11 SAP demo tables + rows, 37 example programs, FMs) always exists.
+// 11 SAP demo tables + rows, 41 example programs, FMs) always exists.
 //
 // Why: the SQLite file can be missing/empty after a fresh clone, a redeploy,
 // or an environment reset. Instead of requiring a manual `bun run seed`,
@@ -24,23 +24,41 @@ async function seedIfEmpty(): Promise<boolean> {
   // deploy where we can't run migrations, bail out gracefully — API routes
   // will surface a clear error instead of crashing the server.
   if (topicCount === -1) return false
-  if (topicCount > 0) return true
+  if (topicCount > 0) {
+    // The additive schema may already contain the classic content but not the
+    // Modern workspace. If the modern examples are missing, run the same
+    // idempotent seed once to add them without touching user data.
+    const modernCount = await db.program
+      .count({ where: { environment: 'MODERN' } })
+      .catch(() => -1)
+    if (modernCount !== 0) return true
+    console.log('[ensure-seed] Modern examples missing — adding them…')
+  } else {
+    console.log('[ensure-seed] Repository empty — seeding pre-stored content…')
+  }
 
-  // Empty repository → import seed payloads (pure data modules) and fill it.
-  console.log('[ensure-seed] Repository empty — seeding pre-stored content…')
-  const [{ topics, tables }, { programsPart1 }, { programsPart2, functions, includeProgram }] =
-    await Promise.all([
-      import('../../scripts/seed-content'),
-      import('../../scripts/seed-programs-1'),
-      import('../../scripts/seed-programs-2'),
-    ])
+  // Import seed payloads (pure data modules) and fill the repository.
+  const [
+    { topics, tables },
+    { programsPart1 },
+    { programsPart2, functions, includeProgram },
+    { modernPrograms },
+  ] = await Promise.all([
+    import('../../scripts/seed-content'),
+    import('../../scripts/seed-programs-1'),
+    import('../../scripts/seed-programs-2'),
+    import('../../scripts/seed-modern'),
+  ])
 
   // Atomic: on serverless platforms multiple cold-start instances can race —
   // the transaction + upserts guarantee a consistent final state every time.
   // The practice sandbox is per-user and created on demand by /api/sandbox.
-  const programs = [...(programsPart1 as any[]), ...(programsPart2 as any[]), includeProgram as any].filter(
-    (p) => p.name !== 'Z_MY_PRACTICE',
-  )
+  const programs = [
+    ...(programsPart1 as any[]),
+    ...(programsPart2 as any[]),
+    includeProgram as any,
+    ...(modernPrograms as any[]),
+  ].filter((p) => p.name !== 'Z_MY_PRACTICE')
   await db.$transaction(
     async (tx) => {
       // topics (idempotent on unique `code`)
@@ -90,6 +108,8 @@ async function seedIfEmpty(): Promise<boolean> {
           description: p.description,
           type: p.type,
           paradigm: p.paradigm,
+          environment: p.environment ?? 'STANDARD',
+          modernKind: p.modernKind ?? 'ABAP',
           source: p.source,
           isExample: p.isExample ?? true,
           tags: p.tags ?? '',
