@@ -149,6 +149,8 @@ interface WorkbenchState {
   // ── SAP popups ──────────────────────────────────────────────────────
   systemStatusOpen: boolean
   setSystemStatusOpen: (v: boolean) => void
+  settingsOpen: boolean
+  setSettingsOpen: (v: boolean) => void
   logoffConfirm: boolean
   setLogoffConfirm: (v: boolean) => void
   confirmDelete: { name: string } | null
@@ -275,6 +277,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   systemInfoVisible: true,
   editorFontSize: 13,
   systemStatusOpen: false,
+  settingsOpen: false,
   logoffConfirm: false,
   confirmDelete: null,
   whereUsed: { program: '', open: false, loading: false, hits: [] },
@@ -986,6 +989,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   toggleSystemInfo: () => set((s) => ({ systemInfoVisible: !s.systemInfoVisible })),
   setEditorFontSize: (n) => set({ editorFontSize: n }),
   setSystemStatusOpen: (v) => set({ systemStatusOpen: v }),
+  setSettingsOpen: (v) => set({ settingsOpen: v }),
   setLogoffConfirm: (v) => set({ logoffConfirm: v }),
   setConfirmDelete: (v) => set({ confirmDelete: v }),
   setFindOpen: (v) => set({ findOpen: v }),

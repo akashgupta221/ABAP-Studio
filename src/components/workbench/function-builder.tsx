@@ -7,8 +7,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
-  ArrowLeft,
-  Braces,
   CircleCheckBig,
   Lock,
   Pencil,
@@ -510,6 +508,7 @@ export function FunctionBuilderView() {
   const actionsRef = useRef<Record<string, () => void>>({})
   useEffect(() => {
     actionsRef.current = {
+      back: backToRepository,
       create: () => setCreateFmOpen(true),
       change: () => {
         if (!primaryTarget) { setNotice({ kind: 'I', text: 'Select a function module first.' }); return }
@@ -538,36 +537,22 @@ export function FunctionBuilderView() {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#f0f4f9] text-[13px] text-[#55677a]">
+      <div className="flex h-full items-center justify-center bg-[#ebf1f7] text-[13px] text-[#55677a]">
         Loading Function Builder…
       </div>
     )
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#D6E1EF]" data-testid="function-builder">
+    <div className="flex h-full min-h-0 flex-col bg-[#ebf1f7]" data-testid="function-builder">
       {(!record || !draft) && (
         <>
-          {/* SE37 initial screen header */}
-          <div className="shrink-0 border-b border-[#B9C8DB] bg-[#E4EBF5] px-[16px] py-[12px]">
-            <div className="mb-[8px] flex items-center gap-[8px]">
-              <Braces className="h-4 w-4 text-[#B25000]" />
-              <h1 className="text-[13px] font-bold text-[#1D3A5F]">Function Builder: Initial Screen</h1>
-              <span className="text-[11px] text-[#6B7A8D]">Edit or create function modules</span>
-              <button
-                type="button"
-                title="Refresh"
-                aria-label="Refresh lists"
-                onClick={() => { void refreshLists().catch((e) => setError(errorMessage(e))) }}
-                className="ml-auto flex h-[22px] items-center gap-[6px] rounded-[2px] border border-[#8296AC] bg-gradient-to-b from-[#FDFEFF] to-[#DDE6F2] px-[8px] text-[11px] text-[#12263A] hover:border-[#3C6EA5]"
-              >
-                <RefreshCw className="h-3 w-3" />
-                Refresh
-              </button>
-            </div>
+          <h1 className="sr-only">Function Builder: Initial Screen</h1>
 
+          {/* SE37 selection fields (the global title bar already names the screen) */}
+          <div className="shrink-0 border-b border-[#c6d7e6] bg-white px-[16px] pb-[8px] pt-[10px]">
             <div className="flex items-center gap-[8px]">
-              <label htmlFor="se37-fm-name" className="w-[130px] text-right text-[12px] font-semibold text-[#12263A]">
+              <label htmlFor="se37-fm-name" className="w-[130px] text-right text-[12px] font-semibold text-[#17324a]">
                 Function module
               </label>
               <div className="relative flex items-center">
@@ -592,13 +577,13 @@ export function FunctionBuilderView() {
                   aria-label="Search help for function modules"
                   aria-expanded={valueHelpOpen}
                   title="Search help (F4)"
-                  className="ml-[8px] flex h-[22px] w-[24px] items-center justify-center rounded-[2px] border border-[#8296AC] bg-gradient-to-b from-[#FDFEFF] to-[#DDE6F2] text-[#12263A] hover:border-[#3C6EA5]"
+                  className="ml-[8px] flex h-[22px] w-[24px] items-center justify-center rounded-[2px] border border-[#a8c0d6] bg-gradient-to-b from-[#FDFEFF] to-[#EDF3FA] text-[#17324a] hover:border-[#3c74b5]"
                 >
                   <Search className="h-3.5 w-3.5" />
                 </button>
                 {valueHelpOpen && (
                   <div
-                    className="absolute left-0 top-full z-30 mt-1 max-h-[240px] w-[340px] overflow-auto rounded-[2px] border border-[#8296ac] bg-white shadow-[0_8px_24px_rgba(9,30,60,0.25)]"
+                    className="absolute left-0 top-full z-30 mt-1 max-h-[240px] w-[340px] overflow-auto rounded-[2px] border border-[#a8c0d6] bg-white shadow-[0_8px_24px_rgba(9,30,60,0.25)]"
                     role="listbox"
                     aria-label="Function module value help"
                   >
@@ -611,7 +596,7 @@ export function FunctionBuilderView() {
                         type="button"
                         role="option"
                         aria-selected={highlighted === fm.name}
-                        className={`flex w-full items-center gap-2 px-2 py-[3px] text-left text-[11.5px] hover:bg-[#dbe8f8] ${highlighted === fm.name ? 'bg-[#cfe4ff]' : ''}`}
+                        className={`flex w-full items-center gap-2 px-2 py-[3px] text-left text-[11.5px] hover:bg-[#e8f1fa] ${highlighted === fm.name ? 'bg-[#cfe3f8]' : ''}`}
                         onClick={() => { setHighlighted(fm.name); setFilter(fm.name); setValueHelpOpen(false) }}
                       >
                         <span className="font-mono text-[#0a4f8f]">{fm.name}</span>
@@ -623,12 +608,12 @@ export function FunctionBuilderView() {
               </div>
             </div>
 
-            <div className="mt-[8px] flex items-center gap-[8px]">
+            <div className="mt-[8px] flex flex-wrap items-center gap-[8px]">
               <span className="w-[130px]" />
               <fieldset className="flex items-center gap-[8px]" aria-label="Function module mode">
                 <legend className="sr-only">Function module mode</legend>
                 {(['create', 'change', 'display'] as const).map((choice) => (
-                  <label key={choice} className="flex cursor-pointer items-center gap-[4px] text-[12px] capitalize text-[#12263A]">
+                  <label key={choice} className="flex cursor-pointer items-center gap-[4px] text-[12px] capitalize text-[#17324a]">
                     <input
                       type="radio"
                       name="se37-mode"
@@ -675,19 +660,29 @@ export function FunctionBuilderView() {
               <button type="button" className="sap-btn sap-btn-default" onClick={() => openTest()} aria-label="Test function module">
                 <Play className="h-3.5 w-3.5" /> Test
               </button>
+              <button
+                type="button"
+                title="Refresh lists"
+                aria-label="Refresh lists"
+                onClick={() => { void refreshLists().catch((e) => setError(errorMessage(e))) }}
+                className="sap-btn"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Refresh
+              </button>
             </div>
           </div>
 
-          {/* function groups strip */}
-          <div className="flex shrink-0 flex-wrap items-center gap-[8px] border-b border-[#C4D2E0] bg-[#EAF0F8] px-[16px] py-[6px]">
-            <span className="text-[11px] font-bold text-[#1D3A5F]">Function groups:</span>
+          {/* function groups + search in one compact strip */}
+          <div className="flex shrink-0 flex-wrap items-center gap-[8px] border-b border-[#c6d7e6] bg-[#f1f6fb] px-[16px] py-[6px]">
+            <span className="text-[11px] font-bold text-[#17324a]">Function groups:</span>
             {groups.map((group) => (
               <button
                 key={group.name}
                 type="button"
                 title={`${group.shortText || group.name} — ${group.moduleCount} module(s); click to filter`}
                 onClick={() => setFilter(group.name)}
-                className="rounded-[2px] border border-[#8296AC] bg-white px-[8px] py-[1px] font-mono text-[11px] text-[#0A6DD1] hover:bg-[#E7F0FA]"
+                className="rounded-[2px] border border-[#a8c0d6] bg-white px-[8px] py-[1px] font-mono text-[11px] text-[#0A6DD1] hover:bg-[#e8f1fa]"
               >
                 {group.name} ({group.moduleCount})
               </button>
@@ -695,7 +690,7 @@ export function FunctionBuilderView() {
             <button
               type="button"
               onClick={() => setCreateGroupOpen(true)}
-              className="flex items-center gap-[4px] rounded-[2px] border border-[#8296AC] bg-gradient-to-b from-[#FDFEFF] to-[#DDE6F2] px-[8px] py-[1px] text-[11px] text-[#12263A] hover:border-[#3C6EA5]"
+              className="flex items-center gap-[4px] rounded-[2px] border border-[#a8c0d6] bg-gradient-to-b from-[#FDFEFF] to-[#EDF3FA] px-[8px] py-[1px] text-[11px] text-[#17324a] hover:border-[#3c74b5]"
             >
               <Plus className="h-3 w-3" />
               Create group
@@ -704,24 +699,21 @@ export function FunctionBuilderView() {
               type="button"
               onClick={deleteGroupPrompt}
               title="Delete a function group (type its exact name to confirm)"
-              className="flex items-center gap-[4px] rounded-[2px] border border-[#8296AC] bg-gradient-to-b from-[#FDFEFF] to-[#DDE6F2] px-[8px] py-[1px] text-[11px] text-[#8A2B2B] hover:border-[#A23B3B]"
+              className="flex items-center gap-[4px] rounded-[2px] border border-[#a8c0d6] bg-gradient-to-b from-[#FDFEFF] to-[#EDF3FA] px-[8px] py-[1px] text-[11px] text-[#8A2B2B] hover:border-[#A23B3B]"
             >
               <Trash2 className="h-3 w-3" />
               Delete group
             </button>
-          </div>
-
-          {/* search + table */}
-          <div className="flex shrink-0 items-center gap-[8px] border-b border-[#C4D2E0] bg-[#EAF0F8] px-[16px] py-[6px]">
+            <span className="mx-[2px] h-[16px] w-px bg-[#c6d7e6]" aria-hidden />
             <Search className="h-3.5 w-3.5 text-[#4C6B8A]" />
             <input
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="Search function modules (name, group, short text)"
-              className="sap-input w-[340px] text-[12px]"
+              className="sap-input w-[280px] text-[12px]"
               aria-label="Search function modules"
             />
-            <span className="ml-auto text-[11px] text-[#6B7A8D]">
+            <span className="ml-auto text-[11px] text-[#55677a]">
               {visible.length} of {fms.length} entries
             </span>
           </div>
@@ -747,7 +739,7 @@ export function FunctionBuilderView() {
                   ? 'border-[#e4c98a] bg-[#fbf6e3] text-[#6b5a21]'
                   : notice.kind === 'S'
                     ? 'border-[#b8d9b3] bg-[#eef8ec] text-[#285f2d]'
-                    : 'border-[#b9c8db] bg-[#edf2f8] text-[#12263a]'
+                    : 'border-[#c6d7e6] bg-[#edf2f8] text-[#17324a]'
             }`}
             role="status"
           >
@@ -764,13 +756,13 @@ export function FunctionBuilderView() {
             <div className="sap-scroll min-h-0 flex-1 overflow-auto bg-white p-[12px]">
               <table className="w-full border-collapse text-[12px]">
                 <thead>
-                  <tr className="bg-[#DEE7F2] text-left text-[11px] font-bold text-[#1D3A5F]">
-                    <th className="border border-[#C4D2E0] px-[8px] py-[6px]">Function Module</th>
-                    <th className="border border-[#C4D2E0] px-2 py-1.5">Short Text</th>
-                    <th className="border border-[#C4D2E0] px-2 py-1.5">Function Group</th>
-                    <th className="w-[90px] border border-[#C4D2E0] px-[8px] py-[6px]">Status</th>
-                    <th className="w-[110px] border border-[#C4D2E0] px-[8px] py-[6px]">Changed By</th>
-                    <th className="w-[110px] border border-[#C4D2E0] px-[8px] py-[6px]">Changed On</th>
+                  <tr className="bg-[#edf3fa] text-left text-[11px] font-bold text-[#17324a]">
+                    <th className="border border-[#dce6f0] px-[8px] py-[6px]">Function Module</th>
+                    <th className="border border-[#dce6f0] px-2 py-1.5">Short Text</th>
+                    <th className="border border-[#dce6f0] px-2 py-1.5">Function Group</th>
+                    <th className="w-[90px] border border-[#dce6f0] px-[8px] py-[6px]">Status</th>
+                    <th className="w-[110px] border border-[#dce6f0] px-[8px] py-[6px]">Changed By</th>
+                    <th className="w-[110px] border border-[#dce6f0] px-[8px] py-[6px]">Changed On</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -779,23 +771,23 @@ export function FunctionBuilderView() {
                     return (
                       <tr
                         key={fm.name}
-                        className={`cursor-pointer ${highlighted === fm.name || activeName === fm.name ? 'bg-[#BBD8F2]' : 'hover:bg-[#E7F0FA]'}`}
+                        className={`cursor-pointer ${highlighted === fm.name || activeName === fm.name ? 'bg-[#cfe3f8]' : 'hover:bg-[#e8f1fa]'}`}
                         onClick={() => setHighlighted(fm.name)}
                         onDoubleClick={() => openFm(fm.name, 'display')}
                         title="Double-click to display the function module"
                       >
-                        <td className="border border-[#E4EBF3] px-[8px] py-[4px] font-mono text-[11px] text-[#0A6DD1]">
+                        <td className="border border-[#eef3f8] px-[8px] py-[4px] font-mono text-[11px] text-[#0A6DD1]">
                           {fm.name}
                         </td>
-                        <td className="border border-[#E4EBF3] px-[8px] py-[4px] text-[#40556C]">{fm.title || '—'}</td>
-                        <td className="border border-[#E4EBF3] px-[8px] py-[4px] font-mono text-[11px]">{fm.groupName}</td>
-                        <td className="border border-[#E4EBF3] px-[8px] py-[4px]">
+                        <td className="border border-[#eef3f8] px-[8px] py-[4px] text-[#40556C]">{fm.title || '—'}</td>
+                        <td className="border border-[#eef3f8] px-[8px] py-[4px] font-mono text-[11px]">{fm.groupName}</td>
+                        <td className="border border-[#eef3f8] px-[8px] py-[4px]">
                           <span className={`rounded-[2px] px-1.5 py-[1px] text-[10px] font-semibold ${fm.active ? 'bg-[#D8EFD4] text-[#1E7A34]' : 'bg-[#FBF0D9] text-[#8A6D1A]'}`}>
                             {fm.active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td className="border border-[#E4EBF3] px-[8px] py-[4px]">{fm.changedBy || fm.ownerUsername || 'SAP'}</td>
-                        <td className="border border-[#E4EBF3] px-[8px] py-[4px]">{formatSapDate(fm.changedOn || group?.changedOn)}</td>
+                        <td className="border border-[#eef3f8] px-[8px] py-[4px]">{fm.changedBy || fm.ownerUsername || 'SAP'}</td>
+                        <td className="border border-[#eef3f8] px-[8px] py-[4px]">{formatSapDate(fm.changedOn || group?.changedOn)}</td>
                       </tr>
                     )
                   })}
@@ -812,27 +804,18 @@ export function FunctionBuilderView() {
               </table>
             </div>
 
-            <div className="shrink-0 border-t border-[#B9C8DB] bg-[#EAF0F8] px-[16px] py-[4px] text-[11px] italic text-[#6B7A8D]">
+            <div className="shrink-0 border-t border-[#c6d7e6] bg-[#f1f6fb] px-[16px] py-[4px] text-[11px] italic text-[#55677a]">
               Enter a name and choose Create / Change / Display / Test, or double-click a row to display it
             </div>
           </>
         ) : (
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="flex min-h-0 flex-1 flex-col">
-              <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#c7d8ea] bg-[#ebf1f7] px-3 py-[6px]">
-                <button
-                  type="button"
-                  className="sap-btn h-[24px]"
-                  onClick={backToRepository}
-                  title="Back to the function module repository"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Repository
-                </button>
-                <span className="mx-0.5 h-4 w-px bg-[#c4d2e0]" aria-hidden />
-                <span className="text-[11.5px] text-[#4e6074]">Function module</span>
-                <span className="font-mono text-[13px] font-bold text-[#12283c]">{record.name}</span>
+              <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#c6d7e6] bg-[#f1f6fb] px-3 py-[6px]">
+                <span className="text-[11.5px] text-[#55677a]">Function module</span>
+                <span className="font-mono text-[13px] font-bold text-[#17324a]">{record.name}</span>
                 <span className="text-[11.5px] text-[#4e6074]">Group</span>
-                <span className="font-mono text-[11.5px] text-[#12283c]">{record.groupName}</span>
+                <span className="font-mono text-[11.5px] text-[#17324a]">{record.groupName}</span>
                 <span className={`rounded-[2px] px-1.5 py-[1px] text-[10px] font-semibold ${record.active ? 'bg-[#d8efd4] text-[#155f27]' : 'bg-[#fbf0d9] text-[#6f5712]'}`}>
                   {record.active ? 'Active' : 'Inactive'}
                 </span>
@@ -855,7 +838,7 @@ export function FunctionBuilderView() {
                 </div>
               </div>
 
-              <div className="flex shrink-0 flex-wrap items-end gap-[2px] border-b border-[#8296ac] bg-[#d6e1ef] px-2 pt-1">
+              <div className="flex shrink-0 flex-wrap items-end gap-[2px] border-b border-[#a8c0d6] bg-[#e8eff7] px-2 pt-1">
                 {TABS.map((item) => (
                   <button
                     key={item.id}
@@ -863,8 +846,8 @@ export function FunctionBuilderView() {
                     onClick={() => setTab(item.id)}
                     className={`shrink-0 rounded-t-[3px] border border-b-0 px-2.5 py-[3px] text-[11.5px] ${
                       tab === item.id
-                        ? 'border-[#8296ac] bg-white font-semibold text-[#12283c]'
-                        : 'border-[#a8b8cb] bg-[#e4ebf5] text-[#40556c] hover:bg-[#edf2f8]'
+                        ? 'border-[#a8c0d6] bg-white font-semibold text-[#17324a]'
+                        : 'border-[#b9cbdd] bg-[#eef4fa] text-[#40556c] hover:bg-[#edf2f8]'
                     }`}
                   >
                     {item.label}
@@ -875,8 +858,8 @@ export function FunctionBuilderView() {
               <div className="min-h-0 flex-1 overflow-auto bg-[#f7f9fc]">
                 {tab === 'attributes' && (
                   <div className="mx-auto w-full max-w-[680px] p-3">
-                    <div className="rounded-[3px] border border-[#c4d2e0] bg-white p-4">
-                      <h2 className="mb-3 text-[12px] font-bold text-[#1d3a5f]">Attributes</h2>
+                    <div className="rounded-[3px] border border-[#dce6f0] bg-white p-4">
+                      <h2 className="mb-3 text-[12px] font-bold text-[#17324a]">Attributes</h2>
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <label htmlFor="fm-title" className="w-[140px] text-right text-[12px] text-[#44586c]">Short text</label>
@@ -891,7 +874,7 @@ export function FunctionBuilderView() {
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="w-[140px] text-right text-[12px] text-[#44586c]">Function group</span>
                           {record.isExample ? (
-                            <span className="rounded-[2px] border border-[#c4d2e0] bg-[#edf2f8] px-2 py-[2px] font-mono text-[12px]">{record.groupName}</span>
+                            <span className="rounded-[2px] border border-[#dce6f0] bg-[#edf2f8] px-2 py-[2px] font-mono text-[12px]">{record.groupName}</span>
                           ) : (
                             <select
                               value={draft.groupName}
@@ -911,19 +894,19 @@ export function FunctionBuilderView() {
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="w-[140px] text-right text-[12px] text-[#44586c]">Created by</span>
-                          <span className="text-[12px] text-[#12283c]">{record.createdBy || '—'}</span>
+                          <span className="text-[12px] text-[#17324a]">{record.createdBy || '—'}</span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="w-[140px] text-right text-[12px] text-[#44586c]">Changed by</span>
-                          <span className="text-[12px] text-[#12283c]">{record.changedBy || '—'}</span>
+                          <span className="text-[12px] text-[#17324a]">{record.changedBy || '—'}</span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="w-[140px] text-right text-[12px] text-[#44586c]">Changed on</span>
-                          <span className="text-[12px] text-[#12283c]">{record.changedOn || '—'}</span>
+                          <span className="text-[12px] text-[#17324a]">{record.changedOn || '—'}</span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="w-[140px] text-right text-[12px] text-[#44586c]">Status</span>
-                          <span className="text-[12px] text-[#12283c]">{record.active ? 'Active' : 'Inactive (revised)'}</span>
+                          <span className="text-[12px] text-[#17324a]">{record.active ? 'Active' : 'Inactive (revised)'}</span>
                         </div>
                       </div>
                     </div>
@@ -944,7 +927,7 @@ export function FunctionBuilderView() {
                 {tab === 'exceptions' && (
                   <div className="p-3">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className="text-[12px] font-bold text-[#1d3a5f]">Exceptions</span>
+                      <span className="text-[12px] font-bold text-[#17324a]">Exceptions</span>
                       <span className="text-[11px] text-[#4e6074]">Documented RAISE names; the ABAP engine catches them through EXCEPTIONS.</span>
                       {editing && (
                         <button type="button" className="sap-btn ml-auto" onClick={() => updateDraft({ params: { ...draft.params, exceptions: [...draft.params.exceptions, ''] } })}>
@@ -952,12 +935,12 @@ export function FunctionBuilderView() {
                         </button>
                       )}
                     </div>
-                    <div className="overflow-hidden rounded-[3px] border border-[#c4d2e0] bg-white">
+                    <div className="overflow-hidden rounded-[3px] border border-[#dce6f0] bg-white">
                       {draft.params.exceptions.length === 0 && (
                         <p className="px-3 py-4 text-center text-[11.5px] italic text-[#55677a]">No exceptions documented.</p>
                       )}
                       {draft.params.exceptions.map((name, index) => (
-                        <div key={index} className="flex items-center gap-2 border-b border-[#e4ebf3] px-2 py-1 last:border-b-0">
+                        <div key={index} className="flex items-center gap-2 border-b border-[#eef3f8] px-2 py-1 last:border-b-0">
                           <input
                             value={name}
                             readOnly={!editing}
@@ -986,7 +969,7 @@ export function FunctionBuilderView() {
 
                 {tab === 'source' && (
                   <div className="flex min-h-[360px] flex-col">
-                    <div className="flex shrink-0 items-center gap-2 border-b border-[#c4d2e0] bg-[#eef2f8] px-3 py-1 text-[11px] text-[#5b6d80]">
+                    <div className="flex shrink-0 items-center gap-2 border-b border-[#dce6f0] bg-[#eef2f8] px-3 py-1 text-[11px] text-[#5b6d80]">
                       <span className="font-semibold uppercase tracking-wide">ABAP source</span>
                       <span className="ml-auto">{editing ? 'Change mode' : 'Display mode'}</span>
                     </div>
@@ -1005,7 +988,7 @@ export function FunctionBuilderView() {
                   <div className="p-3">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <Play className="h-4 w-4 text-[#b25000]" />
-                      <h2 className="text-[12.5px] font-bold text-[#1d3a5f]">Test function module</h2>
+                      <h2 className="text-[12.5px] font-bold text-[#17324a]">Test function module</h2>
                       {!record.active && (
                         <span className="rounded-[2px] bg-[#fbf0d9] px-1.5 py-[1px] text-[10px] font-semibold text-[#6f5712]">inactive — test is allowed, but callers only see active modules</span>
                       )}
@@ -1029,15 +1012,15 @@ export function FunctionBuilderView() {
                       </button>
                     </div>
 
-                    <div className="rounded-[3px] border border-[#c4d2e0] bg-white p-4">
-                      <h3 className="mb-2 text-[11.5px] font-bold text-[#1d3a5f]">Import / Changing parameters</h3>
+                    <div className="rounded-[3px] border border-[#dce6f0] bg-white p-4">
+                      <h3 className="mb-2 text-[11.5px] font-bold text-[#17324a]">Import / Changing parameters</h3>
                       {[...draft.params.import, ...draft.params.changing].length === 0 ? (
                         <p className="text-[11.5px] italic text-[#55677a]">This function module has no input parameters — execute directly.</p>
                       ) : (
                         <div className="grid gap-2 md:grid-cols-2">
                           {[...draft.params.import, ...draft.params.changing].map((p) => (
                             <div key={`${p.name}-${p.type}`} className="flex items-center gap-2">
-                              <label htmlFor={`fm-input-${p.name}`} className="w-[150px] shrink-0 truncate text-right font-mono text-[11.5px] text-[#12283c]" title={`${p.name} TYPE ${p.type || 'STRING'}`}>
+                              <label htmlFor={`fm-input-${p.name}`} className="w-[150px] shrink-0 truncate text-right font-mono text-[11.5px] text-[#17324a]" title={`${p.name} TYPE ${p.type || 'STRING'}`}>
                                 {p.name}
                                 <span className="ml-1 font-sans text-[9.5px] text-[#4e6074]">{isStructuredType(p) ? 'structure' : p.type || 'STRING'}</span>
                               </label>
@@ -1057,13 +1040,13 @@ export function FunctionBuilderView() {
 
                     {testResult && (
                       <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                        <div className="rounded-[3px] border border-[#c4d2e0] bg-white p-3">
-                          <h3 className="mb-2 text-[11.5px] font-bold text-[#1d3a5f]">Result values</h3>
+                        <div className="rounded-[3px] border border-[#dce6f0] bg-white p-3">
+                          <h3 className="mb-2 text-[11.5px] font-bold text-[#17324a]">Result values</h3>
                           <table className="w-full border-collapse text-[11.5px]">
                             <thead>
-                              <tr className="bg-[#dee7f2] text-left text-[10.5px] font-bold text-[#1d3a5f]">
-                                <th className="border border-[#c4d2e0] px-2 py-1">Parameter</th>
-                                <th className="border border-[#c4d2e0] px-2 py-1">Value</th>
+                              <tr className="bg-[#edf3fa] text-left text-[10.5px] font-bold text-[#17324a]">
+                                <th className="border border-[#dce6f0] px-2 py-1">Parameter</th>
+                                <th className="border border-[#dce6f0] px-2 py-1">Value</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1074,14 +1057,14 @@ export function FunctionBuilderView() {
                               )}
                               {Object.entries(testResult.outputs).map(([name, value]) => (
                                 <tr key={name}>
-                                  <td className="border border-[#e4ebf3] px-2 py-1 font-mono">{name}</td>
-                                  <td className="border border-[#e4ebf3] px-2 py-1 font-mono font-semibold">{value || '—'}</td>
+                                  <td className="border border-[#eef3f8] px-2 py-1 font-mono">{name}</td>
+                                  <td className="border border-[#eef3f8] px-2 py-1 font-mono font-semibold">{value || '—'}</td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-[11.5px]">
-                            <span className="font-semibold text-[#12283c]">sy-subrc:</span>
+                            <span className="font-semibold text-[#17324a]">sy-subrc:</span>
                             <span className={`font-mono ${testResult.subrc && testResult.subrc !== 0 ? 'text-[#b3261e]' : 'text-[#155f27]'}`}>
                               {testResult.subrc ?? 0}
                             </span>
@@ -1095,13 +1078,13 @@ export function FunctionBuilderView() {
                             <p key={index} className="mt-2 text-[10.5px] italic text-[#6f5712]">{note}</p>
                           ))}
                         </div>
-                        <div className="rounded-[3px] border border-[#c4d2e0] bg-white p-3">
-                          <h3 className="mb-2 text-[11.5px] font-bold text-[#1d3a5f]">List output (WRITE)</h3>
-                          <pre className="wb-scroll max-h-[260px] overflow-auto whitespace-pre-wrap rounded-[2px] bg-[#0b1e33] p-2 text-[11.5px] leading-[17px] text-[#cfe6ff]">
+                        <div className="rounded-[3px] border border-[#dce6f0] bg-white p-3">
+                          <h3 className="mb-2 text-[11.5px] font-bold text-[#17324a]">List output (WRITE)</h3>
+                          <pre className="wb-scroll max-h-[260px] overflow-auto whitespace-pre-wrap border border-[#c6d7e6] bg-white p-2 font-mono text-[11.5px] leading-[17px] text-[#17324a]">
                             {testResult.lines.length ? testResult.lines.join('\n') : '(no list output)'}
                           </pre>
                           {testResult.result.messages.length > 0 && (
-                            <div className="mt-2 rounded-[2px] border border-[#b9c8db] bg-[#edf2f8] px-2 py-1 text-[11px] text-[#12263a]">
+                            <div className="mt-2 rounded-[2px] border border-[#c6d7e6] bg-[#edf2f8] px-2 py-1 text-[11px] text-[#17324a]">
                               {testResult.result.messages.map((message, index) => (
                                 <div key={index}>[{message.msgType}] {message.text}</div>
                               ))}
@@ -1114,10 +1097,10 @@ export function FunctionBuilderView() {
                 )}
 
                 {issues && (
-                  <div className="border-t border-[#c4d2e0] bg-[#f7f9fc] p-3" data-testid="fm-check-results">
+                  <div className="border-t border-[#dce6f0] bg-[#f7f9fc] p-3" data-testid="fm-check-results">
                     <div className="mb-1 flex items-center gap-2">
                       <CircleCheckBig className="h-4 w-4 text-[#3f7b43]" />
-                      <span className="text-[11.5px] font-bold text-[#1d3a5f]">Syntax check results</span>
+                      <span className="text-[11.5px] font-bold text-[#17324a]">Syntax check results</span>
                       <button type="button" className="ml-auto text-[11px] text-[#0a6dd1] underline" onClick={() => setIssues(null)}>Close</button>
                     </div>
                     {issues.length === 0 ? (
@@ -1135,7 +1118,7 @@ export function FunctionBuilderView() {
                 )}
               </div>
 
-              <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-t border-[#c7d8ea] bg-[#ebf1f7] px-3 py-2">
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-t border-[#c6d7e6] bg-[#ebf1f7] px-3 py-2">
                 <button type="button" className="sap-btn" onClick={() => void runCheck()} disabled={busy}>
                   <CircleCheckBig className="h-3.5 w-3.5" /> Check
                 </button>
@@ -1242,7 +1225,7 @@ function ParamTable({
   return (
     <div className="p-3">
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="text-[12px] font-bold text-[#1d3a5f]">{PARAM_TITLES[kind]}</span>
+        <span className="text-[12px] font-bold text-[#17324a]">{PARAM_TITLES[kind]}</span>
         <span className="text-[11px] text-[#4e6074]">{PARAM_HINTS[kind]}</span>
         {!readOnly && (
           <button type="button" className="sap-btn ml-auto" onClick={onAdd}>
@@ -1250,21 +1233,21 @@ function ParamTable({
           </button>
         )}
       </div>
-      <div className="overflow-auto rounded-[3px] border border-[#c4d2e0] bg-white">
+      <div className="overflow-auto rounded-[3px] border border-[#dce6f0] bg-white">
         <table className="w-full border-collapse text-[11.5px]">
           <thead>
-            <tr className="bg-[#dee7f2] text-left text-[10.5px] font-bold text-[#1d3a5f]">
-              <th className="border-b border-[#c4d2e0] px-2 py-1.5">Parameter name</th>
-              <th className="border-b border-[#c4d2e0] px-2 py-1.5">Type spec</th>
-              <th className="border-b border-[#c4d2e0] px-2 py-1.5">Default value</th>
-              <th className="w-[70px] border-b border-[#c4d2e0] px-2 py-1.5">Optional</th>
-              {!readOnly && <th className="w-[40px] border-b border-[#c4d2e0] px-2 py-1.5" />}
+            <tr className="bg-[#edf3fa] text-left text-[10.5px] font-bold text-[#17324a]">
+              <th className="border-b border-[#dce6f0] px-2 py-1.5">Parameter name</th>
+              <th className="border-b border-[#dce6f0] px-2 py-1.5">Type spec</th>
+              <th className="border-b border-[#dce6f0] px-2 py-1.5">Default value</th>
+              <th className="w-[70px] border-b border-[#dce6f0] px-2 py-1.5">Optional</th>
+              {!readOnly && <th className="w-[40px] border-b border-[#dce6f0] px-2 py-1.5" />}
             </tr>
           </thead>
           <tbody>
             {params.map((param, index) => (
               <tr key={`${param.name}-${index}`}>
-                <td className="border-b border-[#e4ebf3] px-1 py-[2px]">
+                <td className="border-b border-[#eef3f8] px-1 py-[2px]">
                   <input
                     value={param.name ?? ''}
                     readOnly={readOnly}
@@ -1274,7 +1257,7 @@ function ParamTable({
                     autoComplete="off"
                   />
                 </td>
-                <td className="border-b border-[#e4ebf3] px-1 py-[2px]">
+                <td className="border-b border-[#eef3f8] px-1 py-[2px]">
                   <input
                     value={param.type ?? ''}
                     readOnly={readOnly}
@@ -1284,7 +1267,7 @@ function ParamTable({
                     autoComplete="off"
                   />
                 </td>
-                <td className="border-b border-[#e4ebf3] px-1 py-[2px]">
+                <td className="border-b border-[#eef3f8] px-1 py-[2px]">
                   <input
                     value={String(param.default ?? '')}
                     readOnly={readOnly}
@@ -1294,7 +1277,7 @@ function ParamTable({
                     autoComplete="off"
                   />
                 </td>
-                <td className="border-b border-[#e4ebf3] px-2 py-[2px] text-center">
+                <td className="border-b border-[#eef3f8] px-2 py-[2px] text-center">
                   <input
                     type="checkbox"
                     className="sap-checkbox"
@@ -1305,7 +1288,7 @@ function ParamTable({
                   />
                 </td>
                 {!readOnly && (
-                  <td className="border-b border-[#e4ebf3] px-2 py-[2px] text-center">
+                  <td className="border-b border-[#eef3f8] px-2 py-[2px] text-center">
                     <button type="button" className="mx-auto flex h-[24px] w-[24px] items-center justify-center text-[#b3261e] hover:text-[#7a1a14]" onClick={() => onDelete(index)} aria-label={`Delete parameter ${index + 1}`}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

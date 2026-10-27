@@ -2,7 +2,7 @@
 
 // ── ABAP Editor view (SE38) for one open program ──────────────────────
 import { useState } from 'react'
-import { ArrowLeft, ChevronDown, FileCheck2, MoreHorizontal, Power, Search, Star, X } from 'lucide-react'
+import { ChevronDown, FileCheck2, MoreHorizontal, Power, Search, Star, X } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useWorkbench } from './use-workbench'
 import { AbapEditor } from './abap-editor'
@@ -114,18 +114,9 @@ export function EditorView({ programName }: { programName: string }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white">
+    <div className="flex h-full min-h-0 flex-col bg-[#ebf1f7]">
       {/* SE38 editor info line: Report/Include <program> Active/Inactive */}
-      <div className="flex items-center gap-3 border-b border-[#c5d2e2] bg-[#f7fafd] px-3 py-[3px] text-[12.5px]">
-        <button
-          type="button"
-          className="sap-btn h-[22px] shrink-0 px-2 text-[11.5px]"
-          onClick={() => useWorkbench.getState().openSe38Initial(programName)}
-          title="Back to the program repository"
-        >
-          <ArrowLeft className="h-3 w-3" /> Repository
-        </button>
-        <span className="h-4 w-px shrink-0 bg-[#c4d2e0]" aria-hidden />
+      <div className="flex items-center gap-3 border-b border-[#c6d7e6] bg-[#f1f6fb] px-3 py-[3px] text-[12.5px]">
         <span className="shrink-0 text-[#33475c]">{objectLabel}</span>
         <span
           className="flex h-[20px] max-w-[300px] items-center border border-[#c6d3e2] bg-[#f4f8fc] px-2 font-mono text-[12.5px] text-[#12283c] shadow-[inset_1px_1px_2px_rgba(0,0,0,0.05)]"
@@ -185,22 +176,6 @@ export function EditorView({ programName }: { programName: string }) {
         <button
           type="button"
           className="sap-tool-textbtn"
-          title="Open another object"
-          onClick={() => addMessage('I', 'Other Object: enter the object name in the command field (Ctrl+K)')}
-        >
-          <span>Other Object...</span>
-        </button>
-        <button
-          type="button"
-          className="sap-tool-textbtn"
-          title="Enhancement framework"
-          onClick={() => addMessage('I', 'Enhance: the enhancement framework is not part of this training system')}
-        >
-          <span>Enhance</span>
-        </button>
-        <button
-          type="button"
-          className="sap-tool-textbtn"
           title="Check (Ctrl+F2)"
           onClick={() => void checkProgram(programName)}
         >
@@ -238,22 +213,6 @@ export function EditorView({ programName }: { programName: string }) {
           <Search className="h-3.5 w-3.5 text-[#2e5b8a]" />
           <span>Where-Used List</span>
         </button>
-        <button
-          type="button"
-          className="sap-tool-textbtn"
-          title="Display the object list"
-          onClick={() => addMessage('I', `Object list for ${programName}: use the SE80 Object Navigator`)}
-        >
-          <span>Display Object List</span>
-        </button>
-        <button
-          type="button"
-          className="sap-tool-textbtn"
-          title="Display the navigation window"
-          onClick={() => addMessage('I', 'Navigation window: use SAP Easy Access (the Easy Access tab) to navigate')}
-        >
-          <span>Display Navigation Window</span>
-        </button>
 
         <Popover>
           <PopoverTrigger asChild>
@@ -269,6 +228,7 @@ export function EditorView({ programName }: { programName: string }) {
             className="w-[240px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[12.5px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
           >
             {[
+              { label: 'Back to ABAP Editor (F3)', run: () => useWorkbench.getState().openSe38Initial(programName), disabled: false },
               { label: 'Save (Ctrl+S)', run: () => void saveProgram(programName), disabled: prog.isExample || !prog.dirty },
               { label: 'Save As...', run: saveAs, disabled: false },
               { label: 'Attributes (change)', run: openAttributes, disabled: false },

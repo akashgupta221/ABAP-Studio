@@ -318,22 +318,19 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
   ]
 
   return (
-    <div className="min-h-screen bg-[#eef2f6] text-[#1c2b3a]">
-      <header className="border-b border-[#0a3a66] bg-gradient-to-b from-[#0d4a7a] to-[#0a3a66] text-white shadow">
-        <div className="mx-auto flex h-12 max-w-[1500px] items-center gap-3 px-4">
-          <Shield className="h-5 w-5 text-[#9fd0ff]" aria-hidden />
-          <h1 className="text-[13.5px] font-semibold tracking-wide">ABAP-Studio · System Administration</h1>
-          <span className="rounded border border-white/25 bg-white/10 px-2 py-0.5 text-[10.5px] uppercase tracking-wider">
+    <div className="min-h-screen bg-[#ebf1f7] text-[#17324a]">
+      <header className="border-b border-[#b9cee1] bg-gradient-to-b from-[#e6eff9] to-[#d5e3f1]">
+        <div className="mx-auto flex h-11 max-w-[1500px] items-center gap-3 px-4">
+          <Shield className="h-4 w-4 text-[#4C6B8A]" aria-hidden />
+          <h1 className="text-[13px] font-bold tracking-wide text-[#17324a]">ABAP-Studio · System Administration</h1>
+          <span className="rounded-[2px] border border-[#a8c0d6] bg-white/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#44586c]">
             MER · Client 105
           </span>
-          <div className="ml-auto flex items-center gap-3 text-[11.5px]">
-            <span className="hidden sm:inline text-white/80">
-              Owner: <strong className="font-semibold text-white">{ownerName}</strong>
+          <div className="ml-auto flex items-center gap-2 text-[11.5px]">
+            <span className="hidden items-center gap-1 text-[#44586c] sm:flex">
+              Owner: <strong className="font-semibold text-[#17324a]">{ownerName}</strong>
             </span>
-            <Link
-              href="/"
-              className="rounded border border-white/25 bg-white/10 px-2.5 py-1 hover:bg-white/20"
-            >
+            <Link href="/" className="sap-btn min-h-[22px]">
               Workbench
             </Link>
             <button
@@ -356,7 +353,7 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
                   toast.error('Cannot reach the system — logoff was not confirmed')
                 }
               }}
-              className="flex items-center gap-1 rounded border border-white/25 bg-white/10 px-2.5 py-1 hover:bg-white/20"
+              className="sap-btn min-h-[22px]"
             >
               <LogOut className="h-3.5 w-3.5" /> Log off
             </button>
@@ -366,7 +363,7 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
 
       <main className="mx-auto max-w-[1500px] px-4 py-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <div className="flex rounded border border-[#b9c7d6] bg-white p-0.5" role="tablist" aria-label="Administration sections">
+          <div className="flex rounded-[2px] border border-[#b9cbdd] bg-white p-0.5" role="tablist" aria-label="Administration sections">
             {tabs.map((t) => (
               <button
                 key={t.id}
@@ -374,26 +371,28 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
                 role="tab"
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
-                className={`rounded px-3 py-1.5 text-[11.5px] font-medium ${
-                  tab === t.id ? 'bg-[#0a4d8c] text-white shadow-sm' : 'text-[#33475b] hover:bg-[#e8eef5]'
+                className={`rounded-[2px] px-3 py-1 text-[11.5px] font-medium ${
+                  tab === t.id
+                    ? 'bg-[#cfe3f8] text-[#0a2f57] shadow-[inset_0_0_0_1px_#7aa7d9]'
+                    : 'text-[#33475b] hover:bg-[#e8f1fa]'
                 }`}
               >
                 {t.label}
                 {t.count !== undefined && (
-                  <span className={`ml-1.5 text-[10px] ${tab === t.id ? 'text-white/75' : 'text-[#55677a]'}`}>
+                  <span className={`ml-1.5 text-[10px] ${tab === t.id ? 'text-[#4C6B8A]' : 'text-[#55677a]'}`}>
                     {t.count}
                   </span>
                 )}
               </button>
             ))}
           </div>
-          <div className="ml-auto flex items-center gap-2 text-[10.5px] text-[#5b6b7c]">
+          <div className="ml-auto flex items-center gap-2 text-[10.5px] text-[#55677a]">
             {data && <span>Updated {when(data.generatedAt)}</span>}
             <button
               type="button"
               onClick={() => void load()}
               disabled={loading}
-              className="flex items-center gap-1 rounded border border-[#b9c7d6] bg-white px-2.5 py-1.5 text-[11px] font-medium text-[#25445f] hover:bg-[#f4f7fa] disabled:opacity-50"
+              className="sap-btn min-h-[24px]"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
             </button>

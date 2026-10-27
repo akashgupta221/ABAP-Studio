@@ -36,13 +36,13 @@ export function DictionaryView() {
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#f0f4f9]">
+    <div className="flex h-full min-h-0 flex-col bg-[#ebf1f7]">
       {/* header */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-[#c3d0e0] bg-white px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-3 border-b border-[#c6d7e6] bg-white px-4 py-2.5">
         <Database className="h-5 w-5 text-[#8a6d1a]" />
         <div>
-          <h1 className="text-[14px] font-bold text-[#12283c]">ABAP Data Dictionary (SE11)</h1>
-          <p className="text-[11.5px] text-[#7b8a9c]">
+          <h1 className="text-[14px] font-bold text-[#17324a]">ABAP Data Dictionary (SE11)</h1>
+          <p className="text-[11.5px] text-[#55677a]">
             Simulated DDIC — training tables from the SFLIGHT flight model and friends
           </p>
         </div>
@@ -58,8 +58,8 @@ export function DictionaryView() {
         /* table list */
         <div className="wb-scroll min-h-0 flex-1 overflow-auto p-4">
           <div className="mx-auto max-w-[1000px]">
-            <div className="mb-2 flex items-center gap-2 rounded-[3px] border border-[#7f9db9] bg-white px-2 py-1.5">
-              <Search className="h-3.5 w-3.5 text-[#7f9db9]" />
+            <div className="mb-2 flex items-center gap-2 rounded-none border border-[#a8c0d6] bg-white px-2 py-1.5">
+              <Search className="h-3.5 w-3.5 text-[#55677a]" />
               <input
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
@@ -71,16 +71,16 @@ export function DictionaryView() {
             {tables === null && (
               <div className="space-y-2">
                 {[...Array(8)].map((_, i) => (
-                  <div key={i} className="h-9 animate-pulse rounded-[4px] bg-[#e2e9f2]" />
+                  <div key={i} className="h-9 animate-pulse rounded-none bg-[#e6eef7]" />
                 ))}
               </div>
             )}
             {tables !== null && tables.length === 0 && (
-              <p className="rounded-[4px] border border-dashed border-[#c3d0e0] bg-white px-4 py-8 text-center text-[13px] text-[#8593a5]">
+              <p className="rounded-none border border-dashed border-[#c6d7e6] bg-white px-4 py-8 text-center text-[13px] text-[#55677a]">
                 No tables in the dictionary yet — the seeder may still be running.
               </p>
             )}
-            <div className="overflow-hidden rounded-[4px] border border-[#c3d0e0] bg-white shadow-sm">
+            <div className="overflow-hidden rounded-none border border-[#c6d7e6] bg-white">
               <table className="w-full text-[12.5px]">
                 <thead>
                   <tr className="alv-grid">
@@ -95,7 +95,7 @@ export function DictionaryView() {
                   {list.map((t) => (
                     <tr
                       key={t.name}
-                      className="cursor-pointer border-b border-[#eef2f7] hover:bg-[#e7f0fb]"
+                      className="cursor-pointer border-b border-[#eef3f8] hover:bg-[#e8f1fa]"
                       onClick={() => void loadDetail(t.name)}
                     >
                       <td className="px-3 py-1.5 font-mono font-bold text-[#0a3d73]">{t.name}</td>
@@ -124,11 +124,11 @@ export function DictionaryView() {
         /* field catalog of one table */
         <div className="wb-scroll min-h-0 flex-1 overflow-auto p-4">
           <div className="mx-auto max-w-[1000px]">
-            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-[4px] border border-[#c3d0e0] bg-white px-4 py-2.5 shadow-sm">
+            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-none border border-[#c6d7e6] bg-white px-4 py-2.5">
               <Table2 className="h-5 w-5 text-[#8a6d1a]" />
               <div>
-                <h2 className="font-mono text-[15px] font-bold text-[#12283c]">{selected}</h2>
-                <p className="text-[12px] text-[#7b8a9c]">{detail?.table.description ?? ''}</p>
+                <h2 className="font-mono text-[15px] font-bold text-[#17324a]">{selected}</h2>
+                <p className="text-[12px] text-[#55677a]">{detail?.table.description ?? ''}</p>
               </div>
               <button
                 type="button"
@@ -141,8 +141,8 @@ export function DictionaryView() {
               </button>
             </div>
 
-            <div className="overflow-hidden rounded-[4px] border border-[#c3d0e0] bg-white shadow-sm">
-              <div className="border-b border-[#d8e1ec] bg-[#eef2f8] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#3f5468]">
+            <div className="overflow-hidden rounded-none border border-[#c6d7e6] bg-white">
+              <div className="border-b border-[#dce6f0] bg-[#edf3fa] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#44586c]">
                 Field catalog — {detail?.fields.length ?? '…'} fields
               </div>
               {detail === null ? (
@@ -166,9 +166,9 @@ export function DictionaryView() {
                   </thead>
                   <tbody>
                     {detail.fields.map((fld: DdicField, i: number) => (
-                      <tr key={fld.name} className="border-b border-[#eef2f7] hover:bg-[#e7f0fb]">
-                        <td className="px-2 py-1 text-center font-mono text-[#7b8a9c]">{i + 1}</td>
-                        <td className="px-2 py-1 font-mono font-semibold text-[#12283c]">{fld.name}</td>
+                      <tr key={fld.name} className="border-b border-[#eef3f8] hover:bg-[#e8f1fa]">
+                        <td className="px-2 py-1 text-center font-mono text-[#55677a]">{i + 1}</td>
+                        <td className="px-2 py-1 font-mono font-semibold text-[#17324a]">{fld.name}</td>
                         <td className="px-2 py-1 text-center">
                           {fld.key ? (
                             <span title="Key field">
@@ -191,8 +191,8 @@ export function DictionaryView() {
 
             {/* data preview (first 5 rows) */}
             {detail && detail.rows.length > 0 && (
-              <div className="mt-3 overflow-hidden rounded-[4px] border border-[#c3d0e0] bg-white shadow-sm">
-                <div className="border-b border-[#d8e1ec] bg-[#eef2f8] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#3f5468]">
+              <div className="mt-3 overflow-hidden rounded-none border border-[#c6d7e6] bg-white">
+                <div className="border-b border-[#dce6f0] bg-[#edf3fa] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#44586c]">
                   Preview — first {detail.rows.length} of {detail.total} entries
                 </div>
                 <div className="wb-scroll overflow-auto">
@@ -212,7 +212,7 @@ export function DictionaryView() {
                           {detail.fields.map((fld) => (
                             <td
                               key={fld.name}
-                              className={`px-2 py-[3px] whitespace-nowrap ${fld.key ? 'font-mono font-bold text-[#12283c]' : ''}`}
+                              className={`px-2 py-[3px] whitespace-nowrap ${fld.key ? 'font-mono font-bold text-[#17324a]' : ''}`}
                             >
                               {String(row[fld.name] ?? '')}
                             </td>

@@ -49,8 +49,8 @@ export function DumpsView() {
         <div className="flex flex-wrap items-center gap-3">
           <AlertOctagon className="h-5 w-5 text-[#a02121]" />
           <div>
-            <h1 className="text-[14px] font-bold text-[#12283c]">ABAP Dump Analysis (ST22)</h1>
-            <p className="text-[11.5px] text-[#5b6d80]">
+            <h1 className="text-[14px] font-bold text-[#17324a]">ABAP Dump Analysis (ST22)</h1>
+            <p className="text-[11.5px] text-[#55677a]">
               Short dumps of your own program runs — the most recent first
             </p>
           </div>
@@ -74,11 +74,11 @@ export function DumpsView() {
 
           {!loading && dumps.length === 0 && (
             <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
-              <AlertOctagon className="h-8 w-8 text-[#b4c4d6]" />
-              <p className="text-[13px] font-medium text-[#3f5468]">
+              <AlertOctagon className="h-8 w-8 text-[#b9cbdd]" />
+              <p className="text-[13px] font-medium text-[#44586c]">
                 No short dumps exist — none of your program runs has terminated with a runtime error.
               </p>
-              <p className="text-[12px] text-[#5b6d80]">
+              <p className="text-[12px] text-[#55677a]">
                 Runtime errors (for example division by zero or unhandled exceptions) are recorded here.
               </p>
             </div>
@@ -87,7 +87,7 @@ export function DumpsView() {
           {!loading && dumps.length > 0 && (
             <table className="w-full text-[12.5px]">
               <thead>
-                <tr className="border-b border-[#c5d2e2] bg-gradient-to-b from-[#eef2f8] to-[#dbe4ef] text-left text-[11px] uppercase tracking-wide text-[#3f5468]">
+                <tr className="border-b border-[#c5d2e2] bg-gradient-to-b from-[#eef2f8] to-[#dbe4ef] text-left text-[11px] uppercase tracking-wide text-[#44586c]">
                   <th className="px-3 py-1.5 font-semibold">Date / Time</th>
                   <th className="px-3 py-1.5 font-semibold">Program</th>
                   <th className="px-3 py-1.5 font-semibold">Error Type</th>
@@ -101,10 +101,10 @@ export function DumpsView() {
                   return (
                     <tr
                       key={d.id}
-                      className={`cursor-pointer border-b border-[#eef2f7] align-top hover:bg-[#e7f0fb] ${isOpen ? 'bg-[#f2f7fd]' : ''}`}
+                      className={`cursor-pointer border-b border-[#eef3f8] align-top hover:bg-[#e7f0fb] ${isOpen ? 'bg-[#f2f7fd]' : ''}`}
                       onClick={() => setSelected(isOpen ? null : d.id)}
                     >
-                      <td className="whitespace-nowrap px-3 py-1.5 font-mono text-[11.5px] text-[#5b6d80]">
+                      <td className="whitespace-nowrap px-3 py-1.5 font-mono text-[11.5px] text-[#55677a]">
                         {formatStamp(d.createdAt)}
                       </td>
                       <td className="px-3 py-1.5 font-mono font-semibold text-[#0b4fa8]">
@@ -134,7 +134,7 @@ export function DumpsView() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-1.5 text-right font-mono text-[11.5px] text-[#5b6d80]">
+                      <td className="px-3 py-1.5 text-right font-mono text-[11.5px] text-[#55677a]">
                         {d.errorLine ?? '—'}
                       </td>
                     </tr>
@@ -146,7 +146,7 @@ export function DumpsView() {
         </div>
 
         {!loading && dumps.length > 0 && (
-          <p className="mx-auto mt-2 max-w-[1100px] text-[11px] text-[#5b6d80]">
+          <p className="mx-auto mt-2 max-w-[1100px] text-[11px] text-[#55677a]">
             Dumps are recorded per user: you only see the runtime errors of your own executions. Click a row for
             details, or the program name to open the editor.
           </p>

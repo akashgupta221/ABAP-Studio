@@ -23,7 +23,7 @@ import {
 const SUBOBJECT_ORDER: Se38Subobject[] = ['source', 'variants', 'attributes', 'text', 'doc']
 
 const READONLY_FIELD =
-  'flex h-[22px] w-full items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px] text-[#1c2b3a] shadow-[inset_1px_1px_2px_rgba(0,0,0,0.05)]'
+  'flex h-[22px] w-full items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px] text-[#17324a] shadow-[inset_1px_1px_2px_rgba(0,0,0,0.05)]'
 
 const TYPE_LABELS: Record<string, string> = {
   REPORT: 'Executable program',
@@ -323,7 +323,7 @@ function InitialScreen() {
         <div className="w-full max-w-[784px] px-[32px] py-[24px]">
           {/* program field */}
           <div className="mb-[20px] flex items-center gap-[8px]">
-            <label htmlFor="se38-program" className="w-[64px] shrink-0 text-right text-[12px] text-[#12263A]">
+            <label htmlFor="se38-program" className="w-[64px] shrink-0 text-right text-[12px] text-[#17324a]">
               Program:
             </label>
             <div className="flex">
@@ -345,7 +345,7 @@ function InitialScreen() {
                     openF4()
                   }
                 }}
-                className="sap-input sap-input-dashed h-[22px] w-[300px] px-1.5 font-mono uppercase text-[#12263A]"
+                className="sap-input sap-input-dashed h-[22px] w-[300px] px-1.5 font-mono uppercase text-[#17324a]"
                 spellCheck={false}
                 autoComplete="off"
               />
@@ -366,9 +366,9 @@ function InitialScreen() {
                   sideOffset={2}
                   className="w-[420px] rounded-none border border-[#8fa7bf] bg-white p-0 shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
                 >
-                  <div className="flex items-center gap-1 border-b border-[#c3cfdc] bg-[#eef3f9] px-2 py-1">
+                  <div className="flex items-center gap-1 border-b border-[#c6d7e6] bg-[#eef3f9] px-2 py-1">
                     <span className="text-[11.5px] font-semibold text-[#3f5468]">Program</span>
-                    <span className="ml-auto text-[10.5px] text-[#7b8a9c]">F4 — possible entries</span>
+                    <span className="ml-auto text-[10.5px] text-[#55677a]">F4 — possible entries</span>
                   </div>
                   <div className="border-b border-[#dbe4ee] p-1.5">
                     <input
@@ -388,10 +388,10 @@ function InitialScreen() {
                   </div>
                   <div className="wb-scroll max-h-[260px] overflow-auto">
                     {f4Matches === null && (
-                      <div className="px-2 py-1.5 text-[12px] text-[#7b8a9c]">Loading programs…</div>
+                      <div className="px-2 py-1.5 text-[12px] text-[#55677a]">Loading programs…</div>
                     )}
                     {f4Matches?.length === 0 && (
-                      <div className="px-2 py-1.5 text-[12px] text-[#7b8a9c]">No programs found</div>
+                      <div className="px-2 py-1.5 text-[12px] text-[#55677a]">No programs found</div>
                     )}
                     {f4Matches?.map((p) => (
                       <button
@@ -401,7 +401,7 @@ function InitialScreen() {
                         onClick={() => choose(p.name)}
                       >
                         <span className="shrink-0 font-mono text-[12px] text-[#0b4fa8]">{p.name}</span>
-                        <span className="truncate text-[11.5px] text-[#5b6d80]">{p.title}</span>
+                        <span className="truncate text-[11.5px] text-[#55677a]">{p.title}</span>
                       </button>
                     ))}
                   </div>
@@ -421,12 +421,12 @@ function InitialScreen() {
           {/* subobjects */}
           <div className="mb-[20px]">
             <div className="flex items-center gap-[12px]">
-              <h3 className="text-[12px] text-[#12263A]">Subobjects</h3>
+              <h3 className="text-[12px] text-[#17324a]">Subobjects</h3>
               <div className="h-px flex-1 bg-[#c7d8ea]" />
             </div>
             <div className="mt-[8px] flex flex-col gap-[7px] py-1" role="radiogroup" aria-label="Subobjects">
               {SUBOBJECT_ORDER.map((k) => (
-                <label key={k} className="flex cursor-pointer items-center gap-[8px] text-[12px] text-[#12263A]">
+                <label key={k} className="flex cursor-pointer items-center gap-[8px] text-[12px] text-[#17324a]">
                   <input
                     type="radio"
                     name="se38-subobject"
@@ -545,20 +545,20 @@ function ProgramAttributesDialog() {
         aria-label={`Program attributes ${name}`}
       >
         <div className="sap-popup-title">
-          <DialogTitle className="truncate text-[12px] font-bold text-white">
+          <DialogTitle className="truncate text-[12px] font-bold text-[#17324a]">
             ABAP: Program Attributes {name} {editable ? 'Change' : 'Display'}
           </DialogTitle>
           <DialogDescription className="sr-only">
             Attributes of ABAP program {name}
           </DialogDescription>
           <div className="ml-auto flex items-center gap-1">
-            <span aria-hidden className="flex h-[16px] w-[16px] items-center justify-center text-[11px] font-bold text-[#d6e6f8]">?</span>
+            <span aria-hidden className="flex h-[16px] w-[16px] items-center justify-center text-[11px] font-bold text-[#4c6b8a]">?</span>
             <button
               type="button"
               onClick={close}
               aria-label="Close"
               title="Close"
-              className="sap-titlebar-close flex h-[16px] w-[16px] items-center justify-center text-[10px] leading-none text-white"
+              className="sap-titlebar-close flex h-[16px] w-[16px] items-center justify-center text-[10px] leading-none text-[#17324a]"
             >
               ✕
             </button>
@@ -567,7 +567,7 @@ function ProgramAttributesDialog() {
 
         <div className="sap-popup-body">
           <div className="grid grid-cols-[140px_minmax(0,1fr)] items-center gap-x-2 gap-y-[7px]">
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Title</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Title</span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -577,27 +577,27 @@ function ProgramAttributesDialog() {
               aria-label="Program title"
             />
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Original Language</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Original Language</span>
             <span className={`${READONLY_FIELD} w-[70px]`}>EN</span>
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Created</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Created</span>
             <span className={`${READONLY_FIELD} w-[260px]`}>
               {sessionUser} {createdAt}
             </span>
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Last Changed</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Last Changed</span>
             <span className={`${READONLY_FIELD} w-[260px]`}>
               {sessionUser} {changedAt}
             </span>
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Status</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Status</span>
             <span className={`${READONLY_FIELD} w-[150px]`}>{status}</span>
           </div>
 
-          <div className="my-3 border-t border-[#c3cfdc]" />
+          <div className="my-3 border-t border-[#c6d7e6]" />
 
           <div className="grid grid-cols-[140px_minmax(0,1fr)] items-center gap-x-2 gap-y-[7px]">
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Type</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Type</span>
             <select
               className="sap-field w-[280px]"
               value={selType}
@@ -612,17 +612,17 @@ function ProgramAttributesDialog() {
               ))}
             </select>
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Status</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Status</span>
             <select className="sap-field w-[200px]" defaultValue="unclassified" disabled={!editable} aria-label="Program status">
               <option value="unclassified">Unclassified</option>
               <option value="system">System program</option>
               <option value="test">Test program</option>
             </select>
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Authorization Group</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Authorization Group</span>
             <input className="sap-field w-[140px]" disabled={!editable} aria-label="Authorization group" />
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Application</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Application</span>
             <select
               className="sap-field w-[200px]"
               value={application}
@@ -636,7 +636,7 @@ function ProgramAttributesDialog() {
             </select>
 
             <span />
-            <label className="flex items-center gap-2 text-[12.5px] text-[#1c2b3a]">
+            <label className="flex items-center gap-2 text-[12.5px] text-[#17324a]">
               <input
                 type="checkbox"
                 className="sap-checkbox"
@@ -654,13 +654,13 @@ function ProgramAttributesDialog() {
             </p>
           )}
           {!isExample && !editable && (
-            <p className="mt-3 text-[11.5px] italic text-[#5b6d80]">
+            <p className="mt-3 text-[11.5px] italic text-[#55677a]">
               Display mode — choose Change on the initial screen to edit the attributes.
             </p>
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-[#d0d0d0] bg-[#f0f0f0] px-3 py-2">
+        <div className="flex items-center justify-end gap-2 border-t border-[#c6d7e6] bg-[#eef4fa] px-3 py-2">
           <button
             type="button"
             className="sap-btn sap-btn-primary inline-flex items-center gap-1.5"
@@ -713,10 +713,10 @@ function SubobjectScreen() {
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       {/* subobject info line */}
-      <div className="flex items-center gap-3 border-b border-[#c5d2e2] bg-[#f7fafd] px-3 py-[3px] text-[12.5px]">
+      <div className="flex items-center gap-3 border-b border-[#c6d7e6] bg-[#f7fafd] px-3 py-[3px] text-[12.5px]">
         <span className="font-mono font-bold text-[#12283c]">{name}</span>
         <span className="text-[#44586c]">{SE38_SUBOBJECT_LABELS[subobject]}</span>
-        {detail?.title && <span className="max-w-[360px] truncate text-[#7b8a9c]">{detail.title}</span>}
+        {detail?.title && <span className="max-w-[360px] truncate text-[#55677a]">{detail.title}</span>}
         <button
           type="button"
           className="sap-btn ml-auto px-2 py-[1px] text-[11.5px]"
@@ -810,9 +810,9 @@ function TextElementsScreen({
       <section>
         <h3 className="mb-1 text-[12px] font-bold text-[#33475c]">List headings</h3>
         <div className="grid w-full max-w-[640px] grid-cols-[150px_minmax(0,1fr)] items-center gap-x-3 gap-y-[7px]">
-          <span className="text-right text-[12.5px] text-[#1c2b3a]">List heading 1:</span>
+          <span className="text-right text-[12.5px] text-[#17324a]">List heading 1:</span>
           <span className={READONLY_FIELD}>{detail?.title || name}</span>
-          <span className="text-right text-[12.5px] text-[#1c2b3a]">List heading 2:</span>
+          <span className="text-right text-[12.5px] text-[#17324a]">List heading 2:</span>
           <span className={READONLY_FIELD}>—</span>
         </div>
       </section>
@@ -829,15 +829,15 @@ function DocumentationScreen({ name, detail }: { name: string; detail: ProgramLi
       </div>
       <div className="wb-scroll min-h-[220px] flex-1 overflow-auto border border-[#c6d3e2] bg-white p-3 shadow-[inset_1px_1px_2px_rgba(0,0,0,0.06)]">
         {text ? (
-          <p className="whitespace-pre-wrap text-[12.5px] leading-[1.5] text-[#1c2b3a]">{text}</p>
+          <p className="whitespace-pre-wrap text-[12.5px] leading-[1.5] text-[#17324a]">{text}</p>
         ) : (
-          <p className="text-[12.5px] italic text-[#8395a8]">
+          <p className="text-[12.5px] italic text-[#55677a]">
             No documentation maintained for program {name}.
           </p>
         )}
       </div>
       {detail?.topicTitle && (
-        <p className="mt-2 text-[11.5px] text-[#7b8a9c]">Training topic: {detail.topicTitle}</p>
+        <p className="mt-2 text-[11.5px] text-[#55677a]">Training topic: {detail.topicTitle}</p>
       )}
     </div>
   )
@@ -852,7 +852,7 @@ function ListTable({ head, rows, empty }: { head: string[]; rows: string[][]; em
           {head.map((h) => (
             <th
               key={h}
-              className="border border-[#c3cfdc] bg-[#eef3f9] px-2 py-[3px] text-left font-semibold text-[#3f5468]"
+              className="border border-[#c6d7e6] bg-[#eef3f9] px-2 py-[3px] text-left font-semibold text-[#3f5468]"
             >
               {h}
             </th>
@@ -864,7 +864,7 @@ function ListTable({ head, rows, empty }: { head: string[]; rows: string[][]; em
           <tr>
             <td
               colSpan={head.length}
-              className="border border-[#c3cfdc] bg-white px-2 py-[5px] text-[12px] text-[#44586c]"
+              className="border border-[#c6d7e6] bg-white px-2 py-[5px] text-[12px] text-[#44586c]"
             >
               {empty}
             </td>
@@ -873,7 +873,7 @@ function ListTable({ head, rows, empty }: { head: string[]; rows: string[][]; em
           rows.map((r, i) => (
             <tr key={i}>
               {r.map((c, j) => (
-                <td key={j} className="border border-[#c3cfdc] bg-white px-2 py-[3px] font-mono">
+                <td key={j} className="border border-[#c6d7e6] bg-white px-2 py-[3px] font-mono">
                   {c}
                 </td>
               ))}

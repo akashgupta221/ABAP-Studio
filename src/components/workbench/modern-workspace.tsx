@@ -284,21 +284,21 @@ export function ModernWorkspace() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#f5f8fc]">
-      <header className="shrink-0 border-b border-[#b8c8d9] bg-gradient-to-r from-[#0b3f73] to-[#135b9e] px-4 py-3 text-white">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#ebf1f7]">
+      <header className="shrink-0 border-b border-[#b9cee1] bg-gradient-to-b from-[#e6eff9] to-[#d5e3f1] px-4 py-2 text-[#17324a]">
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1">
             <div className="mb-0.5 flex items-center gap-2">
-              <Sparkles className="h-4 w-4" aria-hidden />
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-sky-100">
+              <Sparkles className="h-4 w-4 text-[#4C6B8A]" aria-hidden />
+              <span className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#55677a]">
                 System MER · Client 105 · Learning simulator
               </span>
             </div>
-            <h1 className="text-[19px] font-semibold leading-tight">Modern ABAP Workspace</h1>
+            <h1 className="text-[16px] font-bold leading-tight">Modern ABAP Workspace</h1>
           </div>
           <button
             type="button"
-            className="inline-flex min-h-[32px] items-center gap-1.5 rounded border border-white/40 bg-white/10 px-3 text-[12.5px] font-medium text-white hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="sap-btn min-h-[24px]"
             onClick={() => navigate('home')}
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -421,7 +421,7 @@ export function ModernWorkspace() {
                   </button>
                   <button
                     type="button"
-                    className="inline-flex min-h-[30px] items-center gap-1.5 rounded border border-[#1d6b37] bg-[#237a42] px-2.5 text-[11.5px] font-semibold text-white hover:bg-[#1b6536] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b5aa6]"
+                    className="sap-btn sap-btn-primary min-h-[28px]"
                     onClick={() => void execute()}
                     disabled={!detail || !canExecute || !!busy}
                     title={canExecute ? 'Execute in the local ABAP engine' : 'This artefact is validated only — there is no runtime'}
@@ -678,7 +678,7 @@ export function ModernWorkspace() {
             <DialogFooter>
               <button
                 type="button"
-                className="inline-flex min-h-[32px] items-center rounded border border-[#8fa8c1] bg-white px-3 text-[12px] font-medium text-[#294b6c]"
+                className="sap-btn"
                 onClick={() => setNewOpen(false)}
                 disabled={busy === 'create'}
               >
@@ -686,7 +686,7 @@ export function ModernWorkspace() {
               </button>
               <button
                 type="submit"
-                className="inline-flex min-h-[32px] items-center gap-1.5 rounded border border-[#1d6b37] bg-[#237a42] px-3 text-[12px] font-semibold text-white disabled:opacity-50"
+                className="sap-btn sap-btn-primary"
                 disabled={!newName.trim() || busy === 'create'}
               >
                 {busy === 'create' && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
@@ -708,7 +708,7 @@ export function ModernWorkspace() {
           <DialogFooter>
             <button
               type="button"
-              className="inline-flex min-h-[32px] items-center rounded border border-[#8fa8c1] bg-white px-3 text-[12px] font-medium text-[#294b6c]"
+              className="sap-btn"
               onClick={() => setDeleteOpen(false)}
               disabled={busy === 'delete'}
             >
@@ -716,7 +716,7 @@ export function ModernWorkspace() {
             </button>
             <button
               type="button"
-              className="inline-flex min-h-[32px] items-center gap-1.5 rounded border border-[#8b2525] bg-[#a72e2e] px-3 text-[12px] font-semibold text-white disabled:opacity-50"
+              className="sap-btn sap-btn-danger"
               onClick={() => void remove()}
               disabled={busy === 'delete'}
             >

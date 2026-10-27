@@ -139,12 +139,12 @@ export function SearchView() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#f0f4f9]">
+    <div className="flex h-full min-h-0 flex-col bg-[#ebf1f7]">
       {/* search header */}
-      <div className="border-b border-[#c3d0e0] bg-white px-4 py-3">
+      <div className="border-b border-[#c6d7e6] bg-white px-4 py-3">
         <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-2">
-          <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-[3px] border border-[#7f9db9] bg-white px-2.5 py-1.5 shadow-inner">
-            <Search className="h-4 w-4 shrink-0 text-[#7f9db9]" />
+          <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-none border border-[#a8c0d6] bg-white px-2.5 py-1.5 shadow-inner">
+            <Search className="h-4 w-4 shrink-0 text-[#55677a]" />
             <input
               autoFocus
               value={q}
@@ -155,7 +155,7 @@ export function SearchView() {
             />
             {q && (
               <button type="button" onClick={() => { setQ(''); setSearchQuery(''); setGroups([]) }} aria-label="Clear">
-                <X className="h-3.5 w-3.5 text-[#7f9db9] hover:text-[#c4302f]" />
+                <X className="h-3.5 w-3.5 text-[#55677a] hover:text-[#c4302f]" />
               </button>
             )}
           </div>
@@ -173,10 +173,10 @@ export function SearchView() {
                 setChip(c.key)
                 if (q.trim()) void doSearch(q, c.key)
               }}
-              className={`rounded-full border px-2.5 py-0.5 text-[11.5px] font-medium transition-colors ${
+              className={`rounded-none border px-2.5 py-0.5 text-[11.5px] font-medium transition-colors ${
                 chip === c.key
-                  ? 'border-[#0a6ed1] bg-[#0a6ed1] text-white'
-                  : 'border-[#c5d2e2] bg-white text-[#3f5468] hover:border-[#8fb0d4] hover:text-[#0a6ed1]'
+                  ? 'border-[#7aa7d9] bg-[#cfe3f8] font-semibold text-[#0a2f57]'
+                  : 'border-[#c6d7e6] bg-white text-[#44586c] hover:border-[#8fb0d4] hover:text-[#0a6ed1]'
               }`}
             >
               {c.label}
@@ -189,12 +189,12 @@ export function SearchView() {
       <div className="wb-scroll min-h-0 flex-1 overflow-auto p-4">
         <div className="mx-auto max-w-[900px]">
           {!q.trim() && (
-            <div className="flex flex-col items-center gap-2 rounded-[4px] border border-dashed border-[#c3d0e0] bg-white px-6 py-12 text-center">
+            <div className="flex flex-col items-center gap-2 rounded-none border border-dashed border-[#c6d7e6] bg-white px-6 py-12 text-center">
               <Layers className="h-8 w-8 text-[#b4c4d6]" />
-              <p className="text-[13px] font-medium text-[#3f5468]">
+              <p className="text-[13px] font-medium text-[#44586c]">
                 Enter a search term to find repository objects
               </p>
-              <p className="text-[12px] text-[#8593a5]">
+              <p className="text-[12px] text-[#55677a]">
                 Searches names, titles, descriptions, tags, source code, table fields and syllabus
                 content.
               </p>
@@ -204,18 +204,18 @@ export function SearchView() {
           {q.trim() && loading && (
             <div className="space-y-2">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-10 animate-pulse rounded-[4px] bg-[#e2e9f2]" />
+                <div key={i} className="h-10 animate-pulse rounded-none bg-[#e6eef7]" />
               ))}
             </div>
           )}
 
           {q.trim() && !loading && groups !== null && groups.length === 0 && (
-            <div className="rounded-[4px] border border-dashed border-[#c3d0e0] bg-white px-6 py-10 text-center">
+            <div className="rounded-none border border-dashed border-[#c6d7e6] bg-white px-6 py-10 text-center">
               <FolderTree className="mx-auto h-8 w-8 text-[#b4c4d6]" />
-              <p className="mt-2 text-[13px] font-medium text-[#3f5468]">
+              <p className="mt-2 text-[13px] font-medium text-[#44586c]">
                 No objects found for &quot;{q}&quot;
               </p>
-              <p className="text-[12px] text-[#8593a5]">
+              <p className="text-[12px] text-[#55677a]">
                 Try a different term, or clear the type filter. If the repository is empty, content
                 may still be seeding.
               </p>
@@ -226,30 +226,30 @@ export function SearchView() {
             <section key={g.type} className="mb-4" aria-label={`${typeLabel(g.type)} results`}>
               <div className="mb-1.5 flex items-center gap-2">
                 {typeIcon(g.type, 'h-4 w-4')}
-                <h2 className="text-[12.5px] font-bold uppercase tracking-wide text-[#3f5468]">
+                <h2 className="text-[12.5px] font-bold uppercase tracking-wide text-[#44586c]">
                   {typeLabel(g.type)}s
                 </h2>
-                <span className="rounded-sm border border-[#c5d2e2] bg-white px-1.5 py-0.5 text-[10.5px] font-semibold text-[#5b6d80]">
+                <span className="rounded-sm border border-[#c6d7e6] bg-white px-1.5 py-0.5 text-[10.5px] font-semibold text-[#55677a]">
                   {g.count}
                 </span>
               </div>
-              <div className="overflow-hidden rounded-[4px] border border-[#c3d0e0] bg-white shadow-sm">
+              <div className="overflow-hidden rounded-none border border-[#c6d7e6] bg-white">
                 <ul className="divide-y divide-[#eef2f7]">
                   {g.hits.map((hit, i) => (
                     <li key={`${hit.objectType}-${hit.name}-${i}`}>
                       <button
                         type="button"
                         onClick={() => openHit(hit)}
-                        className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#e7f0fb]"
+                        className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#e8f1fa]"
                       >
                         {typeIcon(hit.objectType)}
-                        <span className="shrink-0 font-mono text-[12.5px] font-bold text-[#12283c]">
+                        <span className="shrink-0 font-mono text-[12.5px] font-bold text-[#17324a]">
                           {hit.name}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-[12.5px] text-[#44586c]">
                           {hit.title}
                         </span>
-                        <span className="hidden max-w-[240px] shrink-0 truncate text-[11px] text-[#8593a5] md:block">
+                        <span className="hidden max-w-[240px] shrink-0 truncate text-[11px] text-[#55677a] md:block">
                           {hit.detail}
                         </span>
                         <span className="shrink-0 text-[10.5px] font-medium text-[#93a9c2]">
@@ -264,7 +264,7 @@ export function SearchView() {
           ))}
 
           {groups !== null && groups.length > 0 && (
-            <p className="text-center text-[11.5px] text-[#8593a5]">
+            <p className="text-center text-[11.5px] text-[#55677a]">
               {total} object{total === 1 ? '' : 's'} found
             </p>
           )}
