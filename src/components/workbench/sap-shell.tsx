@@ -939,7 +939,7 @@ export function SapShell() {
         <SapLogo size={24} />
 
         {/* centered title (absolute so it is truly centered) */}
-        <span className="pointer-events-none absolute inset-x-0 truncate px-40 text-center text-[13px] font-medium text-[#1d3a5c]">
+        <span className="pointer-events-none absolute inset-x-0 truncate px-40 text-center text-[13px] text-[#22456a]">
           {title}
         </span>
 
@@ -952,7 +952,7 @@ export function SapShell() {
           {/* System MER (105) dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="flex h-[26px] items-center gap-1 rounded px-1.5 text-[12px] font-semibold text-[#1d3a5c] outline-none hover:bg-[#8aa9cc] focus-visible:bg-[#8aa9cc]"
+              className="flex h-[26px] items-center gap-1 rounded px-1.5 text-[12px] font-semibold text-[#22456a] outline-none hover:bg-[#8aa9cc] focus-visible:bg-[#8aa9cc]"
               title="System MER, client 105"
               aria-label="System menu MER (105)"
             >
@@ -986,7 +986,7 @@ export function SapShell() {
             title="Open a new SAP session in a browser tab"
             aria-label="Open a new SAP session"
             onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
-            className="flex h-[26px] w-[26px] items-center justify-center rounded text-[#1d3a5c] hover:bg-[#8aa9cc]"
+            className="flex h-[26px] w-[26px] items-center justify-center rounded text-[#22456a] hover:bg-[#8aa9cc]"
           >
             <ChevronRight className="h-[16px] w-[16px]" />
           </button>
@@ -1093,7 +1093,7 @@ export function SapShell() {
           <button
             type="button"
             onClick={() => setLogoffConfirm(true)}
-            className="ml-1 flex h-[24px] items-center rounded-[2px] px-[7px] text-[12px] text-[#1d3a5c] hover:bg-[#dbe5f0]"
+            className="ml-1 flex h-[24px] items-center rounded-[2px] px-[7px] text-[12px] text-[#22456a] hover:bg-[#dbe5f0]"
           >
             Exit
           </button>

@@ -318,9 +318,9 @@ function InitialScreen() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#ebf1f7]">
-      <div className="sap-screen min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto bg-[#ebf1f7]">
         <h1 className="sr-only">ABAP Editor: Initial Screen</h1>
-        <div className="w-full max-w-[720px] px-[32px] py-[24px]">
+        <div className="w-full max-w-[784px] px-[32px] py-[24px]">
           {/* program field */}
           <div className="mb-[20px] flex items-center gap-[8px]">
             <label htmlFor="se38-program" className="w-[64px] shrink-0 text-right text-[12px] text-[#12263A]">

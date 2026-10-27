@@ -635,7 +635,7 @@ export function FunctionBuilderView() {
                       value={choice}
                       checked={startMode === choice}
                       onChange={() => setStartMode(choice)}
-                      className="h-3 w-3 accent-[#0a6dd1]"
+                      className="sap-radio"
                     />
                     {choice}
                   </label>
