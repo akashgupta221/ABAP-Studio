@@ -182,18 +182,18 @@ export function EasyAccess() {
     favorites: true,
     recent: false,
     sapmenu: true,
-    tools: true,
-    workbench: true,
-    overview: true,
-    development: true,
+    tools: false,
+    workbench: false,
+    overview: false,
+    development: false,
     programming: false,
     enhancement: false,
     switch: false,
     'user-interface': false,
-    training: true,
-    'cat-CORE': true,
-    'cat-REPORTING': true,
-    'cat-MODERN': true,
+    training: false,
+    'cat-CORE': false,
+    'cat-REPORTING': false,
+    'cat-MODERN': false,
   })
 
   useEffect(() => {
@@ -202,10 +202,7 @@ export function EasyAccess() {
       .then((r) => setTopics(r.topics))
       .catch(() => setTopics([]))
     api<{ recents: RecentExecution[] }>('/api/recents')
-      .then((r) => {
-        setRecents(r.recents)
-        if (r.recents.length > 0) setOpenMap((o) => ({ ...o, recent: true }))
-      })
+      .then((r) => setRecents(r.recents))
       .catch(() => setRecents([]))
   }, [refreshFavorites])
 
