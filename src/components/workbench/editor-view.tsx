@@ -2,7 +2,7 @@
 
 // ── ABAP Editor view (SE38) for one open program ──────────────────────
 import { useState } from 'react'
-import { ChevronDown, FileCheck2, MoreHorizontal, Power, Search, Star, X } from 'lucide-react'
+import { ArrowLeft, ChevronDown, FileCheck2, MoreHorizontal, Power, Search, Star, X } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useWorkbench } from './use-workbench'
 import { AbapEditor } from './abap-editor'
@@ -117,6 +117,15 @@ export function EditorView({ programName }: { programName: string }) {
     <div className="flex h-full min-h-0 flex-col bg-white">
       {/* SE38 editor info line: Report/Include <program> Active/Inactive */}
       <div className="flex items-center gap-3 border-b border-[#c5d2e2] bg-[#f7fafd] px-3 py-[3px] text-[12.5px]">
+        <button
+          type="button"
+          className="sap-btn h-[22px] shrink-0 px-2 text-[11.5px]"
+          onClick={() => useWorkbench.getState().openSe38Initial(programName)}
+          title="Back to the program repository"
+        >
+          <ArrowLeft className="h-3 w-3" /> Repository
+        </button>
+        <span className="h-4 w-px shrink-0 bg-[#c4d2e0]" aria-hidden />
         <span className="shrink-0 text-[#33475c]">{objectLabel}</span>
         <span
           className="flex h-[20px] max-w-[300px] items-center border border-[#c6d3e2] bg-[#f4f8fc] px-2 font-mono text-[12.5px] text-[#12283c] shadow-[inset_1px_1px_2px_rgba(0,0,0,0.05)]"
@@ -124,7 +133,9 @@ export function EditorView({ programName }: { programName: string }) {
         >
           <span className="truncate">{prog.name}</span>
         </span>
-        <span className="shrink-0 text-[#1c2b3a]">{statusText}</span>
+        <span className={`shrink-0 rounded-[2px] px-1.5 py-[1px] text-[10px] font-semibold ${prog.dirty || prog.active === false ? 'bg-[#fbf0d9] text-[#6f5712]' : 'bg-[#d8efd4] text-[#155f27]'}`}>
+          {statusText}
+        </span>
         {prog.isExample && (
           <span
             className="shrink-0 whitespace-nowrap text-[11.5px] text-[#8a6d1a]"

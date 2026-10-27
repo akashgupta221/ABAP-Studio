@@ -30,7 +30,9 @@ test.describe('owner workbench and administration', () => {
     await page.getByRole('textbox', { name: 'Command field' }).fill('SE38')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('heading', { name: 'ABAP Editor: Initial Screen' })).toBeVisible()
-    await expect(page.getByRole('textbox', { name: 'Program' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Program', exact: true })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Program repository' })).toBeVisible()
+    await expect(page.getByText(/\d+ of \d+ programs/)).toBeVisible()
   })
 })
 

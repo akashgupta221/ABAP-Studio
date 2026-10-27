@@ -117,6 +117,8 @@ export interface ProgramListItem {
   topicTitle: string | null
   createdAt?: string
   updatedAt: string
+  ownerId?: string | null
+  ownerUsername?: string | null
 }
 
 export interface ProgramFull extends ProgramListItem {

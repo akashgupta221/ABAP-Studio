@@ -9,8 +9,8 @@
 //   Program → Attributes → "ABAP: Program Attributes <name> Change"
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Bug, ChevronDown, Copy, FileCheck2, FilePlus2, Files, Glasses, Info, MoreHorizontal,
-  Pencil, Play, Power, Search, Trash2, X,
+  Bug, ChevronDown, Copy, FileCheck2, FilePlus2, Files, Glasses, Info, Lock, MoreHorizontal,
+  Pencil, Play, Power, RefreshCw, Search, Trash2, X,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -33,6 +33,13 @@ const TYPE_LABELS: Record<string, string> = {
   CLASS: 'Class pool / ABAP class',
   INCLUDE: 'Include',
   FUNCTION_GROUP: 'Function group (main program)',
+}
+
+const TYPE_SHORT: Record<string, string> = {
+  REPORT: 'Report',
+  CLASS: 'Class',
+  INCLUDE: 'Include',
+  FUNCTION_GROUP: 'Function group',
 }
 
 // Real SE38 Attributes type list (screenshot 6). The training runtime only
@@ -114,11 +121,32 @@ function InitialScreen() {
   const [moreOpen, setMoreOpen] = useState(false)
   const [progList, setProgList] = useState<ProgramListItem[] | null>(null)
   const [f4Filter, setF4Filter] = useState('')
+  const [repoFilter, setRepoFilter] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
+
+  useEffect(() => {
+    let alive = true
+    api<{ programs: ProgramListItem[] }>('/api/programs')
+      .then((r) => { if (alive) setProgList(r.programs) })
+      .catch(() => { if (alive) setProgList([]) })
+    return () => { alive = false }
+  }, [])
+
+  const programMatches = useMemo(() => {
+    const q = repoFilter.trim().toUpperCase()
+    const list = progList ?? []
+    if (!q) return list
+    return list.filter((p) =>
+      p.name.includes(q) ||
+      p.title.toUpperCase().includes(q) ||
+      p.type.includes(q) ||
+      (p.ownerUsername ?? '').toUpperCase().includes(q),
+    )
+  }, [progList, repoFilter])
 
   const openF4 = () => {
     setF4Filter('')
@@ -149,6 +177,19 @@ function InitialScreen() {
   const submit = (mode: 'display' | 'change') => {
     setStoredProgram(value)
     void se38Display(mode)
+  }
+
+  const openProgram = (name: string, mode: 'display' | 'change' = 'display') => {
+    setValue(name)
+    setStoredProgram(name)
+    void se38Display(mode)
+  }
+
+  const reloadPrograms = () => {
+    setProgList(null)
+    api<{ programs: ProgramListItem[] }>('/api/programs')
+      .then((r) => setProgList(r.programs))
+      .catch(() => setProgList([]))
   }
 
   const programName = () => value.trim().toUpperCase()
@@ -364,7 +405,7 @@ function InitialScreen() {
 
       <div className="sap-screen min-h-0 flex-1 overflow-auto">
         <h1 className="sr-only">ABAP Editor: Initial Screen</h1>
-        <div className="grid w-full max-w-[780px] grid-cols-[110px_minmax(0,1fr)] items-start gap-x-2 gap-y-5 px-4 pt-9">
+        <div className="grid w-full max-w-[780px] grid-cols-[110px_minmax(0,1fr)] items-start gap-x-2 gap-y-4 px-4 pt-5">
           {/* Program */}
           <label htmlFor="se38-program" className="pt-1 text-[12.5px] text-[#1c2b3a]">
             Program
@@ -504,6 +545,124 @@ function InitialScreen() {
             </button>
           </div>
         </div>
+
+        <section className="mt-5 border-t border-[#c3d0e0]" aria-label="Program repository">
+          <div className="flex flex-wrap items-center gap-2 px-4 py-1.5">
+            <span className="text-[12px] font-bold text-[#1d3a5f]">Program repository</span>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[#55677a]" />
+              <input
+                value={repoFilter}
+                onChange={(e) => setRepoFilter(e.target.value)}
+                placeholder="Filter programs…"
+                className="sap-field h-[24px] w-[190px] pl-6 text-[11px]"
+                aria-label="Filter programs"
+              />
+            </div>
+            <span className="rounded-[2px] border border-[#c4d2e0] bg-white px-1.5 py-[1px] text-[10.5px] text-[#4e6074]">
+              {programMatches.length} of {progList?.length ?? 0} programs
+            </span>
+            <span className="hidden text-[10.5px] italic text-[#55677a] sm:inline">
+              Single-click selects · double-click opens
+            </span>
+            <div className="ml-auto flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                className="sap-btn h-[24px]"
+                onClick={reloadPrograms}
+                disabled={progList === null}
+                title="Refresh the program list"
+              >
+                <RefreshCw className="h-3 w-3" /> Refresh
+              </button>
+              <button
+                type="button"
+                className="sap-btn sap-btn-primary h-[24px]"
+                onClick={() => useWorkbench.getState().openNewDialog()}
+              >
+                <FilePlus2 className="h-3 w-3" /> Create program
+              </button>
+            </div>
+          </div>
+
+          <div className="mx-4 mb-2 max-h-[380px] overflow-auto border border-[#b9c8db]">
+            <table className="w-full min-w-[760px] border-collapse text-[11.5px]" data-testid="se38-program-table">
+              <thead className="sticky top-0 z-10 bg-[#dbe6f2]">
+                <tr className="text-left text-[10.5px] font-bold text-[#1d3a5f]">
+                  <th className="border-b border-[#b9c8db] px-3 py-1.5">Program</th>
+                  <th className="border-b border-[#b9c8db] px-3 py-1.5">Title</th>
+                  <th className="border-b border-[#b9c8db] px-3 py-1.5">Type</th>
+                  <th className="border-b border-[#b9c8db] px-2 py-1.5">Scope</th>
+                  <th className="border-b border-[#b9c8db] px-3 py-1.5">Changed By</th>
+                  <th className="border-b border-[#b9c8db] px-3 py-1.5">Changed On</th>
+                </tr>
+              </thead>
+              <tbody>
+                {progList === null && (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-6 text-center text-[12px] italic text-[#55677a]">
+                      Loading programs…
+                    </td>
+                  </tr>
+                )}
+                {progList !== null && programMatches.map((p) => {
+                  const selected = value.trim().toUpperCase() === p.name
+                  return (
+                    <tr
+                      key={p.id}
+                      tabIndex={0}
+                      onClick={() => choose(p.name)}
+                      onDoubleClick={() => openProgram(p.name)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault()
+                          openProgram(p.name)
+                        } else if (event.key === ' ') {
+                          event.preventDefault()
+                          choose(p.name)
+                        }
+                      }}
+                      title={`${p.name} — ${p.title || 'no title'} · double-click to display`}
+                      className={`cursor-pointer border-b border-[#e4ebf3] outline-none focus-visible:bg-[#e2f0ff] ${
+                        selected ? 'bg-[#cfe4ff]' : 'hover:bg-[#eaf2fb]'
+                      }`}
+                    >
+                      <td className="px-3 py-[5px]">
+                        <span className="flex items-center gap-1.5">
+                          {p.isExample ? (
+                            <Lock className="h-3 w-3 shrink-0 text-[#55677a]" aria-label="shared example" />
+                          ) : (
+                            <Files className="h-3 w-3 shrink-0 text-[#5d3a8e]" />
+                          )}
+                          <span className="font-mono font-semibold text-[#0a4f8f]">{p.name}</span>
+                        </span>
+                      </td>
+                      <td className="max-w-[280px] truncate px-3 py-[5px] text-[#33475c]">{p.title || '—'}</td>
+                      <td className="px-3 py-[5px] text-[#33475c]">{TYPE_SHORT[p.type] ?? p.type}</td>
+                      <td className="px-2 py-[5px]">
+                        <span className={`inline-block rounded-[2px] px-1.5 py-[1px] text-[9.5px] font-semibold ${p.isExample ? 'bg-[#e8eef6] text-[#4c6b8a]' : 'bg-[#d8efd4] text-[#155f27]'}`}>
+                          {p.isExample ? 'Example' : 'Private'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-[5px] text-[#33475c]">{p.ownerUsername || 'SAP'}</td>
+                      <td className="px-3 py-[5px] font-mono text-[11px] text-[#33475c]">{formatDate(p.updatedAt)}</td>
+                    </tr>
+                  )
+                })}
+                {progList !== null && programMatches.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-6 text-center text-[12px] italic text-[#55677a]">
+                      No programs match “{repoFilter}”. Clear the filter or create a new program.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="px-4 pb-4 text-[10.5px] text-[#55677a]">
+            Double-click a row to display it · F4 in the Program field opens value help · Enter displays the typed program.
+          </p>
+        </section>
       </div>
     </div>
   )
