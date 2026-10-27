@@ -238,6 +238,46 @@ interface MMenu {
   items: MItem[]
 }
 
+// ── App 2-style flat screen action bars ────────────────────────────────
+// The reference WebGUI shows one flat action row per screen (no dropdown
+// menu bar and no second icon toolbar). Screens subscribe to this event.
+function fireScreenAction(target: 'se38' | 'functions', id: string) {
+  window.dispatchEvent(new CustomEvent('sap-screen-action', { detail: { target, id } }))
+}
+
+const SE38_FLAT_ACTIONS: { id: string; label: string }[] = [
+  { id: 'check', label: 'Check' },
+  { id: 'activate', label: 'Activate' },
+  { id: 'execute', label: 'Execute' },
+  { id: 'where-used', label: 'Where-Used List' },
+  { id: 'env', label: 'Environment Analysis' },
+  { id: 'help', label: 'Online Help' },
+  { id: 'delete', label: 'Delete...' },
+  { id: 'copy', label: 'Copy...' },
+  { id: 'rename', label: 'Rename...' },
+  { id: 'debug', label: 'Debugging' },
+  { id: 'with-variant', label: 'With Variant' },
+  { id: 'variants', label: 'Variants' },
+]
+
+const FN_FLAT_ACTIONS: { id: string; label: string }[] = [
+  { id: 'create', label: 'Create' },
+  { id: 'change', label: 'Change' },
+  { id: 'display', label: 'Display' },
+  { id: 'where-used', label: 'Where-Used List' },
+  { id: 'documentation', label: 'Documentation' },
+]
+
+const SE38_MORE: { label: string; id: string }[] = [
+  { label: 'Create (F5)', id: 'create' },
+  { label: 'Display (F7)', id: 'display' },
+  { label: 'Change (F6)', id: 'change' },
+  { label: 'Information — attributes', id: 'attributes' },
+  { label: 'Text elements', id: 'text' },
+  { label: 'Documentation', id: 'doc' },
+  { label: 'Attributes (change)', id: 'attributes-change' },
+]
+
 function MenuList({ items }: { items: MItem[] }) {
   return (
     <>
@@ -781,6 +821,12 @@ export function SapShell() {
     ]
   }, [view, activeTab?.kind, activeTabKey, activeProgramName, activeDirty, activeIsExample, findOpen, setLogoffConfirm, setSystemStatusOpen])
 
+  // App 2 shows one flat action row for SE38 / SE37 instead of a dropdown
+  // menu bar plus a second standard toolbar.
+  const flatTarget: 'se38' | 'functions' | null =
+    view === 'se38' ? 'se38' : view === 'functions' ? 'functions' : null
+  const flatActions = flatTarget === 'se38' ? SE38_FLAT_ACTIONS : flatTarget === 'functions' ? FN_FLAT_ACTIONS : null
+
   // ── global keys (SAP keyboard map) ───────────────────────────────────
   const anyDialogOpen = useWorkbench(
     (s) =>
@@ -949,19 +995,79 @@ export function SapShell() {
 
       {/* ── menu bar: screen menus left · OK-code field + right icons ── */}
       <nav className="sap-menubar flex h-[27px] shrink-0 items-center px-1 md:pl-1.5 md:pr-2" aria-label="Main menu">
-        <div className="flex min-w-0 flex-1 items-center gap-[2px] overflow-hidden">
-          {menus.map((m) => (
-            <DropdownMenu key={m.label}>
-              <DropdownMenuTrigger className="sap-menu-item outline-none">{m.label}</DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                sideOffset={1}
-                className="min-w-[230px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
-              >
-                <MenuList items={m.items} />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ))}
+        <div className="flex min-w-0 flex-1 items-center gap-[2px] overflow-x-auto overflow-y-hidden">
+          {flatActions && flatTarget ? (
+            <>
+              {flatActions.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  onClick={() => fireScreenAction(flatTarget, action.id)}
+                  className="shrink-0 whitespace-nowrap rounded-[2px] px-[7px] py-[2px] text-[12px] text-[#284d74] hover:bg-[#dbe5f0]"
+                >
+                  {action.label}
+                </button>
+              ))}
+              {flatTarget === 'se38' ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex shrink-0 items-center gap-1 rounded-[2px] px-[7px] py-[2px] text-[12px] text-[#284d74] outline-none hover:bg-[#dbe5f0]">
+                    More
+                    <svg width="8" height="6" viewBox="0 0 8 6" aria-hidden="true">
+                      <path d="M0.5 0.5 L7.5 0.5 L4 5 Z" fill="currentColor" />
+                    </svg>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    sideOffset={1}
+                    className="min-w-[230px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+                  >
+                    <MenuList
+                      items={SE38_MORE.map((item) => ({
+                        label: item.label,
+                        run: () => fireScreenAction('se38', item.id),
+                      }))}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex shrink-0 items-center gap-1 rounded-[2px] px-[7px] py-[2px] text-[12px] text-[#284d74] outline-none hover:bg-[#dbe5f0]">
+                    More
+                    <svg width="8" height="6" viewBox="0 0 8 6" aria-hidden="true">
+                      <path d="M0.5 0.5 L7.5 0.5 L4 5 Z" fill="currentColor" />
+                    </svg>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    sideOffset={1}
+                    className="min-w-[230px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+                  >
+                    <MenuList
+                      items={[
+                        { label: 'Object Navigator (SE80)', run: () => { useWorkbench.getState().navigate('search'); useWorkbench.getState().addMessage('I', 'Object Navigator (SE80)') } },
+                        { label: 'Go to ABAP Editor Initial Screen', run: () => useWorkbench.getState().openSe38Initial() },
+                        { sep: true },
+                        { label: 'About SAP System…', run: () => useWorkbench.getState().setAboutOpen(true) },
+                      ]}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </>
+          ) : (
+            menus.map((m) => (
+              <DropdownMenu key={m.label}>
+                <DropdownMenuTrigger className="sap-menu-item outline-none">{m.label}</DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  sideOffset={1}
+                  className="min-w-[230px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+                >
+                  <MenuList items={m.items} />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ))
+          )}
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-[3px]">{!isMobile && (<>
@@ -995,7 +1101,8 @@ export function SapShell() {
         </div>
       </nav>
 
-      {/* ── standard toolbar ── */}
+      {/* ── standard toolbar (hidden on App 2-style flat screens) ── */}
+      {!flatActions && (
       <div className="sap-toolbar flex h-[30px] min-w-0 shrink-0 items-center gap-0.5 overflow-x-auto overflow-y-hidden px-1.5">
         <ToolBtn
           icon={I.enter}
@@ -1072,6 +1179,7 @@ export function SapShell() {
           </DropdownMenu>
         </div>
       </div>
+      )}
 
       {/* ── application toolbar (screen-specific buttons) ── */}
       {isEditorTab && (
@@ -1150,10 +1258,10 @@ export function SapShell() {
       )}
 
       {/* ── main area ── */}
-      <div className="relative flex min-h-0 flex-1 gap-[3px] bg-[#c3d1e2] p-[3px]">
+      <div className={`relative flex min-h-0 flex-1 gap-[3px] ${flatActions ? 'bg-transparent p-0' : 'bg-[#c3d1e2] p-[3px]'}`}>
         <main
           id="wb-main"
-          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[2px] border border-[#9db2cc] bg-white"
+          className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${flatActions ? 'rounded-none border-0 bg-[#ebf1f7]' : 'rounded-[2px] border border-[#9db2cc] bg-white'}`}
           role="main"
         >
           <h1 className="sr-only">ABAP Studio Workbench</h1>

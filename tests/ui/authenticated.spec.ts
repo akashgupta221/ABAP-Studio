@@ -30,9 +30,10 @@ test.describe('owner workbench and administration', () => {
     await page.getByRole('textbox', { name: 'Command field' }).fill('SE38')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('heading', { name: 'ABAP Editor: Initial Screen' })).toBeVisible()
-    await expect(page.getByRole('textbox', { name: 'Program', exact: true })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Program repository' })).toBeVisible()
-    await expect(page.getByText(/\d+ of \d+ programs/)).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Program:' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Possible entries (F4)' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Check', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Where-Used List', exact: true })).toBeVisible()
   })
 })
 
@@ -145,7 +146,7 @@ test.describe('Function Builder (SE37)', () => {
     await page.goto('/')
     await page.getByRole('textbox', { name: 'Command field' }).fill('SE37')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
-    await expect(page.getByRole('heading', { name: 'Function Builder (SE37)' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Function Builder: Initial Screen' })).toBeVisible()
   })
 
   test('shared example function modules stay read-only and execute in the test console', async ({ page }) => {
@@ -179,7 +180,7 @@ test.describe('Function Builder (SE37)', () => {
     await groupDialog.getByRole('button', { name: 'Create group' }).click()
     await expect(page.getByRole('button', { name: new RegExp(`${group} \\(0\\)`) })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Create function module' }).click()
+    await page.getByTestId('function-builder').getByRole('button', { name: 'Create', exact: true }).click()
     const fmDialog = page.getByRole('dialog')
     await expect(fmDialog.getByRole('heading', { name: 'Create function module' })).toBeVisible()
     await fmDialog.getByLabel('Name').fill(fm)
@@ -207,9 +208,8 @@ test.describe('Function Builder (SE37)', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(page.getByText(fm, { exact: true })).toHaveCount(0)
 
-    page.once('dialog', (dialog) => { void dialog.accept() })
-    await page.getByRole('button', { name: `Delete function group ${group}` }).click()
+    page.once('dialog', (dialog) => { void dialog.accept(group) })
+    await page.getByRole('button', { name: 'Delete group' }).click()
     await expect(page.getByRole('button', { name: new RegExp(`${group} \\(0\\)`) })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: `Delete function group ${group}` })).toHaveCount(0)
   })
 })

@@ -99,7 +99,7 @@ export function CommandField() {
               return
             }
             st().openSe38Initial()
-            addMessage('S', 'ABAP Editor (SE38)')
+            addMessage('I', 'Transaction SE38 started - ABAP Editor')
             return
           }
           case 'SE80':
@@ -131,7 +131,7 @@ export function CommandField() {
           case 'SE37':
             useWorkbench.setState({ lastTcode: 'SE37' })
             navigate('functions')
-            addMessage('S', 'Function Builder (SE37)')
+            addMessage('I', 'Transaction SE37 started - Function Builder')
             return
           case 'SE93':
             setTcodeDialogOpen(true)

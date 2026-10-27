@@ -233,6 +233,36 @@ html, body {
   color: #4b5563;
 }
 
+/* WebGUI input fields use a thin solid frame (App 2 reference). */
+.sap-input {
+  background: #ffffff;
+  border: 1px solid #7f9bb9;
+  border-radius: 0;
+  box-shadow: none;
+  height: 22px;
+  font-size: 12px;
+  padding: 0 5px;
+  color: #111827;
+}
+.sap-input:focus {
+  outline: none;
+  border-color: #0a6dd1;
+  box-shadow: 0 0 0 1px #a5c6ee;
+}
+.sap-input::placeholder {
+  color: #8a97a8;
+}
+
+/* SE38's initial-screen program field uses a dark dashed frame. */
+.sap-input-dashed {
+  border: 1px dashed #3f4c5c;
+  padding: 0 6px;
+}
+.sap-input-dashed:focus {
+  border-style: solid;
+  border-color: #0a6dd1;
+}
+
 /* SAP checkbox / radio (classic 3D sunken controls) */
 input[type='checkbox'].sap-checkbox {
   appearance: none;

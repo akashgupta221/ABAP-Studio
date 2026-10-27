@@ -4,7 +4,7 @@
 // The screen is deliberately self-contained: the repository stays App 1's
 // Prisma/Turso data, while the interaction model follows the SAP WebGUI
 // Function Builder (attributes, interface parameters, source, test console).
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   ArrowLeft,
@@ -115,6 +115,13 @@ function defaultsFrom(fm: FunctionModule): Record<string, string> {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+// SAP displays change dates as DD.MM.YYYY; the API stores ISO dates.
+function formatSapDate(value?: string): string {
+  if (!value) return '—'
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : value
 }
 
 function isStructuredType(p: FmParam): boolean {
@@ -429,15 +436,14 @@ export function FunctionBuilderView() {
 
   const deleteGroup = async (group: FunctionGroup) => {
     if (group.isExample) return
-    const question = group.moduleCount > 0
-      ? `Function group ${group.name} contains ${group.moduleCount} function module(s). Delete the group and all its modules?`
-      : `Delete function group ${group.name}?`
-    if (!window.confirm(question)) return
+    // Typing the exact group name in the prompt is the confirmation.
     setBusy(true)
     try {
       await api(`/api/function-groups/${encodeURIComponent(group.name)}?force=true`, { method: 'DELETE' })
       addMessage('S', `Function group ${group.name} deleted`)
-      await refreshLists()
+      // Update locally: a cached follow-up GET can otherwise re-add the group.
+      setFms((current) => current.filter((item) => item.groupName !== group.name))
+      setGroups((current) => current.filter((item) => item.name !== group.name))
       if (record && record.groupName === group.name) {
         setHighlighted(null)
         setRecord(null)
@@ -450,6 +456,22 @@ export function FunctionBuilderView() {
     } finally {
       setBusy(false)
     }
+  }
+
+  const deleteGroupPrompt = () => {
+    const raw = window.prompt(
+      'Function group to delete (type its exact name; all of its function modules are deleted too):',
+      filter.trim().toUpperCase(),
+    )
+    if (raw === null) return
+    const name = raw.trim().toUpperCase()
+    if (!name) return
+    const group = groups.find((g) => g.name === name)
+    if (!group) {
+      setNotice({ kind: 'E', text: `Function group ${name} does not exist` })
+      return
+    }
+    void deleteGroup(group)
   }
 
   const visible = useMemo(() => {
@@ -484,6 +506,36 @@ export function FunctionBuilderView() {
     openFm(primaryTarget, 'display', 'test')
   }
 
+  // App 2 keeps the SE37 actions in the single flat screen toolbar.
+  const actionsRef = useRef<Record<string, () => void>>({})
+  useEffect(() => {
+    actionsRef.current = {
+      create: () => setCreateFmOpen(true),
+      change: () => {
+        if (!primaryTarget) { setNotice({ kind: 'I', text: 'Select a function module first.' }); return }
+        openFm(primaryTarget, 'change')
+      },
+      display: () => {
+        if (!primaryTarget) { setNotice({ kind: 'I', text: 'Select a function module first.' }); return }
+        openFm(primaryTarget, 'display')
+      },
+      'where-used': () => {
+        if (!primaryTarget) { setNotice({ kind: 'I', text: 'Select a function module first.' }); return }
+        addMessage('I', `Where-Used List for ${primaryTarget}: function module usage is searched in the program repository`)
+      },
+      documentation: () => addMessage('I', 'Function module documentation is not maintained in this training system'),
+    }
+  })
+  useEffect(() => {
+    const onAction = (event: Event) => {
+      const detail = (event as CustomEvent<{ target?: string; id?: string }>).detail
+      if (detail?.target !== 'functions' || !detail.id) return
+      actionsRef.current[detail.id]?.()
+    }
+    window.addEventListener('sap-screen-action', onAction)
+    return () => window.removeEventListener('sap-screen-action', onAction)
+  }, [])
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center bg-[#f0f4f9] text-[13px] text-[#55677a]">
@@ -493,188 +545,188 @@ export function FunctionBuilderView() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#f0f4f9]" data-testid="function-builder">
-      <div className="shrink-0 border-b border-[#b9c8db] bg-[#e4ebf5] px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Braces className="h-5 w-5 text-[#5d3a8e]" />
-          <div className="min-w-0">
-            <h1 className="text-[14px] font-bold text-[#12283c]">Function Builder (SE37)</h1>
-            <p className="truncate text-[11.5px] text-[#4e6074]">
-              {fms.length} function module{fms.length === 1 ? '' : 's'} in {groups.length} function group{groups.length === 1 ? '' : 's'} · selected system MER / client 105
-            </p>
-          </div>
-          <div className="ml-auto flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              className="sap-btn"
-              onClick={() => { void refreshLists().catch((e) => setError(errorMessage(e))) }}
-              title="Refresh function module and group lists"
-            >
-              <RefreshCw className="h-3.5 w-3.5" /> Refresh
-            </button>
-            <button
-              type="button"
-              className="sap-btn sap-btn-primary"
-              onClick={() => setCreateFmOpen(true)}
-              disabled={editableGroups.length === 0}
-              title={editableGroups.length === 0 ? 'Create a private function group first' : 'Create a function module'}
-            >
-              <Plus className="h-3.5 w-3.5" /> Create function module
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-2">
-          <div className="relative">
-            <label htmlFor="se37-fm-name" className="mb-0.5 block text-[10.5px] font-bold uppercase tracking-wide text-[#4c6b8a]">
-              Function module
-            </label>
-            <div className="flex">
-              <input
-                id="se37-fm-name"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter') return
-                  e.preventDefault()
-                  if (filter.trim() || highlighted) runPrimary()
-                  else setValueHelpOpen(true)
-                }}
-                placeholder="Enter a function module…"
-                className="sap-field h-[26px] w-[230px] max-w-full font-mono text-[12px]"
-                aria-label="Function module"
-                autoComplete="off"
-              />
+    <div className="flex h-full min-h-0 flex-col bg-[#D6E1EF]" data-testid="function-builder">
+      {(!record || !draft) && (
+        <>
+          {/* SE37 initial screen header */}
+          <div className="shrink-0 border-b border-[#B9C8DB] bg-[#E4EBF5] px-[16px] py-[12px]">
+            <div className="mb-[8px] flex items-center gap-[8px]">
+              <Braces className="h-4 w-4 text-[#B25000]" />
+              <h1 className="text-[13px] font-bold text-[#1D3A5F]">Function Builder: Initial Screen</h1>
+              <span className="text-[11px] text-[#6B7A8D]">Edit or create function modules</span>
               <button
                 type="button"
-                className="sap-btn ml-[2px] h-[26px] px-2"
-                onClick={() => setValueHelpOpen((open) => !open)}
-                aria-label="F4 value help"
-                aria-expanded={valueHelpOpen}
-                title="F4 value help — search function modules"
+                title="Refresh"
+                aria-label="Refresh lists"
+                onClick={() => { void refreshLists().catch((e) => setError(errorMessage(e))) }}
+                className="ml-auto flex h-[22px] items-center gap-[6px] rounded-[2px] border border-[#8296AC] bg-gradient-to-b from-[#FDFEFF] to-[#DDE6F2] px-[8px] text-[11px] text-[#12263A] hover:border-[#3C6EA5]"
               >
-                <Search className="h-3.5 w-3.5" /> F4
+                <RefreshCw className="h-3 w-3" />
+                Refresh
               </button>
             </div>
-            {valueHelpOpen && (
-              <div
-                className="absolute left-0 top-full z-30 mt-1 max-h-[240px] w-[340px] overflow-auto rounded-[2px] border border-[#8296ac] bg-white shadow-[0_8px_24px_rgba(9,30,60,0.25)]"
-                role="listbox"
-                aria-label="Function module value help"
-              >
-                {visible.length === 0 && (
-                  <p className="px-2 py-2 text-[11.5px] italic text-[#55677a]">No matching function modules.</p>
-                )}
-                {visible.map((fm) => (
-                  <button
-                    key={fm.name}
-                    type="button"
-                    role="option"
-                    aria-selected={highlighted === fm.name}
-                    className={`flex w-full items-center gap-2 px-2 py-[3px] text-left text-[11.5px] hover:bg-[#dbe8f8] ${highlighted === fm.name ? 'bg-[#cfe4ff]' : ''}`}
-                    onClick={() => { setHighlighted(fm.name); setFilter(fm.name); setValueHelpOpen(false) }}
-                  >
-                    <span className="font-mono text-[#0a4f8f]">{fm.name}</span>
-                    <span className="truncate text-[#55677a]">{fm.title || '—'}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
-          <fieldset className="flex items-center gap-2 pb-[3px]" aria-label="Function module mode">
-            <legend className="sr-only">Function module mode</legend>
-            <span className="text-[10.5px] font-bold uppercase tracking-wide text-[#4c6b8a]">Mode</span>
-            {(['display', 'change', 'create'] as const).map((choice) => (
-              <label key={choice} className="flex items-center gap-1 text-[11.5px] capitalize text-[#1d3a5f]">
-                <input
-                  type="radio"
-                  name="se37-mode"
-                  value={choice}
-                  checked={startMode === choice}
-                  onChange={() => setStartMode(choice)}
-                  className="h-3 w-3 accent-[#0a6dd1]"
-                />
-                {choice}
+            <div className="flex items-center gap-[8px]">
+              <label htmlFor="se37-fm-name" className="w-[130px] text-right text-[12px] font-semibold text-[#12263A]">
+                Function module
               </label>
-            ))}
-          </fieldset>
-
-          <div className="ml-auto flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              className="sap-btn"
-              onClick={() => {
-                if (!primaryTarget) { setNotice({ kind: 'I', text: 'Select a function module first.' }); return }
-                openFm(primaryTarget, 'display')
-              }}
-            >
-              Display
-            </button>
-            <button
-              type="button"
-              className="sap-btn"
-              onClick={() => {
-                if (!primaryTarget) { setNotice({ kind: 'I', text: 'Select a function module first.' }); return }
-                openFm(primaryTarget, 'change')
-              }}
-              disabled={!!primaryTarget && !!fms.find((fm) => fm.name === primaryTarget)?.isExample}
-            >
-              Change
-            </button>
-            <button
-              type="button"
-              className="sap-btn"
-              onClick={() => setCreateFmOpen(true)}
-              disabled={editableGroups.length === 0}
-              title={editableGroups.length === 0 ? 'Create a private function group first' : undefined}
-            >
-              Create
-            </button>
-            <button type="button" className="sap-btn sap-btn-default" onClick={() => openTest()} aria-label="Test function module">
-              <Play className="h-3.5 w-3.5" /> Test
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-[#4c6b8a]">Function groups</span>
-          {groups.map((group) => (
-            <span key={group.name} className="inline-flex items-center">
-              <button
-                type="button"
-                onClick={() => setFilter(group.name)}
-                className={`flex h-[24px] items-center rounded-[2px] border px-2 font-mono text-[11px] hover:bg-[#e7f0fa] ${
-                  filter === group.name ? 'border-[#0a6dd1] bg-[#dbe8f8] text-[#0a4f8f]' : 'border-[#8296ac] bg-white text-[#0a6dd1]'
-                }`}
-                title={`${group.shortText || group.name} — ${group.moduleCount} module(s); click to filter`}
-              >
-                {group.name} ({group.moduleCount})
-                {group.isExample ? <Lock className="ml-1 inline h-2.5 w-2.5" aria-label="shared example" /> : null}
-              </button>
-              {!group.isExample && (
+              <div className="relative flex items-center">
+                <input
+                  id="se37-fm-name"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return
+                    e.preventDefault()
+                    if (filter.trim() || highlighted) runPrimary()
+                    else setValueHelpOpen(true)
+                  }}
+                  placeholder="Z_*"
+                  className="sap-input w-[260px] font-mono uppercase"
+                  aria-label="Function module"
+                  autoComplete="off"
+                />
                 <button
                   type="button"
-                  onClick={() => void deleteGroup(group)}
-                  className="ml-0.5 flex h-[24px] w-[24px] items-center justify-center rounded-[2px] text-[#8a2b2b] hover:bg-[#f5dddd]"
-                  aria-label={`Delete function group ${group.name}`}
-                  title={`Delete function group ${group.name}`}
+                  onClick={() => setValueHelpOpen((open) => !open)}
+                  aria-label="Search help for function modules"
+                  aria-expanded={valueHelpOpen}
+                  title="Search help (F4)"
+                  className="ml-[8px] flex h-[22px] w-[24px] items-center justify-center rounded-[2px] border border-[#8296AC] bg-gradient-to-b from-[#FDFEFF] to-[#DDE6F2] text-[#12263A] hover:border-[#3C6EA5]"
                 >
-                  <X className="h-3 w-3" />
+                  <Search className="h-3.5 w-3.5" />
                 </button>
-              )}
+                {valueHelpOpen && (
+                  <div
+                    className="absolute left-0 top-full z-30 mt-1 max-h-[240px] w-[340px] overflow-auto rounded-[2px] border border-[#8296ac] bg-white shadow-[0_8px_24px_rgba(9,30,60,0.25)]"
+                    role="listbox"
+                    aria-label="Function module value help"
+                  >
+                    {visible.length === 0 && (
+                      <p className="px-2 py-2 text-[11.5px] italic text-[#55677a]">No matching function modules.</p>
+                    )}
+                    {visible.map((fm) => (
+                      <button
+                        key={fm.name}
+                        type="button"
+                        role="option"
+                        aria-selected={highlighted === fm.name}
+                        className={`flex w-full items-center gap-2 px-2 py-[3px] text-left text-[11.5px] hover:bg-[#dbe8f8] ${highlighted === fm.name ? 'bg-[#cfe4ff]' : ''}`}
+                        onClick={() => { setHighlighted(fm.name); setFilter(fm.name); setValueHelpOpen(false) }}
+                      >
+                        <span className="font-mono text-[#0a4f8f]">{fm.name}</span>
+                        <span className="truncate text-[#55677a]">{fm.title || '—'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-[8px] flex items-center gap-[8px]">
+              <span className="w-[130px]" />
+              <fieldset className="flex items-center gap-[8px]" aria-label="Function module mode">
+                <legend className="sr-only">Function module mode</legend>
+                {(['create', 'change', 'display'] as const).map((choice) => (
+                  <label key={choice} className="flex cursor-pointer items-center gap-[4px] text-[12px] capitalize text-[#12263A]">
+                    <input
+                      type="radio"
+                      name="se37-mode"
+                      value={choice}
+                      checked={startMode === choice}
+                      onChange={() => setStartMode(choice)}
+                      className="h-3 w-3 accent-[#0a6dd1]"
+                    />
+                    {choice}
+                  </label>
+                ))}
+              </fieldset>
+              <span className="flex-1" />
+              <button
+                type="button"
+                className="sap-btn"
+                onClick={() => {
+                  if (!primaryTarget) { setNotice({ kind: 'I', text: 'Select a function module first.' }); return }
+                  openFm(primaryTarget, 'display')
+                }}
+              >
+                Display
+              </button>
+              <button
+                type="button"
+                className="sap-btn"
+                onClick={() => {
+                  if (!primaryTarget) { setNotice({ kind: 'I', text: 'Select a function module first.' }); return }
+                  openFm(primaryTarget, 'change')
+                }}
+                disabled={!!primaryTarget && !!fms.find((fm) => fm.name === primaryTarget)?.isExample}
+              >
+                Change
+              </button>
+              <button
+                type="button"
+                className="sap-btn"
+                onClick={() => setCreateFmOpen(true)}
+                disabled={editableGroups.length === 0}
+                title={editableGroups.length === 0 ? 'Create a private function group first' : undefined}
+              >
+                Create
+              </button>
+              <button type="button" className="sap-btn sap-btn-default" onClick={() => openTest()} aria-label="Test function module">
+                <Play className="h-3.5 w-3.5" /> Test
+              </button>
+            </div>
+          </div>
+
+          {/* function groups strip */}
+          <div className="flex shrink-0 flex-wrap items-center gap-[8px] border-b border-[#C4D2E0] bg-[#EAF0F8] px-[16px] py-[6px]">
+            <span className="text-[11px] font-bold text-[#1D3A5F]">Function groups:</span>
+            {groups.map((group) => (
+              <button
+                key={group.name}
+                type="button"
+                title={`${group.shortText || group.name} — ${group.moduleCount} module(s); click to filter`}
+                onClick={() => setFilter(group.name)}
+                className="rounded-[2px] border border-[#8296AC] bg-white px-[8px] py-[1px] font-mono text-[11px] text-[#0A6DD1] hover:bg-[#E7F0FA]"
+              >
+                {group.name} ({group.moduleCount})
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setCreateGroupOpen(true)}
+              className="flex items-center gap-[4px] rounded-[2px] border border-[#8296AC] bg-gradient-to-b from-[#FDFEFF] to-[#DDE6F2] px-[8px] py-[1px] text-[11px] text-[#12263A] hover:border-[#3C6EA5]"
+            >
+              <Plus className="h-3 w-3" />
+              Create group
+            </button>
+            <button
+              type="button"
+              onClick={deleteGroupPrompt}
+              title="Delete a function group (type its exact name to confirm)"
+              className="flex items-center gap-[4px] rounded-[2px] border border-[#8296AC] bg-gradient-to-b from-[#FDFEFF] to-[#DDE6F2] px-[8px] py-[1px] text-[11px] text-[#8A2B2B] hover:border-[#A23B3B]"
+            >
+              <Trash2 className="h-3 w-3" />
+              Delete group
+            </button>
+          </div>
+
+          {/* search + table */}
+          <div className="flex shrink-0 items-center gap-[8px] border-b border-[#C4D2E0] bg-[#EAF0F8] px-[16px] py-[6px]">
+            <Search className="h-3.5 w-3.5 text-[#4C6B8A]" />
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Search function modules (name, group, short text)"
+              className="sap-input w-[340px] text-[12px]"
+              aria-label="Search function modules"
+            />
+            <span className="ml-auto text-[11px] text-[#6B7A8D]">
+              {visible.length} of {fms.length} entries
             </span>
-          ))}
-          <button
-            type="button"
-            onClick={() => setCreateGroupOpen(true)}
-            className="flex h-[24px] items-center gap-1 rounded-[2px] border border-dashed border-[#7a91aa] bg-[#f7f9fc] px-2 text-[11px] font-semibold text-[#2f5c8a] hover:bg-[#e7f0fa]"
-          >
-            <Plus className="h-3 w-3" /> Create group
-          </button>
-          {groups.length === 0 && <span className="text-[11.5px] italic text-[#55677a]">No function groups yet.</span>}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col">
         {error && (
@@ -708,85 +760,51 @@ export function FunctionBuilderView() {
         )}
 
         {!record || !draft ? (
-          <div className="flex min-h-0 flex-1 flex-col bg-white">
-            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#c3d0e0] bg-[#eef3f9] px-3 py-1.5">
-              <span className="text-[12px] font-bold text-[#1d3a5f]">Function module repository</span>
-              <span className="rounded-[2px] border border-[#c4d2e0] bg-white px-1.5 py-[1px] text-[10.5px] text-[#4e6074]">
-                {visible.length} of {fms.length} entries
-              </span>
-              {filter && (
-                <button type="button" className="text-[10.5px] text-[#0a6dd1] underline" onClick={() => setFilter('')}>
-                  Clear filter
-                </button>
-              )}
-              <span className="ml-auto hidden text-[10.5px] italic text-[#55677a] sm:inline">
-                Single-click selects · double-click opens
-              </span>
-            </div>
-
-            <div className="wb-scroll min-h-0 flex-1 overflow-auto">
-              <table className="w-full min-w-[760px] border-collapse text-[11.5px]">
-                <thead className="sticky top-0 z-10 bg-[#dbe6f2]">
-                  <tr className="text-left text-[10.5px] font-bold text-[#1d3a5f]">
-                    <th className="border-b border-[#b9c8db] px-3 py-1.5">Function Module</th>
-                    <th className="border-b border-[#b9c8db] px-3 py-1.5">Short Text</th>
-                    <th className="border-b border-[#b9c8db] px-3 py-1.5">Function Group</th>
-                    <th className="border-b border-[#b9c8db] px-2 py-1.5">Status</th>
-                    <th className="border-b border-[#b9c8db] px-3 py-1.5">Changed By</th>
-                    <th className="border-b border-[#b9c8db] px-3 py-1.5">Changed On</th>
+          <>
+            <div className="sap-scroll min-h-0 flex-1 overflow-auto bg-white p-[12px]">
+              <table className="w-full border-collapse text-[12px]">
+                <thead>
+                  <tr className="bg-[#DEE7F2] text-left text-[11px] font-bold text-[#1D3A5F]">
+                    <th className="border border-[#C4D2E0] px-[8px] py-[6px]">Function Module</th>
+                    <th className="border border-[#C4D2E0] px-2 py-1.5">Short Text</th>
+                    <th className="border border-[#C4D2E0] px-2 py-1.5">Function Group</th>
+                    <th className="w-[90px] border border-[#C4D2E0] px-[8px] py-[6px]">Status</th>
+                    <th className="w-[110px] border border-[#C4D2E0] px-[8px] py-[6px]">Changed By</th>
+                    <th className="w-[110px] border border-[#C4D2E0] px-[8px] py-[6px]">Changed On</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visible.map((fm) => {
-                    const isHighlighted = highlighted === fm.name || activeName === fm.name
+                    const group = groups.find((g) => g.name === fm.groupName)
                     return (
                       <tr
                         key={fm.name}
-                        tabIndex={0}
+                        className={`cursor-pointer ${highlighted === fm.name || activeName === fm.name ? 'bg-[#BBD8F2]' : 'hover:bg-[#E7F0FA]'}`}
                         onClick={() => setHighlighted(fm.name)}
                         onDoubleClick={() => openFm(fm.name, 'display')}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault()
-                            openFm(fm.name, 'display')
-                          } else if (event.key === ' ') {
-                            event.preventDefault()
-                            setHighlighted(fm.name)
-                          }
-                        }}
-                        title={`${fm.name} — ${fm.title || 'no short text'} · double-click to display`}
-                        className={`cursor-pointer border-b border-[#e4ebf3] outline-none focus-visible:bg-[#e2f0ff] ${
-                          isHighlighted ? 'bg-[#cfe4ff]' : 'hover:bg-[#eaf2fb]'
-                        }`}
+                        title="Double-click to display the function module"
                       >
-                        <td className="px-3 py-[5px]">
-                          <span className="flex items-center gap-1.5">
-                            {fm.isExample ? (
-                              <Lock className="h-3 w-3 shrink-0 text-[#55677a]" aria-label="shared example" />
-                            ) : (
-                              <Braces className="h-3 w-3 shrink-0 text-[#5d3a8e]" />
-                            )}
-                            <span className="font-mono font-semibold text-[#0a4f8f]">{fm.name}</span>
-                          </span>
+                        <td className="border border-[#E4EBF3] px-[8px] py-[4px] font-mono text-[11px] text-[#0A6DD1]">
+                          {fm.name}
                         </td>
-                        <td className="max-w-[280px] truncate px-3 py-[5px] text-[#33475c]">{fm.title || '—'}</td>
-                        <td className="px-3 py-[5px] font-mono text-[#33475c]">{fm.groupName}</td>
-                        <td className="px-2 py-[5px]">
-                          <span className={`inline-block rounded-[2px] px-1.5 py-[1px] text-[9.5px] font-semibold ${fm.active ? 'bg-[#d8efd4] text-[#155f27]' : 'bg-[#fbf0d9] text-[#6f5712]'}`}>
+                        <td className="border border-[#E4EBF3] px-[8px] py-[4px] text-[#40556C]">{fm.title || '—'}</td>
+                        <td className="border border-[#E4EBF3] px-[8px] py-[4px] font-mono text-[11px]">{fm.groupName}</td>
+                        <td className="border border-[#E4EBF3] px-[8px] py-[4px]">
+                          <span className={`rounded-[2px] px-1.5 py-[1px] text-[10px] font-semibold ${fm.active ? 'bg-[#D8EFD4] text-[#1E7A34]' : 'bg-[#FBF0D9] text-[#8A6D1A]'}`}>
                             {fm.active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td className="px-3 py-[5px] text-[#33475c]">{fm.changedBy || '—'}</td>
-                        <td className="px-3 py-[5px] font-mono text-[11px] text-[#33475c]">{fm.changedOn || '—'}</td>
+                        <td className="border border-[#E4EBF3] px-[8px] py-[4px]">{fm.changedBy || fm.ownerUsername || 'SAP'}</td>
+                        <td className="border border-[#E4EBF3] px-[8px] py-[4px]">{formatSapDate(fm.changedOn || group?.changedOn)}</td>
                       </tr>
                     )
                   })}
                   {visible.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-3 py-8 text-center text-[12px] italic text-[#55677a]">
+                      <td colSpan={6} className="px-2 py-4 text-center text-[12px] italic text-[#8A97A8]">
                         {fms.length === 0
                           ? 'No function modules yet — create a function group, then add a function module.'
-                          : 'No function modules match this filter.'}
+                          : 'No function modules match the search — create one with the Create button'}
                       </td>
                     </tr>
                   )}
@@ -794,11 +812,10 @@ export function FunctionBuilderView() {
               </table>
             </div>
 
-            <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-[#c7d8ea] bg-[#eef3f9] px-3 py-1.5 text-[10.5px] text-[#55677a]">
-              <span>Double-click a row to display it · F4 in the name field opens value help · Enter opens the selected module.</span>
-              <span className="ml-auto font-mono">Selected: {highlighted ?? '—'}</span>
+            <div className="shrink-0 border-t border-[#B9C8DB] bg-[#EAF0F8] px-[16px] py-[4px] text-[11px] italic text-[#6B7A8D]">
+              Enter a name and choose Create / Change / Display / Test, or double-click a row to display it
             </div>
-          </div>
+          </>
         ) : (
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="flex min-h-0 flex-1 flex-col">
