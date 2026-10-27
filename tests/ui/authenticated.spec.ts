@@ -150,7 +150,7 @@ test.describe('Function Builder (SE37)', () => {
     await expect(page.getByRole('banner').getByText('MER (105)')).toBeVisible()
     await expect(page.getByRole('button', { name: 'System menu' })).toBeVisible()
 
-    await page.locator('.sap-tree-row').filter({ hasText: 'Z_CALC_DISCOUNT' }).first().click()
+    await page.getByTestId('function-builder').getByText('Z_CALC_DISCOUNT', { exact: true }).dblclick()
     await expect(page.getByText('shared example · read-only')).toBeVisible()
     await expect(page.getByRole('textbox', { name: 'ABAP source editor' })).not.toBeEditable()
 
