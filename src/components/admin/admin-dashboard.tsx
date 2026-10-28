@@ -9,18 +9,12 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { signOutClerkClient } from '@/lib/clerk-client'
 import {
-  Activity,
-  AlertTriangle,
-  BookOpen,
   CheckCircle2,
-  Database,
   LogOut,
   RefreshCw,
   Search,
   Shield,
-  ShieldOff,
   Trash2,
-  Users,
   XCircle,
 } from 'lucide-react'
 
@@ -103,6 +97,7 @@ interface Overview {
 }
 
 type Tab = 'overview' | 'users' | 'programs' | 'audit'
+type Tone = 'good' | 'warn' | 'bad' | 'info' | 'neutral'
 
 function when(value: string | null): string {
   if (!value) return '—'
@@ -123,38 +118,34 @@ function ago(value: string | null): string {
   return `${Math.floor(hours / 24)} d ago`
 }
 
-function Stat({
+function Coupon({
   label,
   value,
   hint,
-  icon,
+  code,
   tone = 'default',
 }: {
   label: string
   value: string | number
   hint?: string
-  icon: React.ReactNode
+  code: string
   tone?: 'default' | 'good' | 'warn' | 'bad'
 }) {
-  const toneClass =
-    tone === 'good'
-      ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
-      : tone === 'warn'
-        ? 'text-amber-700 bg-amber-50 border-amber-200'
-        : tone === 'bad'
-          ? 'text-red-700 bg-red-50 border-red-200'
-          : 'text-[#0a4d8c] bg-blue-50 border-blue-200'
   return (
-    <div className="rounded border border-[#c9d4e0] bg-white p-3 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="text-[10.5px] font-semibold uppercase tracking-wide text-[#5b6b7c]">{label}</div>
-          <div className="mt-1 text-[24px] font-semibold leading-none text-[#16283b]">{value}</div>
-          {hint && <div className="mt-1.5 text-[10.5px] text-[#55677a]">{hint}</div>}
-        </div>
-        <span className={`flex h-8 w-8 items-center justify-center rounded border ${toneClass}`}>{icon}</span>
-      </div>
+    <div className="mf-coupon" data-tone={tone}>
+      <div className="mf-coupon-label">{label}</div>
+      <div className="mf-coupon-value">{value}</div>
+      {hint && <div className="mf-coupon-hint">{hint}</div>}
+      <div className="mf-coupon-code">{code}</div>
     </div>
+  )
+}
+
+function Status({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+  return (
+    <span className="mf-status" data-tone={tone}>
+      {children}
+    </span>
   )
 }
 
@@ -284,6 +275,27 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
     [load],
   )
 
+  const logoff = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/logout', { method: 'POST' })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        toast.error(body.error ?? 'Logoff could not be completed')
+        return
+      }
+      const clerkSignedOut = await signOutClerkClient()
+      if (!clerkSignedOut) {
+        toast.error(
+          'The secure session was revoked, but the browser sign-out did not complete — retry logoff',
+        )
+        return
+      }
+      window.location.assign('/')
+    } catch {
+      toast.error('Cannot reach the system — logoff was not confirmed')
+    }
+  }, [])
+
   const users = useMemo(() => {
     const q = userQuery.trim().toLowerCase()
     if (!data) return []
@@ -317,441 +329,730 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
     { id: 'audit', label: 'Audit log', count: data?.audit.length },
   ]
 
+  const executionMax = Math.max(1, ...(data?.executionSeries.map((d) => d.executions) ?? []))
+  const activeUsers = data ? data.users.filter((u) => !u.suspended).length : 0
+  const suspendedUsers = data ? data.users.filter((u) => u.suspended).length : 0
+
   return (
-    <div className="min-h-screen bg-[#ebf1f7] text-[#17324a]">
-      <header className="border-b border-[#b9cee1] bg-gradient-to-b from-[#e6eff9] to-[#d5e3f1]">
-        <div className="mx-auto flex h-11 max-w-[1500px] items-center gap-3 px-4">
-          <Shield className="h-4 w-4 text-[#4C6B8A]" aria-hidden />
-          <h1 className="text-[13px] font-bold tracking-wide text-[#17324a]">ABAP-Studio · System Administration</h1>
-          <span className="rounded-[2px] border border-[#a8c0d6] bg-white/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#44586c]">
-            MER · Client 105
+    <div className="mf-admin">
+      <header className="mf-topbar">
+        <div className="mf-brand">
+          <span className="mf-mark" aria-hidden>
+            AV
           </span>
-          <div className="ml-auto flex items-center gap-2 text-[11.5px]">
-            <span className="hidden items-center gap-1 text-[#44586c] sm:flex">
-              Owner: <strong className="font-semibold text-[#17324a]">{ownerName}</strong>
-            </span>
-            <Link href="/" className="sap-btn min-h-[22px]">
-              Workbench
-            </Link>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  const res = await fetch('/api/auth/logout', { method: 'POST' })
-                  if (!res.ok) {
-                    const data = (await res.json().catch(() => ({}))) as { error?: string }
-                    toast.error(data.error ?? 'Logoff could not be completed')
-                    return
-                  }
-                  const clerkSignedOut = await signOutClerkClient()
-                  if (!clerkSignedOut) {
-                    toast.error('The secure session was revoked, but the browser sign-out did not complete — retry logoff')
-                    return
-                  }
-                  window.location.assign('/')
-                } catch {
-                  toast.error('Cannot reach the system — logoff was not confirmed')
-                }
-              }}
-              className="sap-btn min-h-[22px]"
-            >
-              <LogOut className="h-3.5 w-3.5" /> Log off
-            </button>
+          <div className="mf-brandtext">
+            <h1>ABAP-Studio · System Administration</h1>
+            <span className="mf-badge">MER · Client 105</span>
           </div>
+        </div>
+        <div className="mf-topmid" aria-hidden>
+          SYSTEM MANIFEST / MER 105
+        </div>
+        <div className="mf-topactions">
+          <span className="mf-owner">
+            OWNER: <strong>{ownerName}</strong>
+          </span>
+          <button type="button" onClick={() => void load()} disabled={loading} className="mf-topbtn">
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} aria-hidden /> Refresh
+          </button>
+          <Link href="/" className="mf-topbtn">
+            Workbench
+          </Link>
+          <button type="button" onClick={() => void logoff()} className="mf-topbtn mf-topbtn-danger">
+            <LogOut className="h-3 w-3" aria-hidden /> Log off
+          </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1500px] px-4 py-4">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <div className="flex rounded-[2px] border border-[#b9cbdd] bg-white p-0.5" role="tablist" aria-label="Administration sections">
-            {tabs.map((t) => (
+      <div className="mf-shell">
+        <aside className="mf-rail">
+          <div className="mf-rail-label">Manifest index</div>
+          <div className="mf-nav" role="tablist" aria-label="Administration sections">
+            {tabs.map((t, index) => (
               <button
                 key={t.id}
+                id={`mf-tab-${t.id}`}
                 type="button"
                 role="tab"
                 aria-selected={tab === t.id}
+                aria-controls="mf-tabpanel"
                 onClick={() => setTab(t.id)}
-                className={`rounded-[2px] px-3 py-1 text-[11.5px] font-medium ${
-                  tab === t.id
-                    ? 'bg-[#cfe3f8] text-[#0a2f57] shadow-[inset_0_0_0_1px_#7aa7d9]'
-                    : 'text-[#33475b] hover:bg-[#e8f1fa]'
-                }`}
+                className="mf-navitem"
+                data-active={tab === t.id}
               >
-                {t.label}
-                {t.count !== undefined && (
-                  <span className={`ml-1.5 text-[10px] ${tab === t.id ? 'text-[#4C6B8A]' : 'text-[#55677a]'}`}>
-                    {t.count}
-                  </span>
-                )}
+                <span className="mf-navnum">{String(index + 1).padStart(2, '0')}</span>
+                <span className="mf-navlabel">{t.label}</span>
+                <span className="mf-navcount">{t.count ?? 'live'}</span>
               </button>
             ))}
           </div>
-          <div className="ml-auto flex items-center gap-2 text-[10.5px] text-[#55677a]">
-            {data && <span>Updated {when(data.generatedAt)}</span>}
-            <button
-              type="button"
-              onClick={() => void load()}
-              disabled={loading}
-              className="sap-btn min-h-[24px]"
+          <div className="mf-railfoot">
+            <div className="mf-live-line">
+              <span className="mf-live-dot" aria-hidden /> Validated {data ? when(data.generatedAt) : '—'}
+            </div>
+            <div>Client 105</div>
+            <div>System MER</div>
+            <span className="mf-stamp">Owner gate</span>
+          </div>
+        </aside>
+
+        <main className="mf-main">
+          <div className="mf-hero">
+            <div>
+              <h2 className="mf-display">System manifest</h2>
+              <p className="mf-sub">
+                Every account, route and run in one working record. Stamped when it changes.
+              </p>
+            </div>
+            <div className="mf-validated-wrap">
+              <div className="mf-validated" aria-hidden>
+                SERVER
+                <br />
+                VALIDATED
+              </div>
+              {data && <span className="mf-updated">Sync {when(data.generatedAt)}</span>}
+            </div>
+          </div>
+
+          {error && (
+            <div className="mf-banner" data-tone="error" role="alert">
+              <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <div>{error}</div>
+              <button type="button" onClick={() => setError(null)}>
+                Dismiss
+              </button>
+            </div>
+          )}
+          {notice && (
+            <div className="mf-banner" data-tone="success" role="status">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <div>{notice}</div>
+              <button type="button" onClick={() => setNotice(null)}>
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {loading && !data ? (
+            <div className="mf-loading">
+              <RefreshCw className="h-4 w-4 animate-spin" aria-hidden /> Reading manifest…
+            </div>
+          ) : data ? (
+            <section
+              role="tabpanel"
+              id="mf-tabpanel"
+              aria-labelledby={`mf-tab-${tab}`}
+              className="mf-tabpanel"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-3 flex items-start gap-2 rounded border border-red-300 bg-red-50 px-3 py-2 text-[12px] text-red-800">
-            <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <div className="flex-1">{error}</div>
-            <button type="button" className="text-red-600 hover:text-red-800" onClick={() => setError(null)}>
-              Dismiss
-            </button>
-          </div>
-        )}
-        {notice && (
-          <div className="mb-3 flex items-start gap-2 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            <div className="flex-1">{notice}</div>
-            <button type="button" className="text-emerald-600 hover:text-emerald-800" onClick={() => setNotice(null)}>
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {loading && !data ? (
-          <div className="flex h-64 items-center justify-center rounded border border-[#c9d4e0] bg-white text-[12px] text-[#5b6b7c]">
-            <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Loading system data…
-          </div>
-        ) : data ? (
-          <>
-            {tab === 'overview' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-6">
-                  <Stat label="Registered users" value={data.metrics.totalUsers} hint={`${data.metrics.active7d} active in 7 days`} icon={<Users className="h-4 w-4" />} />
-                  <Stat label="Active (30 d)" value={data.metrics.active30d} hint={`${data.metrics.active7d} this week`} icon={<Activity className="h-4 w-4" />} tone="good" />
-                  <Stat label="Suspended" value={data.metrics.suspendedUsers} hint="Logon blocked" icon={<ShieldOff className="h-4 w-4" />} tone={data.metrics.suspendedUsers ? 'warn' : 'default'} />
-                  <Stat label="Repository objects" value={data.metrics.totalPrograms} hint={`${data.metrics.examplePrograms} examples · ${data.metrics.privatePrograms} private · ${data.metrics.legacyPrograms} legacy`} icon={<BookOpen className="h-4 w-4" />} />
-                  <Stat label="Executions (7 d)" value={data.metrics.executions7d} hint={`${data.metrics.totalExecutions} all time`} icon={<Database className="h-4 w-4" />} />
-                  <Stat label="Runtime errors (7 d)" value={data.metrics.errors7d} hint={`Avg ${data.metrics.avgDurationMs7d} ms`} icon={<AlertTriangle className="h-4 w-4" />} tone={data.metrics.errors7d ? 'bad' : 'good'} />
-                </div>
-
-                <section className="rounded border border-[#c9d4e0] bg-white shadow-sm">
-                  <div className="flex flex-wrap items-center gap-2 border-b border-[#dbe4ed] px-3 py-2">
-                    <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[#3f566d]">
-                      Executions · last 7 days
-                    </h2>
-                    <div className="ml-auto flex items-center gap-3 text-[10px] text-[#5b6b7c]">
-                      <span className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-sm bg-[#0a6ed1]" /> executions
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-sm bg-red-500" /> errors
-                      </span>
-                    </div>
+              {tab === 'overview' && (
+                <>
+                  <div className="mf-coupons">
+                    <Coupon
+                      label="Accounts / total"
+                      value={data.metrics.totalUsers}
+                      hint={`${data.metrics.active7d} active in 7 days`}
+                      code="Line 001"
+                    />
+                    <Coupon
+                      label="Active / 30d"
+                      value={data.metrics.active30d}
+                      hint={`${data.metrics.active7d} this week`}
+                      code="Line 002"
+                      tone="good"
+                    />
+                    <Coupon
+                      label="Suspended"
+                      value={data.metrics.suspendedUsers}
+                      hint="Logon blocked"
+                      code="Line 003"
+                      tone={data.metrics.suspendedUsers ? 'warn' : 'default'}
+                    />
+                    <Coupon
+                      label="Routes / programs"
+                      value={data.metrics.totalPrograms}
+                      hint={`${data.metrics.examplePrograms} examples · ${data.metrics.privatePrograms} private`}
+                      code="Line 004"
+                    />
+                    <Coupon
+                      label="Runs / 7d"
+                      value={data.metrics.executions7d}
+                      hint={`${data.metrics.totalExecutions} all time`}
+                      code="Line 005"
+                    />
+                    <Coupon
+                      label="Errors / 7d"
+                      value={data.metrics.errors7d}
+                      hint={`Avg ${data.metrics.avgDurationMs7d} ms`}
+                      code="Line 006"
+                      tone={data.metrics.errors7d ? 'bad' : 'good'}
+                    />
                   </div>
-                  <div className="flex h-40 items-end gap-2 px-3 pb-2 pt-4">
-                    {data.executionSeries.map((day) => {
-                      const max = Math.max(1, ...data.executionSeries.map((d) => d.executions))
-                      const height = (day.executions / max) * 100
-                      const errorHeight = day.executions ? (day.errors / max) * 100 : 0
-                      return (
-                        <div key={day.date} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
-                          <div
-                            className="relative flex w-full max-w-12 flex-1 items-end"
-                            title={`${day.date}: ${day.executions} execution(s), ${day.errors} error(s)`}
-                            aria-label={`${day.date}: ${day.executions} executions, ${day.errors} errors`}
-                          >
-                            <div
-                              className="relative w-full rounded-t-sm bg-[#0a6ed1]"
-                              style={{ height: `${height}%` }}
-                            >
-                              {day.errors > 0 && (
-                                <div
-                                  className="absolute inset-x-0 bottom-0 rounded-t-sm bg-red-500"
-                                  style={{ height: `${(errorHeight / Math.max(height, 1)) * 100}%` }}
-                                />
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-[9.5px] font-medium text-[#5b6b7c]">{day.label}</div>
-                          <div className="text-[9px] tabular-nums text-[#8a99a8]">{day.executions}</div>
+
+                  <div className="mf-board">
+                    <section className="mf-panel" aria-labelledby="mf-account-manifest">
+                      <div className="mf-panel-head">
+                        <h3 id="mf-account-manifest" className="mf-panel-title">
+                          Account manifest
+                        </h3>
+                        <button type="button" className="mf-panel-link" onClick={() => setTab('users')}>
+                          Full manifest →
+                        </button>
+                      </div>
+                      <div
+                        className="mf-table-wrap"
+                        role="region"
+                        aria-label="Account manifest table"
+                        tabIndex={0}
+                      >
+                        <table className="mf-table">
+                          <thead>
+                            <tr>
+                              <th>Account</th>
+                              <th>Role</th>
+                              <th>Status</th>
+                              <th>Last seen</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data.users.slice(0, 5).map((u) => (
+                              <tr key={u.id} data-selected={u.role === 'OWNER' ? 'true' : undefined}>
+                                <td>
+                                  <span className="mf-account">{u.username}</span>
+                                  <span className="mf-email">{u.email ?? 'no email linked'}</span>
+                                </td>
+                                <td>
+                                  <span className="mf-role">{u.role}</span>
+                                </td>
+                                <td>
+                                  <Status tone={u.suspended ? 'warn' : 'good'}>
+                                    {u.suspended ? 'Suspended' : 'Active'}
+                                  </Status>
+                                </td>
+                                <td className="mf-muted">{ago(u.lastLoginAt)}</td>
+                              </tr>
+                            ))}
+                            {data.users.length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="mf-empty">
+                                  No accounts in the manifest yet.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+
+                    <aside className="mf-panel mf-route" aria-labelledby="mf-system-route">
+                      <h3 id="mf-system-route">Accounts → objects → runs.</h3>
+                      <div className="mf-arc" aria-hidden>
+                        <svg viewBox="0 0 260 72" preserveAspectRatio="none">
+                          <path
+                            d="M2 58 C70 4 188 4 258 58"
+                            fill="none"
+                            stroke="#0b2b52"
+                            strokeWidth="1.5"
+                          />
+                          <circle cx="2" cy="58" r="3" fill="#0a6ed1" />
+                          <circle cx="130" cy="14" r="3" fill="#0b2b52" />
+                          <circle cx="258" cy="58" r="3" fill={data.metrics.errors7d ? '#c0392b' : '#2ea52e'} />
+                        </svg>
+                      </div>
+                      <div className="mf-route-labels">
+                        <span>Accounts {data.metrics.totalUsers}</span>
+                        <span>Programs {data.metrics.totalPrograms}</span>
+                        <span>Runs {data.metrics.executions7d}</span>
+                      </div>
+                      <div className="mf-meta-row">
+                        <span>Runtime errors</span>
+                        <b>{data.metrics.errors7d}</b>
+                      </div>
+                      <div className="mf-meta-row">
+                        <span>Audit events</span>
+                        <b>{data.audit.length}</b>
+                      </div>
+                      <div className="mf-route-actions">
+                        <button type="button" className="mf-btn" onClick={() => void load()}>
+                          Refresh
+                        </button>
+                        <button type="button" className="mf-btn" onClick={() => setTab('audit')}>
+                          View audit
+                        </button>
+                      </div>
+                    </aside>
+                  </div>
+
+                  <div className="mf-lower">
+                    <section className="mf-panel mf-chart-panel" aria-labelledby="mf-run-ledger">
+                      <div className="mf-panel-head">
+                        <h3 id="mf-run-ledger" className="mf-panel-title">
+                          Run ledger / 7 days
+                        </h3>
+                        <div className="mf-legend" aria-hidden>
+                          <span>
+                            <i /> Runs
+                          </span>
+                          <span className="mf-legend-err">
+                            <i /> Errors
+                          </span>
                         </div>
-                      )
-                    })}
-                  </div>
-                </section>
+                      </div>
+                      <div className="mf-chart">
+                        {data.executionSeries.map((day) => {
+                          const height = (day.executions / executionMax) * 100
+                          const errorHeight = day.executions
+                            ? (day.errors / executionMax) * 100
+                            : 0
+                          return (
+                            <div
+                              key={day.date}
+                              className="mf-bar-wrap"
+                              title={`${day.date}: ${day.executions} execution(s), ${day.errors} error(s)`}
+                              aria-label={`${day.date}: ${day.executions} executions, ${day.errors} errors`}
+                            >
+                              <div className="mf-bar" style={{ height: `${height}%` }}>
+                                {day.errors > 0 && (
+                                  <div
+                                    className="mf-bar-errors"
+                                    style={{
+                                      height: `${(errorHeight / Math.max(height, 1)) * 100}%`,
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <div className="mf-days">
+                        {data.executionSeries.map((day) => (
+                          <span key={day.date}>
+                            {day.label}
+                            <b>{day.executions}</b>
+                          </span>
+                        ))}
+                      </div>
+                    </section>
 
-                <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-                  <section className="rounded border border-[#c9d4e0] bg-white shadow-sm">
-                    <h2 className="border-b border-[#dbe4ed] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#3f566d]">
-                      Recent executions
-                    </h2>
-                    <div className="max-h-[320px] overflow-auto">
-                      <table className="w-full border-collapse text-[11px]">
-                        <thead className="sticky top-0 bg-[#f4f7fa] text-left text-[10px] uppercase tracking-wide text-[#5b6b7c]">
+                    <section className="mf-panel" aria-labelledby="mf-recent-executions">
+                      <div className="mf-panel-head">
+                        <h3 id="mf-recent-executions" className="mf-panel-title">
+                          Recent executions
+                        </h3>
+                        <span className="mf-panel-link" aria-hidden>
+                          Latest {Math.min(data.recentActivity.length, 20)}
+                        </span>
+                      </div>
+                      <div
+                        className="mf-table-wrap mf-recent-scroll"
+                        role="region"
+                        aria-label="Recent executions table"
+                        tabIndex={0}
+                      >
+                        <table className="mf-table mf-table-compact">
+                          <thead>
+                            <tr>
+                              <th>Program</th>
+                              <th>User</th>
+                              <th>Status</th>
+                              <th>ms</th>
+                              <th>When</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data.recentActivity.map((r) => (
+                              <tr key={r.id}>
+                                <td className="mf-mono">{r.programName}</td>
+                                <td className="mf-muted">{r.username ?? '—'}</td>
+                                <td>
+                                  <Status
+                                    tone={
+                                      r.status === 'ERROR' ? 'bad' : r.status === 'RUN' ? 'info' : 'good'
+                                    }
+                                  >
+                                    {r.status}
+                                  </Status>
+                                </td>
+                                <td className="mf-num mf-muted">{r.durationMs}</td>
+                                <td className="mf-muted" title={when(r.createdAt)}>
+                                  {ago(r.createdAt)}
+                                </td>
+                              </tr>
+                            ))}
+                            {data.recentActivity.length === 0 && (
+                              <tr>
+                                <td colSpan={5} className="mf-empty">
+                                  No executions recorded yet.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+
+                  <section className="mf-panel mf-audit-preview" aria-labelledby="mf-latest-actions">
+                    <div className="mf-panel-head">
+                      <h3 id="mf-latest-actions" className="mf-panel-title">
+                        Latest administrative actions
+                      </h3>
+                      <button type="button" className="mf-panel-link" onClick={() => setTab('audit')}>
+                        Audit log →
+                      </button>
+                    </div>
+                    <div className="mf-audit-list">
+                      {data.audit.slice(0, 10).map((a) => (
+                        <div key={a.id} className="mf-audit-row">
+                          <span className="mf-audit-action">{a.action.replaceAll('_', ' ')}</span>
+                          <span
+                            className="mf-audit-detail"
+                            title={`${a.actorName} · ${a.detail || a.targetId}`}
+                          >
+                            {a.actorName} · {a.detail || a.targetId}
+                          </span>
+                          <span className="mf-audit-when" title={when(a.createdAt)}>
+                            {ago(a.createdAt)}
+                          </span>
+                        </div>
+                      ))}
+                      {data.audit.length === 0 && (
+                        <div className="mf-empty" style={{ gridColumn: '1 / -1' }}>
+                          No administrative actions yet.
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {tab === 'users' && (
+                <>
+                  <div className="mf-coupons mf-coupons-4">
+                    <Coupon label="Accounts" value={data.users.length} hint="All manifest lines" code="Line 001" />
+                    <Coupon label="Active" value={activeUsers} hint="Can enter the system" code="Line 002" tone="good" />
+                    <Coupon
+                      label="Suspended"
+                      value={suspendedUsers}
+                      hint="Logon blocked"
+                      code="Line 003"
+                      tone={suspendedUsers ? 'warn' : 'default'}
+                    />
+                    <Coupon
+                      label="Owners"
+                      value={data.users.filter((u) => u.role === 'OWNER').length}
+                      hint="Protected accounts"
+                      code="Line 004"
+                    />
+                  </div>
+                  <section className="mf-panel" aria-labelledby="mf-user-master">
+                    <div className="mf-panel-head mf-panel-head-wrap">
+                      <div>
+                        <h2 id="mf-user-master" className="mf-section-title">
+                          User master
+                        </h2>
+                        <p className="mf-panel-sub">
+                          Every account, role and state. Suspension, session revocation and deletion are
+                          stamped in the audit log.
+                        </p>
+                      </div>
+                      <label className="mf-search">
+                        <Search className="h-3.5 w-3.5 text-[#5b6b7c]" aria-hidden />
+                        <span className="sr-only">Search users</span>
+                        <input
+                          value={userQuery}
+                          onChange={(e) => setUserQuery(e.target.value)}
+                          placeholder="Search users…"
+                          aria-label="Search users"
+                        />
+                      </label>
+                    </div>
+                    <div
+                      className="mf-table-scroll"
+                      role="region"
+                      aria-label="User master table"
+                      tabIndex={0}
+                    >
+                      <table className="mf-table mf-table-dense">
+                        <thead>
                           <tr>
-                            <th className="px-3 py-1.5 font-semibold">Program</th>
-                            <th className="px-2 py-1.5 font-semibold">User</th>
-                            <th className="px-2 py-1.5 font-semibold">Status</th>
-                            <th className="px-2 py-1.5 font-semibold">ms</th>
-                            <th className="px-3 py-1.5 font-semibold">When</th>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Programs</th>
+                            <th>Executions</th>
+                            <th>Last logon</th>
+                            <th>Created</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {data.recentActivity.map((r) => (
-                            <tr key={r.id} className="border-t border-[#edf1f5]">
-                              <td className="px-3 py-1.5 font-mono text-[10.5px]">{r.programName}</td>
-                              <td className="px-2 py-1.5">{r.username ?? '—'}</td>
-                              <td className="px-2 py-1.5">
-                                <span className={`rounded px-1.5 py-0.5 text-[9.5px] font-semibold ${r.status === 'ERROR' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                  {r.status}
-                                </span>
+                          {users.map((u) => (
+                            <tr key={u.id}>
+                              <td>
+                                <span className="mf-account">{u.username}</span>
+                                <span className="mf-email">{u.email ?? 'no email linked'}</span>
                               </td>
-                              <td className="px-2 py-1.5 tabular-nums text-[#5b6b7c]">{r.durationMs}</td>
-                              <td className="px-3 py-1.5 text-[#5b6b7c]">{ago(r.createdAt)}</td>
+                              <td>
+                                <span className="mf-role">{u.role}</span>
+                              </td>
+                              <td>
+                                <Status tone={u.suspended ? 'warn' : 'good'}>
+                                  {u.suspended ? 'Suspended' : 'Active'}
+                                </Status>
+                              </td>
+                              <td className="mf-num">{u.programCount}</td>
+                              <td className="mf-num">{u.executionCount}</td>
+                              <td className="mf-muted" title={when(u.lastLoginAt)}>
+                                {ago(u.lastLoginAt)}
+                              </td>
+                              <td className="mf-muted">{when(u.createdAt)}</td>
+                              <td>
+                                <div className="flex justify-end gap-1">
+                                  {u.role === 'OWNER' ? (
+                                    <span className="mf-note">
+                                      Protected owner
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        disabled={busyId === u.id}
+                                        onClick={() =>
+                                          void act(
+                                            u.id,
+                                            u.suspended ? 'reactivate' : 'suspend',
+                                            u.username,
+                                          )
+                                        }
+                                        className={`mf-btn ${u.suspended ? 'mf-btn-good' : 'mf-btn-warn'}`}
+                                      >
+                                        {u.suspended ? 'Reactivate' : 'Suspend'}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={busyId === u.id}
+                                        onClick={() => void act(u.id, 'revoke_sessions', u.username)}
+                                        className="mf-btn"
+                                      >
+                                        Revoke sessions
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={busyId === u.id}
+                                        onClick={() => void remove(u)}
+                                        className="mf-btn mf-btn-danger"
+                                        aria-label={`Delete user ${u.username}`}
+                                      >
+                                        <Trash2 className="h-3 w-3" aria-hidden />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
                             </tr>
                           ))}
-                          {data.recentActivity.length === 0 && (
-                            <tr><td colSpan={5} className="px-3 py-6 text-center text-[#55677a]">No executions recorded yet.</td></tr>
+                          {users.length === 0 && (
+                            <tr>
+                              <td colSpan={8} className="mf-empty">
+                                No users match this search.
+                              </td>
+                            </tr>
                           )}
                         </tbody>
                       </table>
                     </div>
                   </section>
+                </>
+              )}
 
-                  <section className="rounded border border-[#c9d4e0] bg-white shadow-sm">
-                    <h2 className="border-b border-[#dbe4ed] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#3f566d]">
-                      Latest administrative actions
-                    </h2>
-                    <div className="max-h-[320px] overflow-auto divide-y divide-[#edf1f5]">
-                      {data.audit.slice(0, 10).map((a) => (
-                        <div key={a.id} className="px-3 py-2 text-[11px]">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-[#25445f]">{a.action.replaceAll('_', ' ')}</span>
-                            <span className="ml-auto text-[10px] text-[#55677a]">{when(a.createdAt)}</span>
-                          </div>
-                          <div className="text-[#5b6b7c]">
-                            by {a.actorName} · target {a.detail || a.targetId}
-                          </div>
-                        </div>
-                      ))}
-                      {data.audit.length === 0 && (
-                        <div className="px-3 py-6 text-center text-[11px] text-[#55677a]">No administrative actions yet.</div>
-                      )}
+              {tab === 'programs' && (
+                <>
+                  <div className="mf-coupons mf-coupons-4">
+                    <Coupon label="Repository objects" value={data.programs.length} hint="All routes" code="Line 001" />
+                    <Coupon
+                      label="Examples"
+                      value={data.programs.filter((p) => p.isExample).length}
+                      hint="Shared, read-only"
+                      code="Line 002"
+                    />
+                    <Coupon
+                      label="Private"
+                      value={data.programs.filter((p) => !p.isExample && p.ownerUsername).length}
+                      hint="Creator-only"
+                      code="Line 003"
+                      tone="good"
+                    />
+                    <Coupon
+                      label="Legacy"
+                      value={data.programs.filter((p) => !p.isExample && !p.ownerUsername).length}
+                      hint="Owner visibility"
+                      code="Line 004"
+                      tone="warn"
+                    />
+                  </div>
+                  <section className="mf-panel" aria-labelledby="mf-program-master">
+                    <div className="mf-panel-head mf-panel-head-wrap">
+                      <div>
+                        <h2 id="mf-program-master" className="mf-section-title">
+                          All repository programs
+                        </h2>
+                        <p className="mf-panel-sub">
+                          Owner visibility across every user. Examples stay read-only; private objects stay
+                          creator-only.
+                        </p>
+                      </div>
+                      <label className="mf-search">
+                        <Search className="h-3.5 w-3.5 text-[#5b6b7c]" aria-hidden />
+                        <span className="sr-only">Search programs or owners</span>
+                        <input
+                          value={programQuery}
+                          onChange={(e) => setProgramQuery(e.target.value)}
+                          placeholder="Search programs or owners…"
+                          aria-label="Search programs or owners"
+                        />
+                      </label>
+                    </div>
+                    <div
+                      className="mf-table-scroll"
+                      role="region"
+                      aria-label="All programs table"
+                      tabIndex={0}
+                    >
+                      <table className="mf-table mf-table-dense">
+                        <thead>
+                          <tr>
+                            <th>Object</th>
+                            <th>Type</th>
+                            <th>Owner</th>
+                            <th>Access</th>
+                            <th>Runs</th>
+                            <th>Updated</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {programs.map((p) => (
+                            <tr key={p.id}>
+                              <td>
+                                <span className="mf-account">{p.name}</span>
+                                <span className="mf-email">{p.title}</span>
+                              </td>
+                              <td className="mf-note">{p.type}</td>
+                              <td>{p.ownerUsername ?? '—'}</td>
+                              <td>
+                                <Status
+                                  tone={p.isExample ? 'info' : p.ownerUsername ? 'good' : 'warn'}
+                                >
+                                  {p.isExample ? 'Example' : p.ownerUsername ? 'Private' : 'Legacy'}
+                                </Status>
+                              </td>
+                              <td className="mf-num">{p.executions}</td>
+                              <td className="mf-muted">{when(p.updatedAt)}</td>
+                              <td style={{ textAlign: 'right' }}>
+                                {p.isExample ? (
+                                  <span className="mf-note">
+                                    Protected example
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={busyProgramId === p.id}
+                                    onClick={() => void removeProgram(p)}
+                                    className="mf-btn mf-btn-danger"
+                                    aria-label={`Delete program ${p.name}`}
+                                  >
+                                    <Trash2 className="h-3 w-3" aria-hidden /> Delete
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                          {programs.length === 0 && (
+                            <tr>
+                              <td colSpan={7} className="mf-empty">
+                                No programs match this search.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </section>
-                </div>
-              </div>
-            )}
+                </>
+              )}
 
-            {tab === 'users' && (
-              <section className="rounded border border-[#c9d4e0] bg-white shadow-sm">
-                <div className="flex flex-wrap items-center gap-2 border-b border-[#dbe4ed] px-3 py-2">
-                  <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[#3f566d]">User master</h2>
-                  <label className="ml-auto flex items-center gap-1.5 rounded border border-[#b9c7d6] px-2 py-1">
-                    <Search className="h-3.5 w-3.5 text-[#55677a]" />
-                    <input
-                      value={userQuery}
-                      onChange={(e) => setUserQuery(e.target.value)}
-                      placeholder="Search users…"
-                      className="w-48 bg-transparent text-[11px] outline-none placeholder:text-[#9aa8b6]"
-                    />
-                  </label>
-                </div>
-                <div className="overflow-auto">
-                  <table className="w-full border-collapse text-[11px]">
-                    <thead className="bg-[#f4f7fa] text-left text-[10px] uppercase tracking-wide text-[#5b6b7c]">
-                      <tr>
-                        <th className="px-3 py-2 font-semibold">User</th>
-                        <th className="px-2 py-2 font-semibold">Role</th>
-                        <th className="px-2 py-2 font-semibold">Status</th>
-                        <th className="px-2 py-2 font-semibold">Programs</th>
-                        <th className="px-2 py-2 font-semibold">Executions</th>
-                        <th className="px-2 py-2 font-semibold">Last logon</th>
-                        <th className="px-2 py-2 font-semibold">Created</th>
-                        <th className="px-3 py-2 text-right font-semibold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((u) => (
-                        <tr key={u.id} className="border-t border-[#edf1f5] align-middle">
-                          <td className="px-3 py-2">
-                            <div className="font-mono font-semibold text-[#16283b]">{u.username}</div>
-                            <div className="text-[10px] text-[#55677a]">{u.email ?? 'no email linked'}</div>
-                          </td>
-                          <td className="px-2 py-2">
-                            <span className={`rounded px-1.5 py-0.5 text-[9.5px] font-semibold ${u.role === 'OWNER' ? 'bg-[#0a4d8c] text-white' : 'bg-[#e8eef5] text-[#3f566d]'}`}>
-                              {u.role}
-                            </span>
-                          </td>
-                          <td className="px-2 py-2">
-                            <span className={`rounded px-1.5 py-0.5 text-[9.5px] font-semibold ${u.suspended ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                              {u.suspended ? 'SUSPENDED' : 'ACTIVE'}
-                            </span>
-                          </td>
-                          <td className="px-2 py-2 tabular-nums">{u.programCount}</td>
-                          <td className="px-2 py-2 tabular-nums">{u.executionCount}</td>
-                          <td className="px-2 py-2 text-[#5b6b7c]" title={when(u.lastLoginAt)}>{ago(u.lastLoginAt)}</td>
-                          <td className="px-2 py-2 text-[#5b6b7c]">{when(u.createdAt)}</td>
-                          <td className="px-3 py-2">
-                            <div className="flex justify-end gap-1">
-                              {u.role === 'OWNER' ? (
-                                <span className="text-[10px] text-[#55677a]">protected owner</span>
-                              ) : (
-                                <>
-                                  <button
-                                    type="button"
-                                    disabled={busyId === u.id}
-                                    onClick={() => void act(u.id, u.suspended ? 'reactivate' : 'suspend', u.username)}
-                                    className={`rounded border px-2 py-1 text-[10px] font-medium disabled:opacity-50 ${u.suspended ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
-                                  >
-                                    {u.suspended ? 'Reactivate' : 'Suspend'}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={busyId === u.id}
-                                    onClick={() => void act(u.id, 'revoke_sessions', u.username)}
-                                    className="rounded border border-[#b9c7d6] bg-white px-2 py-1 text-[10px] font-medium text-[#25445f] hover:bg-[#f4f7fa] disabled:opacity-50"
-                                  >
-                                    Revoke sessions
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={busyId === u.id}
-                                    onClick={() => void remove(u)}
-                                    className="rounded border border-red-300 bg-red-50 px-2 py-1 text-[10px] font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
+              {tab === 'audit' && (
+                <section className="mf-panel" aria-labelledby="mf-audit-log">
+                  <div className="mf-panel-head mf-panel-head-wrap">
+                    <div>
+                      <h2 id="mf-audit-log" className="mf-section-title">
+                        Administrative audit log
+                      </h2>
+                      <p className="mf-panel-sub">
+                        Immutable record of sensitive owner actions. Passwords, tokens and source are never
+                        stored here.
+                      </p>
+                    </div>
+                    <span className="mf-mono text-[8px] uppercase tracking-[0.12em] text-[#5b6b7c]">
+                      {data.audit.length} stamped events
+                    </span>
+                  </div>
+                  <div
+                    className="mf-table-scroll"
+                    role="region"
+                    aria-label="Administrative audit log table"
+                    tabIndex={0}
+                  >
+                    <table className="mf-table mf-table-dense">
+                      <thead>
+                        <tr>
+                          <th>When</th>
+                          <th>Actor</th>
+                          <th>Action</th>
+                          <th>Target</th>
+                          <th>Detail</th>
                         </tr>
-                      ))}
-                      {users.length === 0 && (
-                        <tr><td colSpan={8} className="px-3 py-8 text-center text-[#55677a]">No users match this search.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            )}
+                      </thead>
+                      <tbody>
+                        {data.audit.map((a) => (
+                          <tr key={a.id}>
+                            <td className="mf-muted">{when(a.createdAt)}</td>
+                            <td className="mf-mono">{a.actorName}</td>
+                            <td>
+                              <span className="mf-role">{a.action}</span>
+                            </td>
+                            <td className="mf-muted">
+                              {a.targetType} · {a.targetId}
+                            </td>
+                            <td>{a.detail}</td>
+                          </tr>
+                        ))}
+                        {data.audit.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="mf-empty">
+                              No administrative actions recorded.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+            </section>
+          ) : null}
 
-            {tab === 'programs' && (
-              <section className="rounded border border-[#c9d4e0] bg-white shadow-sm">
-                <div className="flex flex-wrap items-center gap-2 border-b border-[#dbe4ed] px-3 py-2">
-                  <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[#3f566d]">All repository programs</h2>
-                  <span className="text-[10px] text-[#55677a]">Owner visibility across every user</span>
-                  <label className="ml-auto flex items-center gap-1.5 rounded border border-[#b9c7d6] px-2 py-1">
-                    <Search className="h-3.5 w-3.5 text-[#55677a]" />
-                    <input
-                      value={programQuery}
-                      onChange={(e) => setProgramQuery(e.target.value)}
-                      placeholder="Search programs or owners…"
-                      className="w-56 bg-transparent text-[11px] outline-none placeholder:text-[#9aa8b6]"
-                    />
-                  </label>
-                </div>
-                <div className="max-h-[calc(100vh-220px)] overflow-auto">
-                  <table className="w-full border-collapse text-[11px]">
-                    <thead className="sticky top-0 bg-[#f4f7fa] text-left text-[10px] uppercase tracking-wide text-[#5b6b7c]">
-                      <tr>
-                        <th className="px-3 py-2 font-semibold">Object</th>
-                        <th className="px-2 py-2 font-semibold">Type</th>
-                        <th className="px-2 py-2 font-semibold">Owner</th>
-                        <th className="px-2 py-2 font-semibold">Access</th>
-                        <th className="px-2 py-2 font-semibold">Runs</th>
-                        <th className="px-2 py-2 font-semibold">Updated</th>
-                        <th className="px-3 py-2 text-right font-semibold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {programs.map((p) => (
-                        <tr key={p.id} className="border-t border-[#edf1f5]">
-                          <td className="px-3 py-1.5">
-                            <div className="font-mono font-semibold text-[#16283b]">{p.name}</div>
-                            <div className="max-w-[420px] truncate text-[10px] text-[#55677a]">{p.title}</div>
-                          </td>
-                          <td className="px-2 py-1.5">{p.type}</td>
-                          <td className="px-2 py-1.5">{p.ownerUsername ?? '—'}</td>
-                          <td className="px-2 py-1.5">
-                            <span className={`rounded px-1.5 py-0.5 text-[9.5px] font-semibold ${p.isExample ? 'bg-blue-100 text-blue-700' : p.ownerUsername ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                              {p.isExample ? 'EXAMPLE' : p.ownerUsername ? 'PRIVATE' : 'LEGACY'}
-                            </span>
-                          </td>
-                          <td className="px-2 py-1.5 tabular-nums">{p.executions}</td>
-                          <td className="px-2 py-1.5 text-[#5b6b7c]">{when(p.updatedAt)}</td>
-                          <td className="px-3 py-1.5 text-right">
-                            {p.isExample ? (
-                              <span className="text-[10px] text-[#55677a]">protected example</span>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={busyProgramId === p.id}
-                                onClick={() => void removeProgram(p)}
-                                className="inline-flex items-center gap-1 rounded border border-red-300 bg-red-50 px-2 py-1 text-[10px] font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
-                                aria-label={`Delete program ${p.name}`}
-                              >
-                                <Trash2 className="h-3 w-3" /> Delete
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                      {programs.length === 0 && (
-                        <tr><td colSpan={7} className="px-3 py-8 text-center text-[#55677a]">No programs match this search.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            )}
-
-            {tab === 'audit' && (
-              <section className="rounded border border-[#c9d4e0] bg-white shadow-sm">
-                <div className="border-b border-[#dbe4ed] px-3 py-2">
-                  <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[#3f566d]">Administrative audit log</h2>
-                  <p className="text-[10px] text-[#55677a]">Immutable record of sensitive owner actions. Passwords, tokens and source are never stored here.</p>
-                </div>
-                <div className="overflow-auto">
-                  <table className="w-full border-collapse text-[11px]">
-                    <thead className="bg-[#f4f7fa] text-left text-[10px] uppercase tracking-wide text-[#5b6b7c]">
-                      <tr>
-                        <th className="px-3 py-2 font-semibold">When</th>
-                        <th className="px-2 py-2 font-semibold">Actor</th>
-                        <th className="px-2 py-2 font-semibold">Action</th>
-                        <th className="px-2 py-2 font-semibold">Target</th>
-                        <th className="px-3 py-2 font-semibold">Detail</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.audit.map((a) => (
-                        <tr key={a.id} className="border-t border-[#edf1f5]">
-                          <td className="px-3 py-1.5 text-[#5b6b7c]">{when(a.createdAt)}</td>
-                          <td className="px-2 py-1.5 font-mono">{a.actorName}</td>
-                          <td className="px-2 py-1.5 font-semibold text-[#25445f]">{a.action}</td>
-                          <td className="px-2 py-1.5 text-[#5b6b7c]">{a.targetType} · {a.targetId}</td>
-                          <td className="px-3 py-1.5">{a.detail}</td>
-                        </tr>
-                      ))}
-                      {data.audit.length === 0 && (
-                        <tr><td colSpan={5} className="px-3 py-8 text-center text-[#55677a]">No administrative actions recorded.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            )}
-          </>
-        ) : null}
-
-        <footer className="mt-4 flex flex-wrap items-center gap-2 text-[10px] text-[#55677a]">
-          <Shield className="h-3 w-3" />
-          Owner authorization is enforced server-side on every request. Metrics derive from stored users and execution logs.
-          <span className="ml-auto">ABAP-Studio administration · MER (105)</span>
-        </footer>
-      </main>
+          <footer className="mf-footer">
+            <Shield className="h-3 w-3" aria-hidden />
+            <span>
+              Owner authorization is enforced server-side on every request. Metrics derive from stored
+              users and execution logs.
+            </span>
+            <span>ABAP-Studio administration · MER (105)</span>
+          </footer>
+        </main>
+      </div>
     </div>
   )
 }

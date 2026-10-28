@@ -1,0 +1,256 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T00:00:00.000Z",
+  "title": "Design System: ABAP-Studio — The System Manifest",
+  "extensions": {
+    "colorMeta": {
+      "manifest-navy": {
+        "role": "primary",
+        "displayName": "Manifest Navy",
+        "canonical": "#0b2b52",
+        "tonalRamp": ["#eef3f9", "#d7e3f0", "#a9c1da", "#6d90b5", "#345880", "#0b2b52", "#061a33"]
+      },
+      "sap-blue": {
+        "role": "primary",
+        "displayName": "SAP Blue",
+        "canonical": "#0a6ed1",
+        "tonalRamp": ["#eaf3fc", "#cfe4f9", "#9bc6f2", "#5ea4e8", "#2484dd", "#0a6ed1", "#084f96"]
+      },
+      "sap-blue-deep": {
+        "role": "primary",
+        "displayName": "SAP Blue Deep",
+        "canonical": "#0a4d8c",
+        "tonalRamp": ["#e8f0f8", "#cbdef0", "#9dbddd", "#6a94c2", "#356a9f", "#0a4d8c", "#063661"]
+      },
+      "manifest-surface": {
+        "role": "neutral",
+        "displayName": "Manifest Surface",
+        "canonical": "#f4f7fa",
+        "tonalRamp": ["#ffffff", "#f8fafc", "#f4f7fa", "#e8eef5", "#dbe4ee", "#c9d4e0", "#5b6b7c"]
+      },
+      "manifest-paper": {
+        "role": "neutral",
+        "displayName": "Manifest Paper",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#ffffff", "#fbfcfe", "#f4f7fa", "#e8eef5", "#dbe4ee", "#c9d4e0", "#9fb0c2"]
+      },
+      "manifest-ink": {
+        "role": "neutral",
+        "displayName": "Manifest Ink",
+        "canonical": "#16283b",
+        "tonalRamp": ["#f0f3f6", "#d5dde5", "#a8b7c6", "#72879c", "#3b536b", "#16283b", "#0a1825"]
+      },
+      "manifest-muted": {
+        "role": "neutral",
+        "displayName": "Manifest Muted",
+        "canonical": "#5b6b7c",
+        "tonalRamp": ["#f2f5f8", "#e2e8ee", "#cbd5df", "#a7b6c4", "#8496a8", "#5b6b7c", "#3d4c5c"]
+      },
+      "manifest-rule": {
+        "role": "neutral",
+        "displayName": "Steel Rule",
+        "canonical": "#c9d4e0",
+        "tonalRamp": ["#f4f7fa", "#e9eff5", "#dde6ef", "#c9d4e0", "#a8b8c9", "#8499ae", "#5b6b7c"]
+      },
+      "manifest-rail": {
+        "role": "neutral",
+        "displayName": "Manifest Rail",
+        "canonical": "#e8eff7",
+        "tonalRamp": ["#fbfdff", "#f4f8fc", "#e8eff7", "#d6e2ef", "#b9c7d6", "#8ba1b7", "#5b6b7c"]
+      },
+      "manifest-select": {
+        "role": "tertiary",
+        "displayName": "Manifest Select",
+        "canonical": "#fcf7be",
+        "tonalRamp": ["#fffdf0", "#fefbe4", "#fcf7be", "#f2e98d", "#e3d558", "#c9b82e", "#8a7c14"]
+      },
+      "validation-green": {
+        "role": "secondary",
+        "displayName": "Validation Green",
+        "canonical": "#2ea52e",
+        "tonalRamp": ["#edf8ed", "#d8efd8", "#b9dfb9", "#7cc97c", "#4db84d", "#2ea52e", "#1c7a1c"]
+      },
+      "validation-green-deep": {
+        "role": "secondary",
+        "displayName": "Validation Green Deep",
+        "canonical": "#1c7a1c",
+        "tonalRamp": ["#eaf5ea", "#d3ead3", "#aad6aa", "#75bd75", "#419e41", "#1c7a1c", "#145c14"]
+      },
+      "caution-amber": {
+        "role": "secondary",
+        "displayName": "Caution Amber",
+        "canonical": "#b0600b",
+        "tonalRamp": ["#fdf4e7", "#fae7cd", "#f2cf9e", "#e3ac62", "#cb8630", "#b0600b", "#8a4a06"]
+      },
+      "caution-amber-deep": {
+        "role": "secondary",
+        "displayName": "Caution Amber Deep",
+        "canonical": "#8a4a06",
+        "tonalRamp": ["#fdf4e7", "#f7e4c4", "#eec894", "#dda65b", "#b9812c", "#8a4a06", "#6b3904"]
+      },
+      "refusal-red": {
+        "role": "tertiary",
+        "displayName": "Refusal Red",
+        "canonical": "#c0392b",
+        "tonalRamp": ["#fdf1f0", "#f9dcd9", "#f0b7b1", "#e08b82", "#d05a4d", "#c0392b", "#8a241c"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Administration title; one per surface." },
+      "logon-display": { "displayName": "Logon Display", "purpose": "The single access-hero statement; largest type in the product." },
+      "headline": { "displayName": "Headline", "purpose": "Access coupon titles on logon and Clerk surfaces." },
+      "title": { "displayName": "Title", "purpose": "Panel and section headings inside the manifest." },
+      "body": { "displayName": "Body", "purpose": "Descriptions and record text; measure at or under 620px." },
+      "label": { "displayName": "Label", "purpose": "Panel titles, table headers, buttons, nav counts, and field labels." },
+      "meta": { "displayName": "Meta", "purpose": "Protected-record notes and dense row annotations." },
+      "numeral": { "displayName": "Numeral", "purpose": "Coupon values and scannable metrics; tabular figures." },
+      "control": { "displayName": "Control", "purpose": "Base size handed to the Clerk identity widget." }
+    },
+    "shadows": [
+      { "name": "printed-edge", "value": "0 1px 0 rgba(11, 43, 82, 0.04)", "purpose": "A printed hairline under manifest panels at rest." },
+      { "name": "access-lift", "value": "0 22px 60px rgba(4, 20, 38, 0.28)", "purpose": "Lifts the single access coupon off the navy hero field." },
+      { "name": "dot-seat", "value": "0 1px 2px rgba(11, 43, 82, 0.18)", "purpose": "Directional seat under live status dots; never a colored halo." }
+    ],
+    "motion": [
+      { "name": "stamp-land", "value": "0.42s cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "The only authored motion: the validation stamp settles into place with a scale, never a fade, so text contrast holds throughout." },
+      { "name": "state-shift", "value": "0.15s ease", "purpose": "Border and 1px lift on coupon hover; removed under reduced motion." },
+      { "name": "reduced-motion", "value": "none", "purpose": "Under prefers-reduced-motion, stamp animation and coupon/nav transitions are disabled." }
+    ],
+    "breakpoints": [
+      { "name": "admin-mid", "value": "1380px" },
+      { "name": "admin-narrow", "value": "1080px" },
+      { "name": "single-column", "value": "820px" },
+      { "name": "phone", "value": "520px" },
+      { "name": "small-phone", "value": "380px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single SAP-blue action on a surface: logon handoff, refresh, or save.",
+      "html": "<button class=\"ds-mf-primary\">Log On with Email / Google</button>",
+      "css": ".ds-mf-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 7px 14px; background: #0a6ed1; border: 1px solid #0a6ed1; color: #ffffff; font-family: Archivo, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 12px; font-weight: 600; border-radius: 0; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; } .ds-mf-primary:hover { background: #0a4d8c; border-color: #0a4d8c; } .ds-mf-primary:focus-visible { outline: 2px solid #0b2b52; outline-offset: 2px; }"
+    },
+    {
+      "name": "Manifest Table Action",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Dense square action used in users, programs, and audit rows; danger variant for confirmed deletion.",
+      "html": "<div class=\"ds-mf-actions\"><button class=\"ds-mf-action\">Revoke sessions</button><button class=\"ds-mf-action ds-mf-action-danger\">Delete</button></div>",
+      "css": ".ds-mf-actions { display: flex; gap: 6px; flex-wrap: wrap; } .ds-mf-action { display: inline-flex; align-items: center; justify-content: center; min-height: 24px; padding: 3px 7px; border: 1px solid #c9d4e0; background: #ffffff; color: #16283b; font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 8px; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 0; cursor: pointer; white-space: nowrap; } .ds-mf-action:hover { border-color: #0a6ed1; color: #0a6ed1; background: #f8fbff; } .ds-mf-action:focus-visible { outline: 2px solid #0a6ed1; outline-offset: 1px; } .ds-mf-action-danger { color: #c0392b; border-color: #e3b4af; background: #fdf1f0; } .ds-mf-action-danger:hover { background: #fbe3e0; border-color: #c0392b; color: #8a241c; }"
+    },
+    {
+      "name": "Manifest Coupon",
+      "kind": "card",
+      "refersTo": "coupon",
+      "description": "A metric record with a perforation hairline and a lower-right code; the primary KPI unit.",
+      "html": "<div class=\"ds-mf-coupon\"><div class=\"ds-mf-coupon-label\">Active / 7 days</div><div class=\"ds-mf-coupon-value\">18</div><div class=\"ds-mf-coupon-hint\">Distinct accounts with a run</div><div class=\"ds-mf-coupon-code\">M01</div></div>",
+      "css": ".ds-mf-coupon { position: relative; min-width: 0; overflow: hidden; border: 1px solid #c9d4e0; background: #ffffff; padding: 11px 12px 10px; border-radius: 0; transition: border-color 0.15s, transform 0.15s; } .ds-mf-coupon:hover { border-color: #0a6ed1; transform: translateY(-1px); } .ds-mf-coupon::after { content: ''; position: absolute; top: 9px; right: 9px; bottom: 9px; width: 1px; background: repeating-linear-gradient(to bottom, #b9c7d6 0 3px, transparent 3px 7px); opacity: 0.9; } .ds-mf-coupon-label { font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 7.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #5b6b7c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-mf-coupon-value { margin-top: 7px; font-family: Archivo, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 28px; line-height: 0.9; letter-spacing: -0.04em; font-weight: 700; color: #0a6ed1; font-variant-numeric: tabular-nums; } .ds-mf-coupon-hint { margin-top: 6px; padding-right: 12px; font-family: Archivo, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 9.5px; line-height: 1.35; color: #5b6b7c; } .ds-mf-coupon-code { position: absolute; right: 10px; bottom: 7px; font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 6.5px; letter-spacing: 0.08em; color: #0a6ed1; opacity: 0.8; }"
+    },
+    {
+      "name": "Manifest Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "A ruled record block with a mono header strip and an optional uppercase link.",
+      "html": "<section class=\"ds-mf-panel\"><header class=\"ds-mf-panel-head\"><h3 class=\"ds-mf-panel-title\">Account manifest</h3><a class=\"ds-mf-panel-link\" href=\"#\">Full manifest →</a></header><div class=\"ds-mf-panel-body\"><div class=\"ds-mf-line\"><span class=\"ds-mf-account\">AKUMAR</span><span class=\"ds-mf-meta\">RUNS 24 · 8H AGO</span></div><div class=\"ds-mf-line\"><span class=\"ds-mf-account\">MREYES</span><span class=\"ds-mf-meta\">RUNS 11 · YESTERDAY</span></div></div></section>",
+      "css": ".ds-mf-panel { min-width: 0; border: 1px solid #c9d4e0; background: #ffffff; border-radius: 0; box-shadow: 0 1px 0 rgba(11, 43, 82, 0.04); } .ds-mf-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding: 8px 12px; border-bottom: 1px solid #c9d4e0; } .ds-mf-panel-title { margin: 0; font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 8.5px; letter-spacing: 0.13em; text-transform: uppercase; color: #3f566d; font-weight: 500; } .ds-mf-panel-link { font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 8px; letter-spacing: 0.09em; text-transform: uppercase; color: #0a6ed1; text-decoration: none; } .ds-mf-panel-link:focus-visible { outline: 2px solid #0a6ed1; outline-offset: 2px; } .ds-mf-panel-body { padding: 4px 12px; } .ds-mf-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px dotted #c9d4e0; } .ds-mf-line:last-child { border-bottom: 0; } .ds-mf-account { font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 10.5px; font-weight: 600; color: #16283b; } .ds-mf-meta { font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 7.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #5b6b7c; }"
+    },
+    {
+      "name": "Manifest Index Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Numbered rail record; active state is a solid SAP-blue fill with white text.",
+      "html": "<nav class=\"ds-mf-nav\"><button class=\"ds-mf-navitem\"><span class=\"ds-mf-navnum\">01</span><span class=\"ds-mf-navlabel\">Overview</span><span class=\"ds-mf-navcount\">live</span></button><button class=\"ds-mf-navitem ds-mf-navitem-active\"><span class=\"ds-mf-navnum\">02</span><span class=\"ds-mf-navlabel\">Users</span><span class=\"ds-mf-navcount\">18</span></button></nav>",
+      "css": ".ds-mf-nav { display: flex; flex-direction: column; gap: 7px; width: 232px; } .ds-mf-navitem { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; min-height: 38px; padding: 8px 9px; border: 1px solid #b9c7d6; background: #ffffff; color: #16283b; text-align: left; cursor: pointer; border-radius: 0; font-family: Archivo, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 11.5px; font-weight: 500; } .ds-mf-navitem:hover { border-color: #0a6ed1; background: #f8fbff; } .ds-mf-navitem:focus-visible { outline: 2px solid #0a6ed1; outline-offset: 1px; } .ds-mf-navitem-active { background: #0a6ed1; border-color: #0a6ed1; color: #ffffff; } .ds-mf-navnum { font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 8px; letter-spacing: 0.06em; color: #5b6b7c; } .ds-mf-navitem-active .ds-mf-navnum { color: #ffffff; } .ds-mf-navlabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-mf-navcount { font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 8px; color: #5b6b7c; } .ds-mf-navitem-active .ds-mf-navcount { color: #ffffff; }"
+    },
+    {
+      "name": "Access Field",
+      "kind": "input",
+      "refersTo": "field-input",
+      "description": "Square 32px mono field for client and language on the logon coupon.",
+      "html": "<label class=\"ds-mf-field\"><span class=\"ds-mf-field-label\">Client</span><input class=\"ds-mf-field-input\" value=\"105\" /></label>",
+      "css": ".ds-mf-field { display: block; width: 120px; } .ds-mf-field-label { display: block; margin-bottom: 3px; font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 7px; letter-spacing: 0.1em; text-transform: uppercase; color: #5b6b7c; } .ds-mf-field-input { width: 100%; height: 32px; border: 1px solid #b9c7d6; background: #f4f7fa; padding: 0 8px; border-radius: 0; font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 13px; color: #16283b; outline: none; } .ds-mf-field-input:focus { border-color: #0a6ed1; box-shadow: 0 0 0 2px rgba(10, 110, 209, 0.15); }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "status-good",
+      "description": "Square soft-ground record state; tone comes from the record, never from layout.",
+      "html": "<div class=\"ds-mf-chips\"><span class=\"ds-mf-status\">Active</span><span class=\"ds-mf-status ds-mf-status-warn\">Suspended</span><span class=\"ds-mf-status ds-mf-status-bad\">Error</span></div>",
+      "css": ".ds-mf-chips { display: flex; gap: 6px; flex-wrap: wrap; } .ds-mf-status { display: inline-flex; align-items: center; border: 1px solid #b9dfb9; background: #eaf5ea; color: #1c7a1c; padding: 1px 5px; border-radius: 0; font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 7.5px; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; } .ds-mf-status-warn { border-color: #e6c79c; background: #fdf4e7; color: #8a4a06; } .ds-mf-status-bad { border-color: #e3b4af; background: #fdf1f0; color: #c0392b; }"
+    },
+    {
+      "name": "Validation Stamp",
+      "kind": "custom",
+      "refersTo": "validated-stamp",
+      "description": "The single rotated stamp per surface; lands with the system's only authored motion.",
+      "html": "<div class=\"ds-mf-stamp\">SERVER<br />VALIDATED</div>",
+      "css": ".ds-mf-stamp { display: inline-block; border: 2px solid #0a6ed1; color: #0a6ed1; padding: 8px 11px; border-radius: 0; transform: rotate(4deg); font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 8px; line-height: 1.5; letter-spacing: 0.12em; text-align: center; background: rgba(244, 247, 250, 0.72); animation: ds-mf-stamp-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) 120ms both; } @keyframes ds-mf-stamp-in { from { scale: 0.94; } to { scale: 1; } } @media (prefers-reduced-motion: reduce) { .ds-mf-stamp { animation: none; } }"
+    },
+    {
+      "name": "Access Coupon",
+      "kind": "custom",
+      "refersTo": "coupon",
+      "description": "The logon record: navy client strip, 31px title, square primary action, and left perforation notches.",
+      "html": "<div class=\"ds-mf-access\"><div class=\"ds-mf-access-top\"><span>MER · Client 105</span><span>Secure logon</span></div><div class=\"ds-mf-access-body\"><h2 class=\"ds-mf-access-title\">SAP — Secure Logon</h2><p class=\"ds-mf-access-sub\">Sign in with your work email or Google account.</p><button class=\"ds-mf-access-primary\">Log On with Email / Google</button><div class=\"ds-mf-access-tip\"><strong>Google passkey tip:</strong> choose Try another way to reach your password or passkey.</div></div></div>",
+      "css": ".ds-mf-access { position: relative; width: 100%; max-width: 560px; border: 1px solid #c9d4e0; background: #ffffff; border-radius: 0; box-shadow: 0 22px 60px rgba(4, 20, 38, 0.28); } .ds-mf-access::before, .ds-mf-access::after { content: ''; position: absolute; left: -7px; width: 12px; height: 12px; border-radius: 50%; background: #f4f7fa; border: 1px dashed #b9c7d6; } .ds-mf-access::before { top: 72px; } .ds-mf-access::after { bottom: 72px; } .ds-mf-access-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; padding: 7px 16px; background: #0b2b52; color: #f4f7fa; font-family: 'Azeret Mono', 'Courier New', Courier, monospace; font-size: 7.5px; letter-spacing: 0.16em; text-transform: uppercase; } .ds-mf-access-top span:last-child { color: #b9d3ee; } .ds-mf-access-body { padding: 20px 22px 18px; } .ds-mf-access-title { margin: 0; font-family: Archivo, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 31px; line-height: 0.98; letter-spacing: -0.04em; font-weight: 800; color: #16283b; } .ds-mf-access-sub { margin: 7px 0 0; font-family: Archivo, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 11.5px; line-height: 1.5; color: #5b6b7c; } .ds-mf-access-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; margin-top: 14px; padding: 7px 14px; background: #0a6ed1; border: 1px solid #0a6ed1; color: #ffffff; border-radius: 0; font-family: Archivo, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; } .ds-mf-access-primary:focus-visible { outline: 2px solid #0b2b52; outline-offset: 2px; } .ds-mf-access-tip { margin-top: 12px; border: 1px solid #b9d3ea; background: #e8f1fa; padding: 7px 9px; font-family: Archivo, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 10px; line-height: 1.5; color: #33475c; } .ds-mf-access-tip strong { color: #16283b; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The System Manifest",
+    "overview": "The product is a working record, not a dashboard. Every account, program, and run is a line in a manifest that an owner keeps current: entries are numbered, states are stamped, and changes leave a mark. The visual system borrows the physical grammar of a validated manifest — perforated edges, coupon stubs, steel rules, carbon numerals, and a rotated stamp — and renders it in the SAP palette the workbench already owns.\n\nDensity is deliberate. The owner surface is read at a glance and operated with small, precise controls; the access surface is one confident statement beside one calm coupon. Both share the same stock: pale #F4F7FA surface, white paper records, navy structure, SAP blue action. The world is flat and printed, with exactly one authored motion — the validation stamp landing.\n\nConfirmed rejections: rounded SaaS cards, gradient text, colored side-stripe accents, decorative kickers above headings, and faux paper texture. The manifest is crisp stock, not a prop.",
+    "keyCharacteristics": [
+      "Navy structural frame with a pale work surface and white paper records.",
+      "Square corners everywhere except the circular validation check and the perforation notches.",
+      "Azeret Mono for every label, numeral, code, and stamp; Archivo for every sentence.",
+      "One rotated stamp per surface; one authored motion, disabled under reduced motion."
+    ],
+    "rules": [
+      {
+        "name": "The Stamped-Only Rule",
+        "body": "Green, amber, and red appear only on records that actually carry that state. A neutral row stays ink on paper; state color is information, not styling.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Blue Rule",
+        "body": "SAP Blue marks action and live emphasis. If two elements in a view compete for it, one is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Carbon Numeral Rule",
+        "body": "Any number a user might compare or scan — metrics, counts, durations, timestamps, client numbers — is set in Azeret Mono with tabular figures. Prose numbers stay in Archivo.",
+        "section": "typography"
+      },
+      {
+        "name": "The No-Kicker Rule",
+        "body": "No label, eyebrow, or kicker sits above a heading. The heading carries its own weight; labels belong to controls and records, not to headlines.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-At-Rest Rule",
+        "body": "Records do not float. If a surface needs a shadow to be understood, the structure is wrong; fix the rule and the layering first.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep every corner at 0px except the validation check and perforation notches.",
+      "Do set all labels, numerals, codes, and timestamps in Azeret Mono with tabular figures.",
+      "Do use SAP Blue for one action per view and keep it off neutral records.",
+      "Do express state with the soft-ground status chip or the pale #FCF7BE selected line, never with a side stripe.",
+      "Do separate the rail and access card with a 1px dashed rule and 12–13px circular notches.",
+      "Do keep one rotated validation stamp per surface and honor prefers-reduced-motion.",
+      "Do preserve a visible 2px focus outline on every interactive element."
+    ],
+    "donts": [
+      "Don't add kickers, eyebrows, or labels above headings; the heading starts the block.",
+      "Don't round cards, buttons, inputs, or chips.",
+      "Don't use colored side-stripe accents, gradient text, or colored halos as decoration.",
+      "Don't introduce a second accent hue beyond SAP blue and the validation green/amber/red vocabulary.",
+      "Don't add motion beyond the stamp landing; no parallax, scroll reveals, or hover choreography.",
+      "Don't invent a faux paper texture, drop shadow stack, or skeuomorphic chrome.",
+      "Don't truncate audit detail text on phones; wrap it instead."
+    ]
+  }
+}

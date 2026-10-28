@@ -1,47 +1,66 @@
 import { SignUp } from '@clerk/nextjs'
 import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { Suspense } from 'react'
+import { AccessHero } from '@/components/auth/access-hero'
+import { clerkAppearance } from '@/components/auth/clerk-appearance'
 import { ClerkSessionNotice } from '@/components/auth/clerk-session-notice'
 import { clerkPublishableConfigured } from '@/lib/auth-config'
 
 export default function SignUpPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#0b2b52] via-[#14507f] to-[#0b2b52] p-4">
-      <section className="w-[620px] max-w-full border border-[#0a2745] bg-[#f0f0f0] shadow-[0_20px_70px_rgba(0,0,0,0.65)]">
-        <div
-          className="flex h-7 items-center gap-2 px-2 text-white"
-          style={{
-            background: 'linear-gradient(to bottom, #3875bd 0%, #205a9b 45%, #174a80 100%)',
-            borderBottom: '1px solid #0e3560',
-          }}
-        >
-          <span className="flex h-4 w-4 items-center justify-center rounded-[2px] bg-white/15 text-[9px] font-black">
-            S
-          </span>
-          <h1 className="text-[12.5px] font-semibold">SAP — Create User</h1>
-          <span className="ml-auto text-[10.5px] text-white/80">MER · Client 105</span>
-        </div>
-        <div className="border-b border-[#cfd6dd] bg-[#e8ebef] px-5 py-2 text-[11.5px] text-[#44586c]">
-          Create a verified Clerk account. Your SAP user name is assigned from your verified email and
-          can be reviewed by the system administrator.
-          <ClerkSessionNotice />
-        </div>
-        <div className="flex justify-center px-4 py-6">
-          {clerkPublishableConfigured() ? (
-            <Suspense fallback={<div className="text-[12.5px] text-[#5b6d80]">Loading secure registration…</div>}>
-              <SignUp fallbackRedirectUrl="/" signInUrl="/sign-in" />
-            </Suspense>
-          ) : (
-            <div className="max-w-[420px] text-[12.5px] text-[#8a1f1f]">
-              Clerk is not configured on this deployment. Set the Clerk environment variables to
-              enable secure verified-email registration.
+    <main className="mf-authpage">
+      <AccessHero
+        lead="Join the manifest."
+        tail="Keep it validated."
+        description="Create a verified Clerk identity. Your ABAP user name is assigned from your verified email and reviewed by the system administrator."
+        stamp="New line"
+      />
+
+      <section className="mf-logon-side" aria-labelledby="signup-title">
+        <div className="mf-login-card">
+          <div className="mf-coupon-top">
+            <span>Enrolment coupon</span>
+            <span>MER · Client 105</span>
+          </div>
+
+          <div className="mf-auth-body">
+            <h1 id="signup-title" className="mf-login-title">
+              SAP — Create User
+            </h1>
+            <p className="mf-login-sub">
+              Create a verified Clerk account. Your SAP user name is assigned from your verified
+              email and can be reviewed by the system administrator.
+            </p>
+
+            <ClerkSessionNotice />
+
+            <div className="mf-auth-clerk">
+              {clerkPublishableConfigured() ? (
+                <Suspense
+                  fallback={<div className="mf-empty">Loading secure registration…</div>}
+                >
+                  <SignUp
+                    appearance={clerkAppearance}
+                    fallbackRedirectUrl="/"
+                    signInUrl="/sign-in"
+                  />
+                </Suspense>
+              ) : (
+                <div className="mf-auth-fallback">
+                  Clerk is not configured on this deployment. Set the Clerk environment variables
+                  to enable secure verified-email registration.
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        <div className="border-t border-[#cfd6dd] bg-[#e8ebef] px-5 py-3 text-[11.5px]">
-          <Link className="sap-btn inline-block" href="/">
-            « Back to workbench
-          </Link>
+
+            <div className="mf-auth-back">
+              <Link href="/">
+                <ArrowLeft className="h-3 w-3" aria-hidden /> Back to workbench
+              </Link>
+              <span>System MER · Client 105</span>
+            </div>
+          </div>
         </div>
       </section>
     </main>

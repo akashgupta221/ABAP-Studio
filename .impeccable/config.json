@@ -1,0 +1,35 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "src/app/globals.css"
+        ],
+        "createdAt": "2026-10-28T16:44:23.159Z",
+        "reason": "globals.css also carries the pre-existing SAP GUI workbench palette, which is a separate incumbent system outside the manifest DESIGN.md"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "src/app/globals.css"
+        ],
+        "createdAt": "2026-10-28T16:44:23.177Z",
+        "reason": "globals.css also carries the pre-existing SAP GUI workbench type scale, which is a separate incumbent system outside the manifest DESIGN.md"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "src/app/globals.css"
+        ],
+        "createdAt": "2026-10-28T16:44:43.442Z",
+        "reason": "globals.css also carries the pre-existing SAP GUI workbench radii, which are a separate incumbent system outside the square manifest DESIGN.md"
+      }
+    ]
+  }
+}

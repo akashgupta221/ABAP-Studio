@@ -1,0 +1,217 @@
+{
+  "title": "Choose the visual world",
+  "question": "The roll assigned The System Runbook. Keep it, take The System Schematic, or choose another hand.",
+  "options": [
+    {
+      "id": "assigned",
+      "kind": "assigned",
+      "label": "The System Runbook",
+      "kicker": "THE ROLL",
+      "lineage": "printed service manuals and field guides",
+      "thesis": "A working system documented like a field manual: numbered procedures, margin notes, and live status stamps.",
+      "palette": ["#F3EFE3", "#17211C", "#0F2E25", "#E4572E", "#2E5E8C"],
+      "materials": ["offset paper", "rubber stamps", "grease pencil"],
+      "viewport": "A deep-green rail and paper workbench: a numbered procedure header, a status stamp, a fixed-baseline 7-day trend plate, and a focus-expanding execution log, with standard tabs and tables below.",
+      "risk": "Manuals can read as static documentation; the live stamps and expanding log must keep it a working tool.",
+      "raised": [
+        {
+          "from": "challenger-emigre-bitmap",
+          "raise": "Display scale with a hard grid: the runbook title and section numbers repeat at three sizes, so hierarchy reads before decoration."
+        },
+        {
+          "from": "challenger-streaming-wall",
+          "raise": "Focus expansion: the active execution row lifts and its neighbors recede, so a dense log stays scannable."
+        },
+        {
+          "from": "challenger-botanical-folio",
+          "raise": "Fixed comparison baseline: all seven days share one scale and ground, so the trend is comparable at a glance."
+        },
+        {
+          "from": "challenger-zoo-map",
+          "raise": "Flat color zoning: each work area owns a solid field separated by a single coastline rule, not scattered accents."
+        }
+      ],
+      "html": ".impeccable/mocks/decision/assigned.html"
+    },
+    {
+      "id": "model-pick",
+      "kind": "pick",
+      "label": "The System Schematic",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "engineering blueprints and system-landscape diagrams",
+      "thesis": "The admin surface as a live system schematic: four nodes on one bus, with the numbers and states drawn where they connect.",
+      "palette": ["#08243D", "#0E3A5C", "#D7F0F2", "#FF6B3D", "#F5C542"],
+      "materials": ["cyanotype paper", "technical pen", "dimension lines"],
+      "viewport": "A blueprint-blue console: a labelled system bus across the overview, users/programs/executions/audit as nodes, a signal-trace 7-day chart, and standard tables in the lower half.",
+      "risk": "The linework can compete with dense admin tables; the build keeps the schematic to the overview header and logon, with standard surfaces for work.",
+      "html": ".impeccable/mocks/decision/model-pick.html"
+    },
+    {
+      "id": "grounded-shift-ledger",
+      "kind": "grounded",
+      "label": "The Shift Ledger",
+      "lineage": "mainframe operations logs and green-bar reports",
+      "thesis": "The system as a live shift ledger: every run, error and owner action enters the record.",
+      "palette": ["#F4F0E4", "#16201B", "#0E2A22", "#FF5A36", "#2C5C86"],
+      "materials": ["green-bar paper", "rubber stamps", "ledger rules"],
+      "viewport": "A dark-green rail and a pale green-bar sheet: a shift header with date and status stamps, a run-sheet timeline, ruled KPI totals, and a standard execution table.",
+      "risk": "Retro paper can read as costume; the build uses it as palette and density, not faux perforations everywhere.",
+      "wireframe": {"cols": 12, "rows": 10, "regions": [{"label": "rail", "x": 0, "y": 0, "w": 2, "h": 10, "accent": true}, {"label": "shift header", "x": 2, "y": 0, "w": 10, "h": 2}, {"label": "run sheet", "x": 2, "y": 2, "w": 10, "h": 3, "accent": true}, {"label": "KPI totals", "x": 2, "y": 5, "w": 10, "h": 2}, {"label": "execution table", "x": 2, "y": 7, "w": 10, "h": 3}]}
+    },
+    {
+      "id": "grounded-course-catalog",
+      "kind": "grounded",
+      "label": "The Course Catalog",
+      "lineage": "university registrars and index-card catalogs",
+      "thesis": "The workbench as a registrar's catalog: accounts and programs are records you pull, stamp, and file.",
+      "palette": ["#E8D9B8", "#2B241B", "#7A2E1F", "#1F4E5F", "#F7F2E6"],
+      "materials": ["manila stock", "index tabs", "date stamps"],
+      "viewport": "A warm manila rail with tabbed dividers, a registrar header and date stamp, a grid of catalog cards for the key totals, and a dense record table below.",
+      "risk": "The catalog can feel archival and slow; tables must stay dense, standard, and fast.",
+      "wireframe": {"cols": 12, "rows": 10, "regions": [{"label": "tab rail", "x": 0, "y": 0, "w": 2, "h": 10, "accent": true}, {"label": "registrar header", "x": 2, "y": 0, "w": 10, "h": 2}, {"label": "catalog cards", "x": 2, "y": 2, "w": 10, "h": 3}, {"label": "record table", "x": 2, "y": 5, "w": 10, "h": 5}]}
+    },
+    {
+      "id": "grounded-network-board",
+      "kind": "grounded",
+      "label": "The Network Board",
+      "lineage": "transit control rooms and departure boards",
+      "thesis": "The system as a transit board: four lines, live status, and a departure log you can read across the room.",
+      "palette": ["#0B1420", "#F2B84B", "#3EC1A2", "#E85D5D", "#E9EDF2"],
+      "materials": ["enamel board", "flip tiles", "printed line map"],
+      "viewport": "A dark enamel board with a top status strip, a left line rail, a network map of users/programs/executions/audit, a departures-style activity board, and a timetable trend.",
+      "risk": "Transit boards are common; the data must be specific to this system, not a generic metro map.",
+      "wireframe": {"cols": 12, "rows": 10, "regions": [{"label": "status strip", "x": 0, "y": 0, "w": 12, "h": 1, "accent": true}, {"label": "line rail", "x": 0, "y": 1, "w": 2, "h": 9}, {"label": "network map", "x": 2, "y": 1, "w": 7, "h": 5, "accent": true}, {"label": "departures", "x": 9, "y": 1, "w": 3, "h": 5}, {"label": "timetable", "x": 2, "y": 6, "w": 10, "h": 4}]}
+    },
+    {
+      "id": "grounded-archive-reader",
+      "kind": "grounded",
+      "label": "The Archive Reader",
+      "lineage": "library microfiche readers and aperture cards",
+      "thesis": "The admin record as an archive reader: scan the index, pull one frame, read it under glass.",
+      "palette": ["#101418", "#9FB4C0", "#E8F4F8", "#D6A84B", "#C05A4A"],
+      "materials": ["microfiche film", "backlit glass", "metal reels"],
+      "viewport": "A dark reading room with a luminous frame grid, a large selected record under glass, a dense index, and a standard table beneath.",
+      "risk": "Dark, low-contrast nostalgia; legibility and standard controls must win.",
+      "wireframe": {"cols": 12, "rows": 10, "regions": [{"label": "rail", "x": 0, "y": 0, "w": 2, "h": 10, "accent": true}, {"label": "frame grid", "x": 2, "y": 0, "w": 6, "h": 6}, {"label": "selected frame", "x": 8, "y": 0, "w": 4, "h": 6, "accent": true}, {"label": "index", "x": 8, "y": 6, "w": 4, "h": 4}, {"label": "table", "x": 2, "y": 6, "w": 6, "h": 4}]}
+    },
+    {
+      "id": "grounded-rack-elevation",
+      "kind": "grounded",
+      "label": "The Rack Elevation",
+      "lineage": "data-center rack elevations and patch panels",
+      "thesis": "The system as a live rack elevation: four work areas as units, each with a status light and a patch line.",
+      "palette": ["#16181A", "#2A2E33", "#C7CDD2", "#59D98E", "#F2B84B", "#E85D5D"],
+      "materials": ["brushed metal", "enamel labels", "LED status"],
+      "viewport": "A graphite console with a rack-style rail, an elevation of four work areas with LEDs and patch cables, compact KPI readouts, and a standard table below.",
+      "risk": "Infrastructure cosplay; the product is a training simulator, not a data center.",
+      "wireframe": {"cols": 12, "rows": 10, "regions": [{"label": "rail", "x": 0, "y": 0, "w": 2, "h": 10, "accent": true}, {"label": "rack elevation", "x": 2, "y": 0, "w": 4, "h": 7, "accent": true}, {"label": "KPI stack", "x": 6, "y": 0, "w": 6, "h": 3}, {"label": "table", "x": 6, "y": 3, "w": 6, "h": 7}]}
+    },
+    {
+      "id": "challenger-ticket-wallet",
+      "kind": "challenger",
+      "catalogId": "vernacular-ephemera-jet-age-ticket-wallet",
+      "label": "The System Manifest",
+      "lineage": "SAP operations manifests and validated coupons",
+      "thesis": "Every account, route and run as a validated manifest line: the record and its stamp travel together.",
+      "palette": ["#F4F7FA", "#16283B", "#0A6ED1", "#0B2B52", "#FCF7BE"],
+      "materials": ["manifest stock", "carbon numerals", "validation stamps"],
+      "viewport": "A pale work surface with a navy rail and SAP blue numerals: accounts as a manifest table, programs as a route arc, runs as a stamped ledger, with selected rows in SAP yellow.",
+      "risk": "The manifest grammar can turn standard admin navigation into a costume; the build keeps tabs, tables and status colors unmistakably SAP.",
+      "verdict": "chosen",
+      "case": "Chosen by the owner: the manifest reading order, grounded in the live SAP palette. It carries the account, route and run story without changing the standard table task.",
+      "html": ".impeccable/mocks/decision/challenger-ticket-wallet.html"
+    },
+    {
+      "id": "challenger-data-sublime",
+      "kind": "challenger",
+      "catalogId": "ikeda-datamatics",
+      "label": "The Signal Field",
+      "lineage": "data-sublime barcode fields and sine lattices",
+      "thesis": "The execution history as a live signal field: dense, honest, and readable at a glance.",
+      "palette": ["#000000", "#FFFFFF", "#FF4D00", "#00A86B"],
+      "materials": ["pixel bars", "hairline rules", "monospace numerals"],
+      "viewport": "A black-and-white data field: a barcode of the last 7 days across the top, a sine trace for duration, and a standard table whose selected row pulls its numbers into focus while the field drops back.",
+      "risk": "Pure black and white can read as an art piece; state colors and a standard table must keep the admin task obvious.",
+      "verdict": "competitive",
+      "case": "Holds product clarity: the barcode makes execution volume and errors legible. Loses on audience identification: the art-world field is not the daily language of SAP administrators.",
+      "html": ".impeccable/mocks/decision/challenger-data-sublime.html"
+    },
+    {
+      "id": "challenger-emigre-bitmap",
+      "kind": "challenger",
+      "catalogId": "emigre-bitmap-specimen",
+      "label": "The Specimen Sheet",
+      "lineage": "Emigre bitmap type specimens",
+      "thesis": "The curriculum as a type specimen: one form repeated at every scale, with the pixels left honest.",
+      "palette": ["#F2EFE6", "#111111", "#E8452C", "#2BA0FF"],
+      "materials": ["newsprint", "halftone", "bitmap type"],
+      "viewport": "A specimen wall of display type over dense justified columns, with the same face repeating at five sizes.",
+      "risk": "Pixel display type at admin scale hurts scanning; the world is stronger as a logon poster than a working dashboard.",
+      "verdict": "declined",
+      "case": "Loses both axes: the audience is ABAP practitioners, not type designers, and a specimen layout obscures the task.",
+      "kept": "Display scale with a hard grid, carried into the runbook's section numbers."
+    },
+    {
+      "id": "challenger-streaming-wall",
+      "kind": "challenger",
+      "catalogId": "pop-culture-shelf-streaming-title-card-wall",
+      "label": "The Program Wall",
+      "lineage": "streaming catalog walls",
+      "thesis": "The program library as a wall of tiles that expands the one you land on.",
+      "palette": ["#0B0D10", "#F4F4F5", "#FF4D6D", "#7C5CFF"],
+      "materials": ["poster artwork", "focus glow", "horizontal rails"],
+      "viewport": "Rows of fixed-ratio poster tiles under a row heading, the focused tile expanding to reveal metadata while the rest dim.",
+      "risk": "A wall of tiles is a browsing surface, not an administration surface; the admin's job is comparison, not discovery.",
+      "verdict": "declined",
+      "case": "Loses product clarity: users and programs need sortable tables, not poster browsing. Audience identification is partial at best.",
+      "kept": "Focus expansion, carried into the recent-execution log."
+    },
+    {
+      "id": "challenger-botanical-folio",
+      "kind": "challenger",
+      "catalogId": "editorial-sequence-montage-botanical-folio-season",
+      "label": "The Seasonal Folio",
+      "lineage": "botanical folios and fixed-scale plates",
+      "thesis": "The system's life stages as five plates on one baseline.",
+      "palette": ["#F2EBDD", "#4E6B4A", "#B23A2B", "#2B2B2B"],
+      "materials": ["cream plate paper", "engraved rules", "sepia ink"],
+      "viewport": "Five fixed-scale plates banded on one shared baseline, captions ranked beneath, with a stage strip for navigation.",
+      "risk": "Seasonal stages do not map cleanly to users, programs, and audit events; the metaphor would be decorative.",
+      "verdict": "declined",
+      "case": "Loses audience identification and product clarity: the system has states, not seasons, and the admin needs live data.",
+      "kept": "Fixed comparison baseline, carried into the 7-day trend plate."
+    },
+    {
+      "id": "challenger-zoo-map",
+      "kind": "challenger",
+      "catalogId": "aww2-zoo-gardens-guide-map",
+      "label": "The System Map",
+      "lineage": "zoo and gardens guide maps",
+      "thesis": "The workbench as a map of flat color lobes, each area opening onto the ground.",
+      "palette": ["#F5F1E4", "#8ED462", "#FF705D", "#2BA0FF", "#F5E211"],
+      "materials": ["flat ink", "cream ground", "capsule labels"],
+      "viewport": "One swelling lobe dominating the screen, its coastline running off two edges, with capsule controls and a round live chip.",
+      "risk": "A map turns standard navigation into a spatial puzzle; the admin needs a predictable rail, not a coastline.",
+      "verdict": "declined",
+      "case": "Loses product clarity: the map's spatial grammar fights the admin's tab-and-table task. Audience identification is playful but not specific.",
+      "kept": "Flat color zoning, carried into the runbook's work-area fields."
+    }
+  ],
+  "reroll": {
+    "registers": ["safer", "bolder"]
+  },
+  "buildPath": {
+    "value": "code"
+  },
+  "canon": true,
+  "canonCard": {
+    "kind": "canon",
+    "label": "The category standard",
+    "thesis": "A clean admin console and a focused SAP-style logon, executed at full craft.",
+    "palette": ["#FFFFFF", "#111827", "#2563EB"],
+    "materials": ["clean grid", "product surfaces"],
+    "viewport": "A familiar sidebar-and-cards dashboard and a centered SAP logon card, with no world beyond the product itself.",
+    "risk": "Indistinguishable from the competition by design; the safe exit, not the engaging one."
+  },
+  "steer": true
+}
