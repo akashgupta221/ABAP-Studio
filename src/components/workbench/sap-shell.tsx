@@ -245,33 +245,33 @@ function fireScreenAction(target: 'se38' | 'functions' | 'home', id: string) {
   window.dispatchEvent(new CustomEvent('sap-screen-action', { detail: { target, id } }))
 }
 
-const HOME_FLAT_ACTIONS: { id: string; label: string }[] = [
+const HOME_FLAT_ACTIONS: { id: string; label: string; className?: string }[] = [
   { id: 'toggle-sapmenu', label: 'SAP menu' },
   { id: 'workplace', label: 'SAP Business Workplace' },
   { id: 'add-favorite', label: 'Add to Favorites' },
 ]
 
-const SE38_FLAT_ACTIONS: { id: string; label: string }[] = [
+const SE38_FLAT_ACTIONS: { id: string; label: string; className?: string }[] = [
   { id: 'check', label: 'Check' },
   { id: 'activate', label: 'Activate' },
   { id: 'execute', label: 'Execute' },
   { id: 'where-used', label: 'Where-Used List' },
-  { id: 'env', label: 'Environment Analysis' },
-  { id: 'help', label: 'Online Help' },
-  { id: 'delete', label: 'Delete...' },
-  { id: 'copy', label: 'Copy...' },
-  { id: 'rename', label: 'Rename...' },
-  { id: 'debug', label: 'Debugging' },
-  { id: 'with-variant', label: 'With Variant' },
-  { id: 'variants', label: 'Variants' },
+  { id: 'env', label: 'Environment Analysis', className: 'hidden lg:block' },
+  { id: 'help', label: 'Online Help', className: 'hidden lg:block' },
+  { id: 'delete', label: 'Delete...', className: 'hidden lg:block' },
+  { id: 'copy', label: 'Copy...', className: 'hidden lg:block' },
+  { id: 'rename', label: 'Rename...', className: 'hidden xl:block' },
+  { id: 'debug', label: 'Debugging', className: 'hidden xl:block' },
+  { id: 'with-variant', label: 'With Variant', className: 'hidden xl:block' },
+  { id: 'variants', label: 'Variants', className: 'hidden xl:block' },
 ]
 
-const FN_FLAT_ACTIONS: { id: string; label: string }[] = [
+const FN_FLAT_ACTIONS: { id: string; label: string; className?: string }[] = [
   { id: 'create', label: 'Create' },
   { id: 'change', label: 'Change' },
   { id: 'display', label: 'Display' },
-  { id: 'where-used', label: 'Where-Used List' },
-  { id: 'documentation', label: 'Documentation' },
+  { id: 'where-used', label: 'Where-Used List', className: 'hidden md:block' },
+  { id: 'documentation', label: 'Documentation', className: 'hidden lg:block' },
 ]
 
 const SE38_MORE: { label: string; id: string }[] = [
@@ -282,9 +282,20 @@ const SE38_MORE: { label: string; id: string }[] = [
   { label: 'Text elements', id: 'text' },
   { label: 'Documentation', id: 'doc' },
   { label: 'Attributes (change)', id: 'attributes-change' },
+  { label: 'Environment Analysis', id: 'env' },
+  { label: 'Online Help', id: 'help' },
+  { label: 'Delete...', id: 'delete' },
+  { label: 'Copy...', id: 'copy' },
+  { label: 'Rename...', id: 'rename' },
+  { label: 'Debugging', id: 'debug' },
+  { label: 'With Variant', id: 'with-variant' },
+  { label: 'Variants', id: 'variants' },
 ]
 
 const FN_MORE: MItem[] = [
+  { label: 'Where-Used List', run: () => fireScreenAction('functions', 'where-used') },
+  { label: 'Documentation', run: () => fireScreenAction('functions', 'documentation') },
+  { sep: true },
   { label: 'Back to Function Builder Overview (F3)', run: () => fireScreenAction('functions', 'back') },
   { label: 'Object Navigator (SE80)', run: () => { useWorkbench.getState().navigate('search'); useWorkbench.getState().addMessage('I', 'Object Navigator (SE80)') } },
   { label: 'Go to ABAP Editor Initial Screen', run: () => useWorkbench.getState().openSe38Initial() },
@@ -407,7 +418,7 @@ export function SapShell() {
   const activeTab = tabs.find((t) => t.key === activeTabKey) ?? null
 
   // minimal reactive program info (avoids re-render on every keystroke)
-  const { activeProgramName, activeDirty, activeIsExample } = useWorkbench(
+  const { activeProgramName, activeDirty, activeIsExample, activeProgramType } = useWorkbench(
     useShallow((s) => {
       const t = s.tabs.find((x) => x.key === s.activeTabKey)
       const n = t?.kind === 'program' ? t.programName : null
@@ -416,6 +427,7 @@ export function SapShell() {
         activeProgramName: n,
         activeDirty: !!p?.dirty,
         activeIsExample: !!p?.isExample,
+        activeProgramType: p?.type ?? null,
       }
     }),
   )
@@ -431,6 +443,7 @@ export function SapShell() {
     view,
     tabs,
     activeTabKey,
+    activeProgramType,
     lastTcode,
     browserTable,
     selectedFunction,
@@ -1116,7 +1129,7 @@ export function SapShell() {
 
       {/* ── menu bar: screen menus left · OK-code field + right icons ── */}
       <nav className="sap-menubar flex h-[27px] shrink-0 items-center px-1 md:pl-1.5 md:pr-2" aria-label="Main menu">
-        <div className="flex min-w-0 flex-1 items-center gap-[2px] overflow-x-auto overflow-y-hidden">
+        <div className={`flex min-w-0 flex-1 items-center gap-[2px] ${flatActions ? 'overflow-visible' : 'overflow-x-auto overflow-y-hidden'}`}>
           {flatActions && flatTarget ? (
             <>
               {flatTarget === 'home' && (
@@ -1129,7 +1142,7 @@ export function SapShell() {
                   key={action.id}
                   type="button"
                   onClick={() => fireScreenAction(flatTarget, action.id)}
-                  className="shrink-0 whitespace-nowrap rounded-[2px] px-[7px] py-[2px] text-[12px] text-[#284d74] hover:bg-[#e1ebf5]"
+                  className={`shrink-0 whitespace-nowrap rounded-[2px] px-[7px] py-[2px] text-[12px] text-[#284d74] hover:bg-[#e1ebf5] ${action.className ?? ''}`}
                 >
                   {action.label}
                 </button>
@@ -1144,19 +1157,7 @@ export function SapShell() {
               ) : flatTarget === 'functions' ? (
                 <FlatMore items={FN_MORE} />
               ) : (
-                <>
-                  <HomeMore groups={menus} />
-                  {sessionOwner && (
-                    <button
-                      type="button"
-                      onClick={() => window.location.assign('/admin')}
-                      title="Open the owner-only system administration dashboard"
-                      className="shrink-0 whitespace-nowrap rounded-[2px] px-[7px] py-[2px] text-[12px] text-[#284d74] hover:bg-[#e1ebf5]"
-                    >
-                      Administration
-                    </button>
-                  )}
-                </>
+                <HomeMore groups={menus} />
               )}
             </>
           ) : (

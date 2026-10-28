@@ -147,8 +147,8 @@ function InitialScreen() {
       s.addMessage('W', `Program ${n} already exists`)
       return
     }
-    // classic flow: Create → Create Object Directory Entry (package $TMP)
-    s.setObjectDir({ name: n })
+    // classic flow: Create → Program Attributes → Object Directory Entry
+    s.beginSe38Create(n)
   }
 
   const ensureLoaded = async () => {
@@ -460,8 +460,14 @@ function ProgramAttributesDialog() {
   const name = useWorkbench((s) => s.se38Program)
   const mode = useWorkbench((s) => s.se38Mode)
   const storeProg = useWorkbench((s) => s.programs[name])
+  const createDraft = useWorkbench((s) => s.se38Create)
   const sessionUser = useWorkbench((s) => s.session.user)
-  const close = () => useWorkbench.getState().setSe38ShowSubobject(false)
+  const creating = createDraft?.name === name
+  const close = () => {
+    const s = useWorkbench.getState()
+    if (s.se38Create?.name === name) s.setSe38Create(null)
+    s.setSe38ShowSubobject(false)
+  }
 
   const [detail, setDetail] = useState<ProgramListItem | null>(null)
   const [title, setTitle] = useState('')
@@ -469,6 +475,9 @@ function ProgramAttributesDialog() {
   const [application, setApplication] = useState('')
   const [editorLock, setEditorLock] = useState(false)
   const [busy, setBusy] = useState(false)
+  // The details request runs asynchronously; never let its response overwrite
+  // fields the user has already edited in the meantime.
+  const fieldsTouched = useRef(false)
 
   useEffect(() => {
     let alive = true
@@ -477,8 +486,9 @@ function ProgramAttributesDialog() {
         if (!alive) return
         const hit = r.programs.find((p) => p.name === name) ?? null
         setDetail(hit)
-        setTitle(hit?.title ?? '')
-        setSelType(hit?.type ?? 'REPORT')
+        if (fieldsTouched.current) return
+        setTitle(hit?.title ?? createDraft?.title ?? '')
+        setSelType(hit?.type ?? createDraft?.type ?? 'REPORT')
       })
       .catch(() => {
         if (alive) setDetail(null)
@@ -486,13 +496,13 @@ function ProgramAttributesDialog() {
     return () => {
       alive = false
     }
-  }, [name])
+  }, [name, createDraft?.title, createDraft?.type])
 
   const isExample = detail?.isExample ?? storeProg?.isExample ?? false
-  const editable = mode === 'change' && !isExample
-  const status = storeProg?.dirty ? 'New(Revised)' : 'Active'
-  const createdAt = formatDate(detail?.createdAt ?? detail?.updatedAt)
-  const changedAt = formatDate(detail?.updatedAt)
+  const editable = (mode === 'change' || creating) && !isExample
+  const status = creating ? 'New' : storeProg?.dirty ? 'New(Revised)' : 'Active'
+  const createdAt = creating ? '—' : formatDate(detail?.createdAt ?? detail?.updatedAt)
+  const changedAt = creating ? '—' : formatDate(detail?.updatedAt)
   const typeSupported = REAL_TYPE_OPTIONS.some((o) => o.value === selType && o.supported)
 
   const checkEntries = () => {
@@ -520,6 +530,14 @@ function ProgramAttributesDialog() {
     }
     if (!typeSupported) {
       s.addMessage('E', `Type ${selType} is not supported by the training runtime`)
+      return
+    }
+    if (creating) {
+      // Attributes are complete: continue with the object directory entry.
+      s.setSe38Create(null)
+      s.setSe38ShowSubobject(false)
+      s.setObjectDir({ name, title: title.trim(), type: selType as ProgramType })
+      s.addMessage('I', `Attributes for program ${name} saved — maintain the object directory entry`)
       return
     }
     setBusy(true)
@@ -570,7 +588,10 @@ function ProgramAttributesDialog() {
             <span className="text-right text-[12.5px] text-[#17324a]">Title</span>
             <input
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                fieldsTouched.current = true
+                setTitle(e.target.value)
+              }}
               className="sap-field w-full max-w-[360px]"
               disabled={!editable}
               maxLength={80}
@@ -582,12 +603,12 @@ function ProgramAttributesDialog() {
 
             <span className="text-right text-[12.5px] text-[#17324a]">Created</span>
             <span className={`${READONLY_FIELD} w-[260px]`}>
-              {sessionUser} {createdAt}
+              {creating ? '—' : `${sessionUser} ${createdAt}`}
             </span>
 
             <span className="text-right text-[12.5px] text-[#17324a]">Last Changed</span>
             <span className={`${READONLY_FIELD} w-[260px]`}>
-              {sessionUser} {changedAt}
+              {creating ? '—' : `${sessionUser} ${changedAt}`}
             </span>
 
             <span className="text-right text-[12.5px] text-[#17324a]">Status</span>
@@ -601,7 +622,10 @@ function ProgramAttributesDialog() {
             <select
               className="sap-field w-[280px]"
               value={selType}
-              onChange={(e) => setSelType(e.target.value)}
+              onChange={(e) => {
+                fieldsTouched.current = true
+                setSelType(e.target.value)
+              }}
               disabled={!editable}
               aria-label="Program type"
             >

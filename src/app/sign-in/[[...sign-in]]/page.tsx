@@ -25,6 +25,17 @@ export default function SignInPage() {
           Secure sign-on is managed by Clerk. Use your verified email or Google account.
           <ClerkSessionNotice />
         </div>
+        <div
+          role="note"
+          className="mx-4 mt-4 border border-[#b9c9da] bg-[#eef4fa] px-4 py-3 text-[11.5px] leading-relaxed text-[#33475c]"
+        >
+          <p className="font-semibold text-[#17324a]">Google sign-in tip</p>
+          <p className="mt-0.5">
+            If Google stops on “Verifying it’s you…” and asks for a passkey, choose{' '}
+            <strong>Try another way</strong> → <strong>Enter your password</strong>. If the Google
+            page keeps buffering, close it and use the <strong>Email</strong> one-time code instead.
+          </p>
+        </div>
         <div className="flex justify-center px-4 py-6">
           {clerkPublishableConfigured() ? (
             <Suspense fallback={<div className="text-[12.5px] text-[#5b6d80]">Loading secure logon…</div>}>

@@ -13,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { useWorkbench } from './use-workbench'
+import { se38CreateSource } from '@/lib/program-defaults'
 import type { ProgramType, Topic } from './types'
 
 const DEFAULT_TEMPLATE = (name: string, type: ProgramType): string => {
@@ -101,13 +102,14 @@ export function ObjectDirectoryDialog() {
 
   const createLocalObject = async () => {
     if (!name || busy) return
+    const type = objectDir?.type ?? 'REPORT'
     setBusy(true)
     try {
       await createProgram({
         name,
-        title: name,
-        type: 'REPORT',
-        source: `REPORT ${name.toLowerCase()}.\n\nWRITE: / 'Hello from ${name}'.\n`,
+        title: objectDir?.title || name,
+        type,
+        source: se38CreateSource(name, type),
       })
     } finally {
       setBusy(false)
@@ -365,7 +367,7 @@ export function NewObjectDialog() {
 export function ConfirmCreateDialog() {
   const confirmCreate = useWorkbench((s) => s.confirmCreate)
   const setConfirmCreate = useWorkbench((s) => s.setConfirmCreate)
-  const openNewDialog = useWorkbench((s) => s.openNewDialog)
+  const beginSe38Create = useWorkbench((s) => s.beginSe38Create)
 
   if (!confirmCreate) return null
 
@@ -391,7 +393,7 @@ export function ConfirmCreateDialog() {
             onClick={() => {
               const name = confirmCreate.name
               setConfirmCreate(null)
-              openNewDialog({ prefillName: name })
+              beginSe38Create(name)
             }}
           >
             Create object…

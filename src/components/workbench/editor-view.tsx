@@ -415,7 +415,7 @@ export function EditorView({ programName }: { programName: string }) {
       {/* editor status line ("ABAP · Ln/Col" like the real ABAP editor) */}
       <div className="flex items-center gap-4 border-t border-[#d8e1ec] bg-[#eef2f7] px-3 py-[1px] font-mono text-[11px] text-[#5b6d80]">
         <span className="text-[#33475c]">ABAP</span>
-        <span className="text-[10.5px] text-[#93a9c2]">v{prog.version}</span>
+        <span className="text-[10.5px] text-[#55677a]">v{prog.version}</span>
         <span className="ml-auto">
           Ln {cursor.line} Col {cursor.col}
         </span>

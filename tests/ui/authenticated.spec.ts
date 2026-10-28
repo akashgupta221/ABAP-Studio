@@ -11,6 +11,28 @@ test.describe('owner workbench and administration', () => {
     await expect(page.locator('[data-app="abapforge"]')).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Main menu' })).toBeVisible()
     await expect(page.getByText('SAP Easy Access').first()).toBeVisible()
+
+    const easyAccess = page.getByTestId('easy-access')
+    await expect(easyAccess.getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-expanded', 'true')
+    await expect(easyAccess.getByRole('button', { name: 'SAP Menu' })).toHaveAttribute('aria-expanded', 'true')
+    await expect(easyAccess.getByText('Recently Used', { exact: true })).toHaveCount(0)
+    await expect(easyAccess.locator('button[aria-expanded="true"]')).toHaveCount(2)
+
+    // ABAP Training lives inside SAP Menu, after the standard folders.
+    const training = easyAccess.getByRole('button', { name: 'ABAP Training' })
+    await expect(training).toBeVisible()
+    expect(await training.evaluate((element) => Number.parseFloat(getComputedStyle(element).paddingLeft))).toBeGreaterThan(10)
+    const order = await easyAccess.evaluate((element) => {
+      const labels = Array.from(element.querySelectorAll('button')).map((button) => button.textContent?.trim() ?? '')
+      const find = (text: string) => labels.findIndex((label) => label.includes(text))
+      return { webClient: find('WebClient UI Framework'), training: find('ABAP Training') }
+    })
+    expect(order.webClient).toBeGreaterThan(-1)
+    expect(order.training).toBeGreaterThan(order.webClient)
+
+    // No extra top-level Administration action and no recent-command dropdown.
+    await expect(page.getByRole('navigation', { name: 'Main menu' }).getByRole('button', { name: 'Administration', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Command field history' })).toHaveCount(0)
     await expectNoSeriousA11y(page)
 
     await page.goto('/admin')
@@ -34,6 +56,61 @@ test.describe('owner workbench and administration', () => {
     await expect(page.getByRole('button', { name: 'Possible entries (F4)' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Check', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Where-Used List', exact: true })).toBeVisible()
+  })
+
+  test('SE38 create walks Program Attributes and Object Directory Entry into a clean include', async ({ page }) => {
+    const name = `Z_UI_INC_${Date.now().toString().slice(-6)}`
+    await page.goto('/')
+    await page.getByRole('textbox', { name: 'Command field' }).fill('SE38')
+    await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
+    await expect(page.getByRole('heading', { name: 'ABAP Editor: Initial Screen' })).toBeVisible()
+
+    await page.locator('#se38-program').fill(name)
+    await page.getByRole('button', { name: 'Create', exact: true }).click()
+
+    const attributes = page.getByRole('dialog', { name: `Program attributes ${name}` })
+    await expect(attributes).toBeVisible()
+    await expect(attributes).toContainText(`ABAP: Program Attributes ${name} Change`)
+    await attributes.getByLabel('Program title').fill('UI created include')
+    await attributes.getByLabel('Program type').selectOption('INCLUDE')
+    await attributes.getByRole('button', { name: 'Save', exact: true }).click()
+
+    const directory = page.getByRole('dialog', { name: /Create Object Directory Entry/ })
+    await expect(directory).toBeVisible()
+    await expect(directory.getByText(name, { exact: true }).first()).toBeVisible()
+    await directory.getByRole('button', { name: 'Local Object', exact: true }).click()
+
+    const editor = page.getByRole('textbox', { name: 'ABAP source editor' })
+    await expect(editor).toBeVisible()
+    const source = await editor.inputValue()
+    expect(source).toContain(`*& Include ${name}`)
+    expect(source.startsWith('*&---------------------------------------------------------------------*')).toBe(true)
+    expect(source).not.toContain('WRITE')
+    await expect(page).toHaveTitle(new RegExp(`ABAP Editor: Change Include ${name}$`))
+    await expectNoSeriousA11y(page)
+  })
+
+  test('SE38 action row keeps critical actions visible without horizontal scrolling', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('textbox', { name: 'Command field' }).fill('SE38')
+    await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
+    await expect(page.getByRole('heading', { name: 'ABAP Editor: Initial Screen' })).toBeVisible()
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    const nav = page.getByRole('navigation', { name: 'Main menu' })
+    for (const label of ['Check', 'Activate', 'Execute', 'Where-Used List', 'More']) {
+      await expect(nav.getByRole('button', { name: label, exact: true })).toBeVisible()
+    }
+    const overflow = await nav.evaluate((element) => {
+      const row = element.firstElementChild as HTMLElement | null
+      return row ? row.scrollWidth - row.clientWidth : -1
+    })
+    expect(overflow).toBeLessThanOrEqual(1)
+
+    await nav.getByRole('button', { name: 'More', exact: true }).click()
+    await expect(page.getByRole('menuitem', { name: 'Environment Analysis' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Delete...' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Variants' })).toBeVisible()
   })
 })
 
@@ -170,7 +247,8 @@ test.describe('Function Builder (SE37)', () => {
   test('owner can create a group and function module, activate it, test it and delete it', async ({ page }) => {
     const suffix = Date.now().toString().slice(-6)
     const group = `ZFG_UI_${suffix}`
-    const fm = `ZFM_UI_${suffix}`
+    const initialName = `ZFM_UI_${suffix}`
+    const fm = `ZFM_MAN_${suffix}`
 
     await page.getByRole('button', { name: 'Create group' }).click()
     const groupDialog = page.getByRole('dialog')
@@ -180,20 +258,46 @@ test.describe('Function Builder (SE37)', () => {
     await groupDialog.getByRole('button', { name: 'Create group' }).click()
     await expect(page.getByRole('button', { name: new RegExp(`${group} \\(0\\)`) })).toBeVisible()
 
+    await page.locator('#se37-fm-name').fill(initialName)
     await page.getByTestId('function-builder').getByRole('button', { name: 'Create', exact: true }).click()
     const fmDialog = page.getByRole('dialog')
     await expect(fmDialog.getByRole('heading', { name: 'Create function module' })).toBeVisible()
+    // The name is seeded from the selection field and remains fully editable.
+    await expect(fmDialog.locator('#new-fm-name')).toHaveValue(initialName)
     await fmDialog.getByLabel('Name').fill(fm)
+    await expect(fmDialog.locator('#new-fm-name')).toHaveValue(fm)
     await fmDialog.getByLabel('Short text').fill('UI function module')
     await fmDialog.getByRole('button', { name: 'Create function module' }).click()
     await expect(page.getByText(fm, { exact: true }).first()).toBeVisible()
     await expect(page.getByTestId('function-builder').getByText('Inactive', { exact: true }).first()).toBeVisible()
+
+    await page.getByRole('button', { name: 'Import', exact: true }).click()
+    await page.getByRole('button', { name: 'Add parameter' }).click()
+    await page.getByLabel('Parameter name 1').fill('NUM1')
+    await page.getByLabel('Type specification 1').fill('I')
+    await page.getByRole('button', { name: 'Add parameter' }).click()
+    await page.getByLabel('Parameter name 2').fill('NUM2')
+    await page.getByLabel('Type specification 2').fill('I')
+    await page.getByRole('button', { name: 'Export', exact: true }).click()
+    await page.getByRole('button', { name: 'Add parameter' }).click()
+    await page.getByLabel('Parameter name 1').fill('TOTAL')
+    await page.getByLabel('Type specification 1').fill('I')
+    await page.getByRole('button', { name: 'Source Code', exact: true }).click()
+    const generated = await page.getByRole('textbox', { name: 'ABAP source editor' }).inputValue()
+    expect(generated).toContain('*"*"Local Interface:')
+    expect(generated).toContain('*"     REFERENCE(NUM1) TYPE  I')
+    expect(generated).toContain('*"     REFERENCE(TOTAL) TYPE  I')
 
     await page.getByRole('textbox', { name: 'ABAP source editor' }).fill(
       `FUNCTION ${fm.toLowerCase()}.\n  WRITE: / 'ui function module'.\nENDFUNCTION.`,
     )
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByText(/saved — inactive until activated/)).toBeVisible()
+    const savedResponse = await page.request.get(`/api/functions/${fm}`)
+    const savedFunction = (await savedResponse.json()).function as { source: string }
+    expect(savedFunction.source).toContain('*"     REFERENCE(NUM1) TYPE  I')
+    expect(savedFunction.source).toContain('*"     REFERENCE(TOTAL) TYPE  I')
+    expect(savedFunction.source).toContain("WRITE: / 'ui function module'.")
     await page.getByRole('button', { name: 'Activate', exact: true }).click()
     await expect(page.getByText(/saved and activated/)).toBeVisible()
     await expect(page.getByTestId('function-builder').getByText('Active', { exact: true }).first()).toBeVisible()

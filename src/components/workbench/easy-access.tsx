@@ -13,6 +13,7 @@
 //   Development → ABAP Dictionary, Data Modeler, User Interface, ABAP Editor,
 //                 Function Builder, Class Builder, Shared Objects Area
 //                 Administration, Shared Objects Monitor
+//     ABAP Training (custom, inside SAP Menu after WebClient UI Framework)
 // Real transactions used by the training workbench:
 //   SE80 Object Navigator, SE16 Data Browser, SE38 ABAP Editor,
 //   SE11 ABAP Dictionary, SE37 Function Builder, SE24 Class Builder.
@@ -25,7 +26,7 @@ import {
 } from 'lucide-react'
 import { useWorkbench, api } from './use-workbench'
 import { groupTopicsByCategory, TOPIC_CATEGORIES } from './types'
-import type { RecentExecution, Topic } from './types'
+import type { Topic } from './types'
 
 // menu indentation steps (px) — 5 nesting levels
 const INDENT = [10, 26, 42, 58, 74]
@@ -55,14 +56,6 @@ const EMPTY_NOTE = 'No entries in this training system.'
 const UI_NOTE = 'Screen Painter and Menu Painter are not part of this training system.'
 const PROGRAMMING_NOTE =
   'Use Tools ▸ ABAP Workbench ▸ Development for the ABAP Editor, ABAP Dictionary, Class Builder and Function Builder.'
-
-function fmtDate(iso: string) {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  return `${dd}.${mm}.${d.getFullYear()}`
-}
 
 const ROW_CLS =
   'group flex min-h-[24px] w-full items-center gap-[5px] border-b border-[#eef2f7] pr-2 text-left hover:bg-[#e8f1fa]'
@@ -176,11 +169,9 @@ export function EasyAccess() {
   }
 
   const [topics, setTopics] = useState<Topic[] | null>(null)
-  const [recents, setRecents] = useState<RecentExecution[] | null>(null)
   const [sel, setSel] = useState<{ type: string; name: string; label: string } | null>(null)
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({
     favorites: true,
-    recent: false,
     sapmenu: true,
     tools: false,
     workbench: false,
@@ -201,16 +192,13 @@ export function EasyAccess() {
     api<{ topics: Topic[] }>('/api/topics')
       .then((r) => setTopics(r.topics))
       .catch(() => setTopics([]))
-    api<{ recents: RecentExecution[] }>('/api/recents')
-      .then((r) => setRecents(r.recents))
-      .catch(() => setRecents([]))
   }, [refreshFavorites])
 
   const open = (id: string) => !!openMap[id]
   const toggle = (id: string) => setOpenMap((o) => ({ ...o, [id]: !o[id] }))
   const setAll = (v: boolean) => {
     const ids = [
-      'favorites', 'recent', 'sapmenu', 'tools', 'workbench', 'overview', 'development',
+      'favorites', 'sapmenu', 'tools', 'workbench', 'overview', 'development',
       'programming', 'enhancement', 'switch', 'user-interface', 'training',
       ...STANDARD_FOLDERS,
       ...TOPIC_CATEGORIES.map((c) => `cat-${c.id}`),
@@ -337,40 +325,6 @@ export function EasyAccess() {
                     if (fv.objectType === 'TABLE') openBrowserFor(fv.objectName)
                     else void openProgramByName(fv.objectName)
                   }}
-                />
-              ))
-            )}
-          </TreeFolder>
-
-          {/* Recently Used */}
-          <TreeFolder level={0} label="Recently Used" open={open('recent')} onToggle={() => toggle('recent')}>
-            {recents === null ? (
-              <div className="space-y-1 py-1" style={indent(1)}>
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-[14px] w-64 animate-pulse bg-[#e6eef7]" />
-                ))}
-              </div>
-            ) : recents.length === 0 ? (
-              <p className="border-b border-[#eef2f7] py-[3px] text-[11.5px] italic text-[#55677a]" style={indent(1)}>
-                No executions yet — press F8 in the editor.
-              </p>
-            ) : (
-              recents.map((r) => (
-                <Leaf
-                  key={r.id}
-                  level={1}
-                  icon={<Play className="h-3.5 w-3.5" style={{ color: C_PROGRAM }} />}
-                  label={r.programName}
-                  objType="REPORT"
-                  objName={r.programName}
-                  hint={r.message || r.programName}
-                  meta={`${r.durationMs} ms · ${fmtDate(r.createdAt)}`}
-                  badge={
-                    r.status !== 'SUCCESS' ? (
-                      <span className="shrink-0 pl-2 text-[11px] font-medium text-[#b00020]">{r.status}</span>
-                    ) : undefined
-                  }
-                  onClick={() => void openProgramByName(r.programName)}
                 />
               ))
             )}
@@ -537,88 +491,87 @@ export function EasyAccess() {
                 </p>
               </TreeFolder>
             ))}
-          </TreeFolder>
-
-          {/* ABAP Training — custom area menu (topics → example programs) */}
-          <TreeFolder level={0} label="ABAP Training" open={open('training')} onToggle={() => toggle('training')}>
-            <Leaf
-              level={1}
-              icon={<Pencil className="h-3.5 w-3.5" style={{ color: C_PRACTICE }} />}
-              label="My Practice Program"
-              objType="REPORT"
-              objName="Z_MY_PRACTICE"
-              meta="Z_MY_PRACTICE"
-              hint="Your own private practice program — examples stay read-only; write, run and save your code here"
-              onClick={() => void openSandbox()}
-            />
-            <Leaf
-              level={1}
-              icon={<Sparkles className="h-3.5 w-3.5" style={{ color: C_TABLE }} />}
-              label="Modern ABAP Workspace"
-              meta="7.40 · CDS · RAP · AMDP"
-              hint="Executable 7.40 examples, validated CDS/RAP definitions and simulated AMDP — with explicit unsupported boundaries"
-              onClick={openModern}
-            />
-            <Leaf
-              level={1}
-              icon={<BookOpen className="h-3.5 w-3.5" style={{ color: C_TABLE }} />}
-              label="Syllabus Overview"
-              meta={topics ? `${topics.length} topics` : undefined}
-              hint="Open the complete training syllabus"
-              onClick={() => openSyllabusTopic(-1)}
-            />
-            {topics === null && (
-              <div className="space-y-1 py-1" style={indent(1)}>
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-[14px] w-72 animate-pulse bg-[#e6eef7]" />
-                ))}
-              </div>
-            )}
-            {topics && groupTopicsByCategory(topics).map((g) => (
-              <TreeFolder
-                key={g.id}
-                level={1}
-                label={g.label}
-                open={open(`cat-${g.id}`)}
-                onToggle={() => toggle(`cat-${g.id}`)}
-              >
-                {g.topics.map((t) => (
-                  <Fragment key={t.id}>
-                    <TreeFolder
-                      level={2}
-                      label={`${t.srNo} · ${t.title}`}
-                      open={open(`topic-${t.id}`)}
-                      onToggle={() => toggle(`topic-${t.id}`)}
-                    >
-                      {t.examples.length === 0 ? (
-                        <p className="border-b border-[#eef2f7] py-[3px] text-[11.5px] italic text-[#55677a]" style={indent(3)}>
-                          No example programs in this topic yet.
-                        </p>
-                      ) : (
-                        t.examples.map((ex) => (
-                          <Leaf
-                            key={ex.id}
-                            level={3}
-                            icon={<Play className="h-3.5 w-3.5" style={{ color: C_PROGRAM }} />}
-                            label={ex.name}
-                            objType="REPORT"
-                            objName={ex.name}
-                            hint={ex.title}
-                            meta={ex.title}
-                            onClick={() => void openProgramByName(ex.name)}
-                          />
-                        ))
-                      )}
-                    </TreeFolder>
-                  </Fragment>
-                ))}
-              </TreeFolder>
-            ))}
-            {topics !== null && topics.length === 0 && (
-              <p className="border-b border-[#eef2f7] py-[3px] text-[11.5px] italic text-[#55677a]" style={indent(1)}>
-                The training content is being seeded — topics will appear here shortly.
-              </p>
-            )}
+            {/* ABAP Training — custom area menu (topics → example programs), inside SAP Menu */}
+            <TreeFolder level={1} label="ABAP Training" open={open('training')} onToggle={() => toggle('training')}>
+              <Leaf
+                level={2}
+                icon={<Pencil className="h-3.5 w-3.5" style={{ color: C_PRACTICE }} />}
+                label="My Practice Program"
+                objType="REPORT"
+                objName="Z_MY_PRACTICE"
+                meta="Z_MY_PRACTICE"
+                hint="Your own private practice program — examples stay read-only; write, run and save your code here"
+                onClick={() => void openSandbox()}
+              />
+              <Leaf
+                level={2}
+                icon={<Sparkles className="h-3.5 w-3.5" style={{ color: C_TABLE }} />}
+                label="Modern ABAP Workspace"
+                meta="7.40 · CDS · RAP · AMDP"
+                hint="Executable 7.40 examples, validated CDS/RAP definitions and simulated AMDP — with explicit unsupported boundaries"
+                onClick={openModern}
+              />
+              <Leaf
+                level={2}
+                icon={<BookOpen className="h-3.5 w-3.5" style={{ color: C_TABLE }} />}
+                label="Syllabus Overview"
+                meta={topics ? `${topics.length} topics` : undefined}
+                hint="Open the complete training syllabus"
+                onClick={() => openSyllabusTopic(-1)}
+              />
+              {topics === null && (
+                <div className="space-y-1 py-1" style={indent(2)}>
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-[14px] w-72 animate-pulse bg-[#e6eef7]" />
+                  ))}
+                </div>
+              )}
+              {topics && groupTopicsByCategory(topics).map((g) => (
+                <TreeFolder
+                  key={g.id}
+                  level={2}
+                  label={g.label}
+                  open={open(`cat-${g.id}`)}
+                  onToggle={() => toggle(`cat-${g.id}`)}
+                >
+                  {g.topics.map((t) => (
+                    <Fragment key={t.id}>
+                      <TreeFolder
+                        level={3}
+                        label={`${t.srNo} · ${t.title}`}
+                        open={open(`topic-${t.id}`)}
+                        onToggle={() => toggle(`topic-${t.id}`)}
+                      >
+                        {t.examples.length === 0 ? (
+                          <p className="border-b border-[#eef2f7] py-[3px] text-[11.5px] italic text-[#55677a]" style={indent(4)}>
+                            No example programs in this topic yet.
+                          </p>
+                        ) : (
+                          t.examples.map((ex) => (
+                            <Leaf
+                              key={ex.id}
+                              level={4}
+                              icon={<Play className="h-3.5 w-3.5" style={{ color: C_PROGRAM }} />}
+                              label={ex.name}
+                              objType="REPORT"
+                              objName={ex.name}
+                              hint={ex.title}
+                              meta={ex.title}
+                              onClick={() => void openProgramByName(ex.name)}
+                            />
+                          ))
+                        )}
+                      </TreeFolder>
+                    </Fragment>
+                  ))}
+                </TreeFolder>
+              ))}
+              {topics !== null && topics.length === 0 && (
+                <p className="border-b border-[#eef2f7] py-[3px] text-[11.5px] italic text-[#55677a]" style={indent(2)}>
+                  The training content is being seeded — topics will appear here shortly.
+                </p>
+              )}
+            </TreeFolder>
           </TreeFolder>
         </div>
       </div>

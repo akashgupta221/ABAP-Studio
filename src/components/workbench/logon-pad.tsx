@@ -166,6 +166,10 @@ export function LogonPad() {
                 Use a verified email one-time code or Google. ABAP-Studio never stores an
                 application password.
               </p>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-[#44586c]">
+                Google passkey tip: choose <strong>Try another way</strong> →{' '}
+                <strong>Enter your password</strong>, or use the email one-time code.
+              </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Link href="/sign-in" className="sap-btn sap-btn-primary inline-flex items-center">
                   Log On with Email / Google

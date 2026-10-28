@@ -11,6 +11,7 @@ import {
   defaultFmSource,
   sanitizeFmParams,
   serializeFmParams,
+  syncFmInterface,
   toFunctionDto,
 } from '@/lib/function-module'
 import { canEditFunctionGroup, canViewFunctionGroup, functionListWhere } from '@/lib/access'
@@ -96,9 +97,10 @@ export async function POST(req: NextRequest) {
 
     const title = String(body.title ?? '').trim().slice(0, 120)
     const params = sanitizeFmParams(body.params)
-    const source = typeof body.source === 'string' && body.source.trim()
+    const requestedSource = typeof body.source === 'string' && body.source.trim()
       ? body.source
-      : defaultFmSource(name, title)
+      : defaultFmSource(name, params)
+    const source = syncFmInterface(requestedSource, params)
     if (Buffer.byteLength(source, 'utf8') > MAX_FM_SOURCE_BYTES) {
       return NextResponse.json({ error: 'Function module source is too large' }, { status: 413 })
     }

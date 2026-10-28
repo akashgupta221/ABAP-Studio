@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog'
 import { useWorkbench, api } from './use-workbench'
 import { AbapEditor } from './abap-editor'
+import { syncFmInterface } from '@/lib/function-module'
 import type {
   CheckIssue,
   FmParam,
@@ -85,17 +86,22 @@ function cloneParams(source: FmParams): FmParams {
 }
 
 function draftFrom(fm: FunctionModule): FmDraft {
+  const params: FmParams = {
+    import: fm.importParams ?? [],
+    export: fm.exportParams ?? [],
+    changing: fm.changingParams ?? [],
+    tables: fm.tablesParams ?? [],
+    exceptions: fm.exceptions ?? [],
+  }
   return {
     title: fm.title ?? '',
     groupName: fm.groupName,
-    source: fm.source ?? '',
-    params: {
-      import: fm.importParams ?? [],
-      export: fm.exportParams ?? [],
-      changing: fm.changingParams ?? [],
-      tables: fm.tablesParams ?? [],
-      exceptions: fm.exceptions ?? [],
-    },
+    // Private modules always display the generated interface block. Shared
+    // examples keep their curated source untouched.
+    source: fm.isExample
+      ? (fm.source ?? '')
+      : syncFmInterface(fm.source ?? '', params),
+    params,
   }
 }
 
@@ -131,6 +137,7 @@ export function FunctionBuilderView() {
   const selected = useWorkbench((s) => s.selectedFunction)
   const setSelected = useWorkbench((s) => s.setSelectedFunction)
   const addMessage = useWorkbench((s) => s.addMessage)
+  const editorFontSize = useWorkbench((s) => s.editorFontSize)
 
   const [fms, setFms] = useState<FunctionModule[]>([])
   const [groups, setGroups] = useState<FunctionGroup[]>([])
@@ -258,7 +265,13 @@ export function FunctionBuilderView() {
   }
 
   const updateDraft = (patch: Partial<FmDraft>) => {
-    setDraft((current) => current ? { ...current, ...patch } : current)
+    setDraft((current) => {
+      if (!current) return current
+      const next = { ...current, ...patch }
+      // Keep the generated interface block in lockstep with parameter edits.
+      if (patch.params) next.source = syncFmInterface(next.source, next.params)
+      return next
+    })
   }
 
   const updateParam = (kind: ParamKind, index: number, patch: Partial<FmParam>) => {
@@ -266,7 +279,7 @@ export function FunctionBuilderView() {
       if (!current) return current
       const params = cloneParams(current.params)
       params[kind] = params[kind].map((param, i) => i === index ? { ...param, ...patch } : param)
-      return { ...current, params }
+      return { ...current, params, source: syncFmInterface(current.source, params) }
     })
   }
 
@@ -275,7 +288,7 @@ export function FunctionBuilderView() {
       if (!current) return current
       const params = cloneParams(current.params)
       params[kind] = [...params[kind], { name: `P_${params[kind].length + 1}`, type: 'STRING', optional: false, default: '' }]
-      return { ...current, params }
+      return { ...current, params, source: syncFmInterface(current.source, params) }
     })
   }
 
@@ -284,7 +297,7 @@ export function FunctionBuilderView() {
       if (!current) return current
       const params = cloneParams(current.params)
       params[kind] = params[kind].filter((_, i) => i !== index)
-      return { ...current, params }
+      return { ...current, params, source: syncFmInterface(current.source, params) }
     })
   }
 
@@ -978,7 +991,7 @@ export function FunctionBuilderView() {
                         value={draft.source}
                         readOnly={!editing}
                         onChange={(value) => updateDraft({ source: value })}
-                        fontSize={12.5}
+                        fontSize={editorFontSize}
                       />
                     </div>
                   </div>
@@ -1178,6 +1191,7 @@ export function FunctionBuilderView() {
         open={createFmOpen}
         onOpenChange={setCreateFmOpen}
         groups={editableGroups}
+        initialName={filter}
         onCreated={async (fm) => {
           setCreateFmOpen(false)
           setNotice({ kind: 'S', text: `Function module ${fm.name} created. Review the source and activate it.` })
@@ -1391,11 +1405,13 @@ function CreateFmDialog({
   open,
   onOpenChange,
   groups,
+  initialName = '',
   onCreated,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   groups: FunctionGroup[]
+  initialName?: string
   onCreated: (fm: FunctionModule) => void | Promise<void>
 }) {
   const [name, setName] = useState('')
@@ -1406,12 +1422,12 @@ function CreateFmDialog({
 
   useEffect(() => {
     if (open) {
-      setName('')
+      setName(initialName.trim().toUpperCase())
       setTitle('')
       setGroupName(groups[0]?.name ?? '')
       setError('')
     }
-  }, [open, groups])
+  }, [open, groups, initialName])
 
   const submit = async () => {
     setBusy(true)
@@ -1443,9 +1459,11 @@ function CreateFmDialog({
               id="new-fm-name"
               value={name}
               onChange={(e) => setName(e.target.value.toUpperCase())}
+              onFocus={(e) => e.currentTarget.select()}
               placeholder="Z_MY_MODULE"
               className="sap-field w-full font-mono uppercase"
               autoComplete="off"
+              autoFocus
             />
           </div>
           <div className="flex items-center gap-2">
@@ -1472,6 +1490,9 @@ function CreateFmDialog({
               ))}
             </select>
           </div>
+          <p className="pl-[128px] text-[11px] text-[#55677a]">
+            Type the module name directly — names start with Z or Y.
+          </p>
           {groups.length === 0 && <p className="text-[11.5px] text-[#6f5712]">Create a private function group first.</p>}
           {error && <p className="text-[11.5px] text-[#b3261e]" role="alert">{error}</p>}
         </div>

@@ -123,18 +123,89 @@ export function serializeFmParams(params: FmParams): {
   }
 }
 
-export function defaultFmSource(name: string, title: string): string {
-  return `FUNCTION ${name.toLowerCase()}.
-*"----------------------------------------------------------------------
-*"*" Local Interface:
-*"  (maintain parameters on the Import / Export / Changing / Tables /
-*"   Exceptions tabs of the Function Builder)
-*"----------------------------------------------------------------------
+export function defaultFmSource(name: string, params: FmParams = emptyFmParams()): string {
+  return `FUNCTION ${name.toUpperCase()}.\n${fmInterfaceBlock(params)}\n\nENDFUNCTION.\n`
+}
 
-* ${title || `TODO: implement ${name.toLowerCase()}`}
+const INTERFACE_RULE = `*"${'-'.repeat(70)}`
+const INTERFACE_MARKER_TEXT = '*"*"Local Interface:'
+const INTERFACE_MARKER = /^\*"\*"\s*Local Interface:/
 
-ENDFUNCTION.
-`
+function interfaceParamLine(param: FmParam): string {
+  const type = String(param.type ?? '').trim().toUpperCase()
+  let line = `*"     REFERENCE(${param.name})`
+  if (type) {
+    line += ` TYPE  ${type}`
+    if (param.decimals) line += ` DECIMALS ${param.decimals}`
+  }
+  if (param.optional) line += ' OPTIONAL'
+  const fallback = String(param.default ?? '').trim()
+  if (fallback) line += ` DEFAULT ${fallback}`
+  return line
+}
+
+/**
+ * SAP-style generated Local Interface comment block. The block is derived
+ * solely from the parameter definitions, exactly like the block SE37 writes
+ * into a function module when its interface changes.
+ */
+export function fmInterfaceBlock(params: FmParams): string {
+  const lines = [INTERFACE_RULE, INTERFACE_MARKER_TEXT]
+  const section = (label: string, entries: string[]) => {
+    if (entries.length === 0) return
+    lines.push(`*"  ${label}`)
+    for (const entry of entries) lines.push(entry)
+  }
+  section('IMPORTING', params.import.map(interfaceParamLine))
+  section('EXPORTING', params.export.map(interfaceParamLine))
+  section('CHANGING', params.changing.map(interfaceParamLine))
+  section('TABLES', params.tables.map(interfaceParamLine))
+  section(
+    'EXCEPTIONS',
+    params.exceptions
+      .map((name) => String(name ?? '').trim().toUpperCase())
+      .filter(Boolean)
+      .map((name) => `*"     ${name}`),
+  )
+  lines.push(INTERFACE_RULE)
+  return lines.join('\n')
+}
+
+/**
+ * Replace (or insert) the Local Interface block in a function module source.
+ * Everything outside the block is preserved; a non-FM source is returned
+ * unchanged so the helper is safe for arbitrary editor content.
+ */
+export function syncFmInterface(source: string, params: FmParams): string {
+  const lines = source.split('\n')
+  const marker = lines.findIndex((line) => INTERFACE_MARKER.test(line.trimStart()))
+  const block = fmInterfaceBlock(params).split('\n')
+
+  if (marker >= 0) {
+    const start = marker > 0 && /^\*"-{10,}\s*$/.test(lines[marker - 1].trim())
+      ? marker - 1
+      : marker
+    let end = marker
+    let closed = false
+    for (let i = marker + 1; i < lines.length; i += 1) {
+      if (/^\*"-{10,}\s*$/.test(lines[i].trim())) {
+        end = i
+        closed = true
+        break
+      }
+    }
+    if (!closed) {
+      // Unfinished block: consume the stale interface comment lines.
+      while (end + 1 < lines.length && lines[end + 1].trimStart().startsWith('*"')) end += 1
+    }
+    lines.splice(start, end - start + 1, ...block)
+    return lines.join('\n')
+  }
+
+  const functionLine = lines.findIndex((line) => /^\s*FUNCTION\s+\S+/i.test(line))
+  if (functionLine < 0) return source
+  lines.splice(functionLine + 1, 0, ...block)
+  return lines.join('\n')
 }
 
 export function changedOnNow(): string {
