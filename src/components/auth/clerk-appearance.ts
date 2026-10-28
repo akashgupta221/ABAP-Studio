@@ -1,5 +1,7 @@
 // Clerk owns the interactive identity form; these tokens keep its card inside
-// the manifest coupon instead of introducing a second visual system.
+// the manifest coupon instead of introducing a second visual system. Clerk's
+// runtime CSS outranks these Tailwind utilities, so the card panel itself is
+// flattened in globals.css (.mf-auth-clerk .cl-cardBox / .cl-card).
 export const clerkAppearance = {
   variables: {
     colorPrimary: '#0a6ed1',

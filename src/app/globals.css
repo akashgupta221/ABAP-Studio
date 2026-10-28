@@ -1815,6 +1815,21 @@ input[type='radio'].sap-radio:checked::after {
   margin-top: 14px;
 }
 .mf-auth-clerk > div { width: 100%; }
+/* Clerk injects its card styles at runtime (unlayered), so the Tailwind
+   utilities in clerkAppearance lose the cascade. Flatten the Clerk card into
+   the logon coupon here: no second panel, no shadow, no rounding. */
+.mf-auth-clerk .cl-cardBox,
+.mf-auth-clerk .cl-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+/* Clerk ignores the configured input fill on these builds; match the form
+   fields used elsewhere on the logon page instead of plain white. */
+.mf-auth-clerk .cl-formFieldInput {
+  background: var(--mf-surface);
+}
 .mf-auth-fallback {
   margin-top: 14px;
   border: 1px solid #e3b4af;
