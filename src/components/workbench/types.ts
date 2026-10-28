@@ -117,6 +117,8 @@ export interface ProgramListItem {
   topicTitle: string | null
   createdAt?: string
   updatedAt: string
+  ownerId?: string | null
+  ownerUsername?: string | null
 }
 
 export interface ProgramFull extends ProgramListItem {
@@ -267,7 +269,7 @@ export interface SearchGroup {
 export type Se38Subobject = 'source' | 'variants' | 'attributes' | 'text' | 'doc'
 
 export const SE38_SUBOBJECT_LABELS: Record<Se38Subobject, string> = {
-  source: 'Source code',
+  source: 'Source Code',
   variants: 'Variants',
   attributes: 'Attributes',
   text: 'Text elements',

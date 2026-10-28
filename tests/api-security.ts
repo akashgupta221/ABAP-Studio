@@ -474,6 +474,67 @@ async function main() {
   })
   check('active function modules are callable from ABAP programs', activeCall.status === 200 && activeCall.data.status === 'SUCCESS', JSON.stringify(activeCall.data))
 
+  // Local Interface blocks are generated from the parameter tables and kept in
+  // sync on every save, whether the browser changed parameters or only source.
+  const ifFm = `ZFM_IF_${suffix}`
+  const ifCreate = await call('/api/functions', {
+    method: 'POST',
+    cookie: cookieA,
+    body: {
+      name: ifFm,
+      groupName: fmGroup,
+      title: 'Interface sync module',
+      params: {
+        import: [{ name: 'iv_text', type: 'STRING', optional: true }],
+        export: [{ name: 'ev_result', type: 'I' }],
+      },
+    },
+  })
+  check('function creation generates the Local Interface block', ifCreate.status === 201 && ifCreate.data.function.source.includes('*"*"Local Interface:'), JSON.stringify(ifCreate.data))
+  check('generated block lists importing and exporting parameters',
+    ifCreate.data?.function?.source?.includes('*"     REFERENCE(IV_TEXT) TYPE  STRING OPTIONAL') &&
+    ifCreate.data?.function?.source?.includes('*"     REFERENCE(EV_RESULT) TYPE  I'))
+  check('generated source keeps the FUNCTION and ENDFUNCTION shell',
+    ifCreate.data?.function?.source?.startsWith(`FUNCTION ${ifFm}.`) &&
+    ifCreate.data?.function?.source?.trimEnd().endsWith('ENDFUNCTION.'))
+
+  const ifParams = await call(`/api/functions/${ifFm}`, {
+    method: 'PUT',
+    cookie: cookieA,
+    body: {
+      params: {
+        import: [{ name: 'iv_text', type: 'STRING', optional: true }],
+        export: [{ name: 'ev_result', type: 'I' }],
+        changing: [{ name: 'cv_count', type: 'I', default: '0' }],
+        tables: [{ name: 'et_rows', type: 'ZROW' }],
+        exceptions: ['not_found'],
+      },
+    },
+  })
+  check('parameter-only saves regenerate the interface block',
+    ifParams.status === 200 &&
+    ifParams.data.function.source.includes('*"     REFERENCE(CV_COUNT) TYPE  I DEFAULT 0') &&
+    ifParams.data.function.source.includes('*"     REFERENCE(ET_ROWS) TYPE  ZROW') &&
+    ifParams.data.function.source.includes('*"     NOT_FOUND'),
+    JSON.stringify(ifParams.data))
+
+  const ifEdited = await call(`/api/functions/${ifFm}`, {
+    method: 'PUT',
+    cookie: cookieA,
+    body: { source: `FUNCTION ${ifFm}.\n  WRITE: / 'interface sync'.\nENDFUNCTION.\n` },
+  })
+  check('source-only saves re-insert the interface block',
+    ifEdited.status === 200 &&
+    ifEdited.data.function.source.includes('*"     REFERENCE(IV_TEXT) TYPE  STRING OPTIONAL') &&
+    ifEdited.data.function.source.includes("  WRITE: / 'interface sync'."),
+    JSON.stringify(ifEdited.data))
+  check('the synchronised interface survives an immediate read',
+    (await call(`/api/functions/${ifFm}`, { cookie: cookieA })).data?.function?.source === ifEdited.data.function.source)
+  check('the interface test module can be deleted', (await call(`/api/functions/${ifFm}`, {
+    method: 'DELETE',
+    cookie: cookieA,
+  })).status === 200)
+
   // Cross-tenant isolation: a private active module must not enter another
   // user's engine snapshot, even when its name is guessed exactly.
   const bGroup = `ZFGB_${suffix}`

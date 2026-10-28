@@ -6,9 +6,9 @@ import { useShallow } from 'zustand/react/shallow'
 import { UserButton } from '@clerk/nextjs'
 import { ChevronRight, Redo2, Undo2 } from 'lucide-react'
 import {
-  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent,
+  DropdownMenuSubTrigger, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Toaster } from '@/components/ui/sonner'
 import { useWorkbench } from './use-workbench'
@@ -30,7 +30,7 @@ import { DebuggerView } from './debugger-view'
 import { DumpsView } from './dumps-view'
 import { CommandPalette } from './command-palette'
 import {
-  AboutDialog, ConfirmCreateDialog, ConfirmDeleteDialog, LogoffConfirmDialog,
+  AboutDialog, ConfirmCreateDialog, ConfirmDeleteDialog, GuiSettingsDialog, LogoffConfirmDialog,
   NewObjectDialog, ObjectDirectoryDialog, SystemStatusDialog, TcodeRegistryDialog,
 } from './dialogs'
 import { LogonPad } from './logon-pad'
@@ -238,6 +238,143 @@ interface MMenu {
   items: MItem[]
 }
 
+// ── App 2-style flat screen action bars ────────────────────────────────
+// The reference WebGUI shows one flat action row per screen (no dropdown
+// menu bar and no second icon toolbar). Screens subscribe to this event.
+function fireScreenAction(target: 'se38' | 'functions' | 'home', id: string) {
+  window.dispatchEvent(new CustomEvent('sap-screen-action', { detail: { target, id } }))
+}
+
+const HOME_FLAT_ACTIONS: { id: string; label: string; className?: string }[] = [
+  { id: 'toggle-sapmenu', label: 'SAP menu' },
+  { id: 'workplace', label: 'SAP Business Workplace' },
+  { id: 'add-favorite', label: 'Add to Favorites' },
+]
+
+const SE38_FLAT_ACTIONS: { id: string; label: string; className?: string }[] = [
+  { id: 'check', label: 'Check' },
+  { id: 'activate', label: 'Activate' },
+  { id: 'execute', label: 'Execute' },
+  { id: 'where-used', label: 'Where-Used List' },
+  { id: 'env', label: 'Environment Analysis', className: 'hidden lg:block' },
+  { id: 'help', label: 'Online Help', className: 'hidden lg:block' },
+  { id: 'delete', label: 'Delete...', className: 'hidden lg:block' },
+  { id: 'copy', label: 'Copy...', className: 'hidden lg:block' },
+  { id: 'rename', label: 'Rename...', className: 'hidden xl:block' },
+  { id: 'debug', label: 'Debugging', className: 'hidden xl:block' },
+  { id: 'with-variant', label: 'With Variant', className: 'hidden xl:block' },
+  { id: 'variants', label: 'Variants', className: 'hidden xl:block' },
+]
+
+const FN_FLAT_ACTIONS: { id: string; label: string; className?: string }[] = [
+  { id: 'create', label: 'Create' },
+  { id: 'change', label: 'Change' },
+  { id: 'display', label: 'Display' },
+  { id: 'where-used', label: 'Where-Used List', className: 'hidden md:block' },
+  { id: 'documentation', label: 'Documentation', className: 'hidden lg:block' },
+]
+
+const SE38_MORE: { label: string; id: string }[] = [
+  { label: 'Create (F5)', id: 'create' },
+  { label: 'Display (F7)', id: 'display' },
+  { label: 'Change (F6)', id: 'change' },
+  { label: 'Information — attributes', id: 'attributes' },
+  { label: 'Text elements', id: 'text' },
+  { label: 'Documentation', id: 'doc' },
+  { label: 'Attributes (change)', id: 'attributes-change' },
+  { label: 'Environment Analysis', id: 'env' },
+  { label: 'Online Help', id: 'help' },
+  { label: 'Delete...', id: 'delete' },
+  { label: 'Copy...', id: 'copy' },
+  { label: 'Rename...', id: 'rename' },
+  { label: 'Debugging', id: 'debug' },
+  { label: 'With Variant', id: 'with-variant' },
+  { label: 'Variants', id: 'variants' },
+]
+
+const FN_MORE: MItem[] = [
+  { label: 'Where-Used List', run: () => fireScreenAction('functions', 'where-used') },
+  { label: 'Documentation', run: () => fireScreenAction('functions', 'documentation') },
+  { sep: true },
+  { label: 'Back to Function Builder Overview (F3)', run: () => fireScreenAction('functions', 'back') },
+  { label: 'Object Navigator (SE80)', run: () => { useWorkbench.getState().navigate('search'); useWorkbench.getState().addMessage('I', 'Object Navigator (SE80)') } },
+  { label: 'Go to ABAP Editor Initial Screen', run: () => useWorkbench.getState().openSe38Initial() },
+  { sep: true },
+  { label: 'SAP GUI Settings…', run: () => useWorkbench.getState().setSettingsOpen(true) },
+  { label: 'About SAP System…', run: () => useWorkbench.getState().setAboutOpen(true) },
+]
+
+const HOME_MORE_TAIL: MItem[] = [
+  { label: 'Settings…', run: () => useWorkbench.getState().setSettingsOpen(true) },
+  { label: 'About SAP GUI for HTML', run: () => useWorkbench.getState().setAboutOpen(true) },
+]
+
+function FlatMore({ items }: { items: MItem[] }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex shrink-0 items-center gap-1 rounded-[2px] px-[7px] py-[2px] text-[12px] text-[#284d74] outline-none hover:bg-[#e1ebf5] data-[state=open]:bg-[#e1ebf5]">
+        More
+        <svg width="8" height="6" viewBox="0 0 8 6" aria-hidden="true">
+          <path d="M0.5 0.5 L7.5 0.5 L4 5 Z" fill="currentColor" />
+        </svg>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={1}
+        className="min-w-[240px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+      >
+        <MenuList items={items} />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function HomeMore({ groups }: { groups: MMenu[] }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex shrink-0 items-center gap-1 rounded-[2px] px-[7px] py-[2px] text-[12px] text-[#284d74] outline-none hover:bg-[#e1ebf5] data-[state=open]:bg-[#e1ebf5]">
+        More
+        <svg width="8" height="6" viewBox="0 0 8 6" aria-hidden="true">
+          <path d="M0.5 0.5 L7.5 0.5 L4 5 Z" fill="currentColor" />
+        </svg>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={1}
+        className="min-w-[240px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+      >
+        {groups.map((group) => (
+          <DropdownMenuSub key={group.label}>
+            <DropdownMenuSubTrigger className="flex items-center justify-between gap-8 rounded-none px-2.5 py-[6px] text-[13px] text-[#12283c] focus:bg-[#bcd6f2] focus:text-[#0a2f57] data-[state=open]:bg-[#bcd6f2] data-[state=open]:text-[#0a2f57]">
+              <span>{group.label}</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent
+              sideOffset={2}
+              alignOffset={-4}
+              className="min-w-[240px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+            >
+              <MenuList items={group.items} />
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        ))}
+        <DropdownMenuSeparator className="my-0.5 bg-[#d6dfe8]" />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="flex items-center justify-between gap-8 rounded-none px-2.5 py-[6px] text-[13px] text-[#12283c] focus:bg-[#bcd6f2] focus:text-[#0a2f57] data-[state=open]:bg-[#bcd6f2] data-[state=open]:text-[#0a2f57]">
+            <span>GUI Actions and Settings</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent
+            sideOffset={2}
+            alignOffset={-4}
+            className="min-w-[240px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+          >
+            <MenuList items={HOME_MORE_TAIL} />
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 function MenuList({ items }: { items: MItem[] }) {
   return (
     <>
@@ -269,13 +406,10 @@ export function SapShell() {
   const activateTab = useWorkbench((s) => s.activateTab)
   const closeTab = useWorkbench((s) => s.closeTab)
   const logon = useWorkbench((s) => s.session.loggedIn)
-  const editorFontSize = useWorkbench((s) => s.editorFontSize)
-  const systemInfoVisible = useWorkbench((s) => s.systemInfoVisible)
+  const sessionOwner = useWorkbench((s) => s.session.owner)
   const isMobile = useIsMobile()
   const setSystemStatusOpen = useWorkbench((s) => s.setSystemStatusOpen)
   const setLogoffConfirm = useWorkbench((s) => s.setLogoffConfirm)
-  const setEditorFontSize = useWorkbench((s) => s.setEditorFontSize)
-  const toggleSystemInfo = useWorkbench((s) => s.toggleSystemInfo)
   const pendingSelectionObj = useWorkbench((s) => s.pendingSelection)
   const pendingSelection = !!pendingSelectionObj
   const findOpen = useWorkbench((s) => s.findOpen)
@@ -284,7 +418,7 @@ export function SapShell() {
   const activeTab = tabs.find((t) => t.key === activeTabKey) ?? null
 
   // minimal reactive program info (avoids re-render on every keystroke)
-  const { activeProgramName, activeDirty, activeIsExample } = useWorkbench(
+  const { activeProgramName, activeDirty, activeIsExample, activeProgramType } = useWorkbench(
     useShallow((s) => {
       const t = s.tabs.find((x) => x.key === s.activeTabKey)
       const n = t?.kind === 'program' ? t.programName : null
@@ -293,6 +427,7 @@ export function SapShell() {
         activeProgramName: n,
         activeDirty: !!p?.dirty,
         activeIsExample: !!p?.isExample,
+        activeProgramType: p?.type ?? null,
       }
     }),
   )
@@ -308,6 +443,7 @@ export function SapShell() {
     view,
     tabs,
     activeTabKey,
+    activeProgramType,
     lastTcode,
     browserTable,
     selectedFunction,
@@ -325,10 +461,21 @@ export function SapShell() {
   // ── common actions (store-level, stable) ─────────────────────────────
   const back = () => {
     const s = useWorkbench.getState()
+    if (s.view === 'functions') {
+      fireScreenAction('functions', 'back')
+      return
+    }
     if (s.view === 'se38') {
       if (s.se38ShowSubobject) s.setSe38ShowSubobject(false)
       else s.navigate('home')
       return
+    }
+    if (s.view === 'tab') {
+      const tab = s.tabs.find((t) => t.key === s.activeTabKey)
+      if (tab?.kind === 'program') {
+        s.openSe38Initial(tab.programName)
+        return
+      }
     }
     if (s.view !== 'tab') {
       s.navigate('home')
@@ -403,7 +550,8 @@ export function SapShell() {
         { label: 'End Session', disabled: true },
         { sep: true },
         { label: 'Status…', run: () => setSystemStatusOpen(true) },
-        ...(useWorkbench.getState().session.owner
+        { label: 'SAP GUI Settings…', run: () => useWorkbench.getState().setSettingsOpen(true) },
+        ...(sessionOwner
           ? ([
               { sep: true },
               { label: 'Administration', run: () => window.location.assign('/admin') },
@@ -515,6 +663,8 @@ export function SapShell() {
           items: [
             { label: 'Pretty Printer', shortcut: 'Shift+F1', run: () => w().prettyPrintActive() },
             { sep: true },
+            { label: 'SAP GUI Settings…', run: () => w().setSettingsOpen(true) },
+            { sep: true },
             { label: 'Text Elements', disabled: true },
             { label: 'Version Management', disabled: true },
             { label: 'Runtime Analysis', disabled: true },
@@ -616,13 +766,15 @@ export function SapShell() {
         {
           label: 'Function Builder',
           items: [
+            { label: 'Back', shortcut: 'F3', run: () => fireScreenAction('functions', 'back') },
+            { sep: true },
             { label: 'Display', run: () => {} },
             { label: 'Change', disabled: true },
             { sep: true },
             { label: 'Check', disabled: true },
             { label: 'Test (F8)', run: () => w().addMessage('I', 'Function Module Test: use the test console in the view below') },
             { sep: true },
-            { label: 'Display Object List', disabled: true },
+            { label: 'SAP GUI Settings…', run: () => w().setSettingsOpen(true) },
           ],
         },
         gotoMenu,
@@ -755,16 +907,18 @@ export function SapShell() {
         label: 'Edit',
         items: [
           { label: 'Find Object…', shortcut: 'Ctrl+K', run: () => w().setCommandPaletteOpen(true) },
-          { sep: true },
-          { label: 'Display Object…', disabled: true },
+          { label: 'Global Object Search', run: () => w().navigate('search') },
         ],
       },
       {
         label: 'Favorites',
         items: [
-          { label: 'Add to Favorites', disabled: true },
-          { label: 'Change…', disabled: true },
-          { label: 'Delete', disabled: true },
+          { label: 'Add to Favorites', run: () => fireScreenAction('home', 'add-favorite') },
+          { label: 'Remove from Favorites', run: () => fireScreenAction('home', 'remove-favorite') },
+          { label: 'Change Favorites…', run: () => fireScreenAction('home', 'edit-favorites') },
+          { sep: true },
+          { label: 'Expand All', run: () => fireScreenAction('home', 'expand-all') },
+          { label: 'Collapse All', run: () => fireScreenAction('home', 'collapse-all') },
           { sep: true },
           { label: 'Refresh Favorites', run: () => void w().refreshFavorites() },
         ],
@@ -772,14 +926,38 @@ export function SapShell() {
       {
         label: 'Extras',
         items: [
-          { label: 'Global Object Search', run: () => w().navigate('search') },
-          { label: 'SAP GUI Settings…', disabled: true },
+          { label: 'Documentation — syllabus', run: () => fireScreenAction('home', 'syllabus') },
+          { sep: true },
+          { label: 'Create Role (PFCG)', run: () => fireScreenAction('home', 'create-role') },
+          { label: 'Assign Users', run: () => fireScreenAction('home', 'assign-users') },
+          { sep: true },
+          { label: 'SAP GUI Settings…', run: () => w().setSettingsOpen(true) },
         ],
       },
       systemMenu,
       helpMenu,
     ]
-  }, [view, activeTab?.kind, activeTabKey, activeProgramName, activeDirty, activeIsExample, findOpen, setLogoffConfirm, setSystemStatusOpen])
+  }, [view, activeTab?.kind, activeTabKey, activeProgramName, activeDirty, activeIsExample, findOpen, setLogoffConfirm, setSystemStatusOpen, sessionOwner])
+
+  // App 2 shows one flat action row for the initial SE38 / SE37 screens and
+  // Easy Access. Once an editor is open, the standard menus and the
+  // contextual editor toolbar take over again.
+  const flatTarget: 'se38' | 'functions' | 'home' | null =
+    view === 'se38'
+      ? 'se38'
+      : view === 'functions' && !selectedFunction
+        ? 'functions'
+        : view === 'home'
+          ? 'home'
+          : null
+  const flatActions =
+    flatTarget === 'se38'
+      ? SE38_FLAT_ACTIONS
+      : flatTarget === 'functions'
+        ? FN_FLAT_ACTIONS
+        : flatTarget === 'home'
+          ? HOME_FLAT_ACTIONS
+          : null
 
   // ── global keys (SAP keyboard map) ───────────────────────────────────
   const anyDialogOpen = useWorkbench(
@@ -792,6 +970,7 @@ export function SapShell() {
       s.aboutOpen ||
       s.tcodeDialogOpen ||
       s.systemStatusOpen ||
+      s.settingsOpen ||
       s.logoffConfirm,
   )
 
@@ -886,14 +1065,14 @@ export function SapShell() {
   const isEditorTab = activeTab?.kind === 'program' && !!activeProgramName
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#ebf1f7] text-[#1c2b3a]" data-app="abapforge">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#ebf1f7] text-[#17324a]" data-app="abapforge">
       <div className="h-[5px] shrink-0 bg-[#118ad8]" aria-hidden />
       {/* ── window title bar (SAP GUI for HTML: logo, centered title, system menu) ── */}
       <header className="sap-titlebar relative flex h-[42px] shrink-0 items-center justify-between pl-3 pr-2" role="banner">
         <SapLogo size={24} />
 
         {/* centered title (absolute so it is truly centered) */}
-        <span className="pointer-events-none absolute inset-x-0 truncate px-40 text-center text-[13px] font-medium text-[#1d3a5c]">
+        <span className="pointer-events-none absolute inset-x-0 truncate px-40 text-center text-[13px] text-[#22456a]">
           {title}
         </span>
 
@@ -906,7 +1085,7 @@ export function SapShell() {
           {/* System MER (105) dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="flex h-[26px] items-center gap-1 rounded px-1.5 text-[12px] font-semibold text-[#1d3a5c] outline-none hover:bg-[#8aa9cc] focus-visible:bg-[#8aa9cc]"
+              className="flex h-[26px] items-center gap-1 rounded px-1.5 text-[12px] font-semibold text-[#22456a] outline-none hover:bg-[#b3cde7] focus-visible:bg-[#b3cde7]"
               title="System MER, client 105"
               aria-label="System menu MER (105)"
             >
@@ -928,6 +1107,7 @@ export function SapShell() {
                     : []),
                   { sep: true },
                   { label: 'Status…', run: () => setSystemStatusOpen(true) },
+                  { label: 'SAP GUI Settings…', run: () => useWorkbench.getState().setSettingsOpen(true) },
                   { label: 'About SAP System…', run: () => useWorkbench.getState().setAboutOpen(true) },
                   { sep: true },
                   { label: 'Log Off', run: () => setLogoffConfirm(true) },
@@ -940,7 +1120,7 @@ export function SapShell() {
             title="Open a new SAP session in a browser tab"
             aria-label="Open a new SAP session"
             onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
-            className="flex h-[26px] w-[26px] items-center justify-center rounded text-[#1d3a5c] hover:bg-[#8aa9cc]"
+            className="flex h-[26px] w-[26px] items-center justify-center rounded text-[#22456a] hover:bg-[#b3cde7]"
           >
             <ChevronRight className="h-[16px] w-[16px]" />
           </button>
@@ -949,23 +1129,55 @@ export function SapShell() {
 
       {/* ── menu bar: screen menus left · OK-code field + right icons ── */}
       <nav className="sap-menubar flex h-[27px] shrink-0 items-center px-1 md:pl-1.5 md:pr-2" aria-label="Main menu">
-        <div className="flex min-w-0 flex-1 items-center gap-[2px] overflow-hidden">
-          {menus.map((m) => (
-            <DropdownMenu key={m.label}>
-              <DropdownMenuTrigger className="sap-menu-item outline-none">{m.label}</DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                sideOffset={1}
-                className="min-w-[230px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
-              >
-                <MenuList items={m.items} />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ))}
+        <div className={`flex min-w-0 flex-1 items-center gap-[2px] ${flatActions ? 'overflow-visible' : 'overflow-x-auto overflow-y-hidden'}`}>
+          {flatActions && flatTarget ? (
+            <>
+              {flatTarget === 'home' && (
+                <div className="mr-1 shrink-0">
+                  <CommandField />
+                </div>
+              )}
+              {flatActions.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  onClick={() => fireScreenAction(flatTarget, action.id)}
+                  className={`shrink-0 whitespace-nowrap rounded-[2px] px-[7px] py-[2px] text-[12px] text-[#284d74] hover:bg-[#e1ebf5] ${action.className ?? ''}`}
+                >
+                  {action.label}
+                </button>
+              ))}
+              {flatTarget === 'se38' ? (
+                <FlatMore
+                  items={SE38_MORE.map((item) => ({
+                    label: item.label,
+                    run: () => fireScreenAction('se38', item.id),
+                  }))}
+                />
+              ) : flatTarget === 'functions' ? (
+                <FlatMore items={FN_MORE} />
+              ) : (
+                <HomeMore groups={menus} />
+              )}
+            </>
+          ) : (
+            menus.map((m) => (
+              <DropdownMenu key={m.label}>
+                <DropdownMenuTrigger className="sap-menu-item outline-none">{m.label}</DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  sideOffset={1}
+                  className="min-w-[230px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
+                >
+                  <MenuList items={m.items} />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ))
+          )}
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-[3px]">{!isMobile && (<>
-          <CommandField />
+          {flatTarget !== 'home' && <CommandField />}
           <button
             type="button"
             title="Find object (Ctrl+K)"
@@ -987,7 +1199,7 @@ export function SapShell() {
           <button
             type="button"
             onClick={() => setLogoffConfirm(true)}
-            className="ml-1 flex h-[24px] items-center rounded-[2px] px-[7px] text-[12px] text-[#1d3a5c] hover:bg-[#dbe5f0]"
+            className="ml-1 flex h-[24px] items-center rounded-[2px] px-[7px] text-[12px] text-[#22456a] hover:bg-[#dbe5f0]"
           >
             Exit
           </button>
@@ -995,7 +1207,8 @@ export function SapShell() {
         </div>
       </nav>
 
-      {/* ── standard toolbar ── */}
+      {/* ── standard toolbar (hidden on App 2-style flat screens) ── */}
+      {!flatActions && (
       <div className="sap-toolbar flex h-[30px] min-w-0 shrink-0 items-center gap-0.5 overflow-x-auto overflow-y-hidden px-1.5">
         <ToolBtn
           icon={I.enter}
@@ -1035,43 +1248,18 @@ export function SapShell() {
         <div className="ml-auto flex items-center">
           <ToolBtn icon={I.shortcut} title="Create Shortcut" disabled onClick={() => undefined} />
           <ToolBtn icon={I.help} title="Help (F1)" onClick={() => useWorkbench.getState().setAboutOpen(true)} />
-          <DropdownMenu>
-            <DropdownMenuTrigger className="sap-tool-btn outline-none" title="Customize Local Layout (Alt+F12)" aria-label="Customize Local Layout">
-              {I.customize}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={1} className="min-w-[240px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[13px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]">
-              <DropdownMenuLabel className="px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#5b6d80]">
-                SAP GUI Settings
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="my-0.5 bg-[#d6dfe8]" />
-              <DropdownMenuLabel className="px-2.5 py-[3px] text-[11.5px] text-[#5b6d80]">Font size (ABAP editor)</DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={String(editorFontSize)} onValueChange={(v) => setEditorFontSize(Number(v))}>
-                <DropdownMenuRadioItem value="12" className="rounded-none px-2.5 py-[6px] text-[13px] focus:bg-[#bcd6f2]">Small</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="13" className="rounded-none px-2.5 py-[6px] text-[13px] focus:bg-[#bcd6f2]">Medium (default)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="14" className="rounded-none px-2.5 py-[6px] text-[13px] focus:bg-[#bcd6f2]">Large</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-              <DropdownMenuSeparator className="my-0.5 bg-[#d6dfe8]" />
-              <DropdownMenuCheckboxItem
-                checked={systemInfoVisible}
-                onCheckedChange={toggleSystemInfo}
-                className="rounded-none px-2.5 py-[6px] text-[13px] focus:bg-[#bcd6f2]"
-              >
-                Status bar: system information
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuSeparator className="my-0.5 bg-[#d6dfe8]" />
-              <DropdownMenuItem disabled className="rounded-none px-2.5 py-[5px] text-[12.5px] data-[disabled]:opacity-40">
-                Command Field History
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="rounded-none px-2.5 py-[6px] text-[13px] focus:bg-[#bcd6f2]"
-                onSelect={() => setSystemStatusOpen(true)}
-              >
-                System Status…
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <button
+            type="button"
+            className="sap-tool-btn"
+            title="SAP GUI Settings… (Alt+F12)"
+            aria-label="SAP GUI Settings"
+            onClick={() => useWorkbench.getState().setSettingsOpen(true)}
+          >
+            {I.customize}
+          </button>
         </div>
       </div>
+      )}
 
       {/* ── application toolbar (screen-specific buttons) ── */}
       {isEditorTab && (
@@ -1150,10 +1338,10 @@ export function SapShell() {
       )}
 
       {/* ── main area ── */}
-      <div className="relative flex min-h-0 flex-1 gap-[3px] bg-[#c3d1e2] p-[3px]">
+      <div className={`relative flex min-h-0 flex-1 gap-[3px] ${flatActions ? 'bg-transparent p-0' : 'bg-[#dce7f2] p-[3px]'}`}>
         <main
           id="wb-main"
-          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[2px] border border-[#9db2cc] bg-white"
+          className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${flatActions ? 'rounded-none border-0 bg-[#ebf1f7]' : 'rounded-[2px] border border-[#9db2cc] bg-white'}`}
           role="main"
         >
           <h1 className="sr-only">ABAP Studio Workbench</h1>
@@ -1186,7 +1374,7 @@ export function SapShell() {
                     >
                       <span className="truncate font-mono">{tab.programName}</span>
                       {tab.kind === 'output' && (
-                        <span className="text-[9.5px] font-semibold uppercase text-[#7b8a9c]">list</span>
+                        <span className="text-[9.5px] font-semibold uppercase text-[#55677a]">list</span>
                       )}
                       {tab.kind === 'program' && dirty && (
                         <span className="h-1.5 w-1.5 rounded-full bg-[#e0a33e]" title="Inactive (unsaved changes)" />
@@ -1194,7 +1382,7 @@ export function SapShell() {
                     </button>
                     <button
                       type="button"
-                      className="sap-tab min-h-[26px] min-w-[26px] justify-center rounded-l-none border-l-0 px-1.5 text-[12px] hover:bg-[#c7d8ec] hover:text-[#c4302f]"
+                      className="sap-tab min-h-[26px] min-w-[26px] justify-center rounded-l-none border-l-0 px-1.5 text-[12px] hover:bg-[#dce9f6] hover:text-[#c4302f]"
                       data-active={isActive}
                       onClick={() => closeTab(tab.key)}
                       aria-label={`Close ${tab.programName}`}
@@ -1221,7 +1409,7 @@ export function SapShell() {
               ) : activeTab?.kind === 'output' ? (
                 <OutputView programName={activeTab.programName} />
               ) : (
-                <div className="flex h-full items-center justify-center text-sm text-[#7b8a9c]">
+                <div className="flex h-full items-center justify-center text-sm text-[#55677a]">
                   Select a tab or open a program
                 </div>
               ))}
@@ -1248,6 +1436,7 @@ export function SapShell() {
       <ConfirmDeleteDialog />
       <LogoffConfirmDialog />
       <SystemStatusDialog />
+      <GuiSettingsDialog />
       <AboutDialog />
       <TcodeRegistryDialog />
       <CommandPalette />

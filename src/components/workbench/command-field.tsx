@@ -2,8 +2,6 @@
 
 // ── SAP command field (t-code box) ─────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useWorkbench } from './use-workbench'
 import { api } from './use-workbench'
 import type { ProgramListItem } from './types'
@@ -12,8 +10,6 @@ const TCODES = ['SE38', 'SE80', 'SE11', 'SE16', 'SE24', 'SE37', 'SE93', 'SLG1', 
 
 export function CommandField() {
   const [value, setValue] = useState('')
-  const [history, setHistory] = useState<string[]>([])
-  const [histOpen, setHistOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const addMessage = useWorkbench((s) => s.addMessage)
@@ -32,16 +28,11 @@ export function CommandField() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const pushHistory = useCallback((cmd: string) => {
-    setHistory((h) => [cmd, ...h.filter((x) => x !== cmd)].slice(0, 12))
-  }, [])
-
   const handleCommand = useCallback(
     async (raw: string) => {
       let v = raw.trim()
       if (!v) return
       const st = () => useWorkbench.getState()
-      pushHistory(v)
 
       // ── SAP command prefixes ───────────────────────────────────────
       const lower = v.toLowerCase()
@@ -99,7 +90,7 @@ export function CommandField() {
               return
             }
             st().openSe38Initial()
-            addMessage('S', 'ABAP Editor (SE38)')
+            addMessage('I', 'Transaction SE38 started - ABAP Editor')
             return
           }
           case 'SE80':
@@ -131,7 +122,7 @@ export function CommandField() {
           case 'SE37':
             useWorkbench.setState({ lastTcode: 'SE37' })
             navigate('functions')
-            addMessage('S', 'Function Builder (SE37)')
+            addMessage('I', 'Transaction SE37 started - Function Builder')
             return
           case 'SE93':
             setTcodeDialogOpen(true)
@@ -139,7 +130,7 @@ export function CommandField() {
             return
           case 'SLG1':
             useWorkbench.setState({ view: 'home' })
-            addMessage('S', 'Recent executions are shown on the SAP Easy Access screen')
+            addMessage('S', 'Application log (SLG1) is not part of this training system')
             return
           case 'ST22':
             useWorkbench.setState({ lastTcode: 'ST22' })
@@ -209,7 +200,7 @@ export function CommandField() {
       useWorkbench.getState().navigate('search')
       addMessage('S', `Searching for "${v}"`)
     },
-    [addMessage, pushHistory, setConfirmCreate, setTcodeDialogOpen],
+    [addMessage, setConfirmCreate, setTcodeDialogOpen],
   )
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -217,13 +208,8 @@ export function CommandField() {
       e.preventDefault()
       void handleCommand(value)
       setValue('')
-      setHistOpen(false)
-    } else if (e.key === 'ArrowDown' && history.length && !value) {
-      e.preventDefault()
-      setHistOpen(true)
     } else if (e.key === 'Escape') {
       setValue('')
-      setHistOpen(false)
     }
   }
 
@@ -249,7 +235,6 @@ export function CommandField() {
           onClick={() => {
             void handleCommand(value)
             setValue('')
-            setHistOpen(false)
           }}
           className="flex w-[24px] items-center justify-center bg-gradient-to-b from-[#5F7FA6] to-[#3D5C82] text-white hover:from-[#6d8cb2] hover:to-[#47688f]"
         >
@@ -257,41 +242,6 @@ export function CommandField() {
             <path d="M1 5 H8 M5.5 1.5 L9 5 L5.5 8.5" stroke="currentColor" strokeWidth="1.6" fill="none" />
           </svg>
         </button>
-        <Popover open={histOpen} onOpenChange={setHistOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="flex w-[24px] items-center justify-center border-l border-[#d3dde8] text-[#33475c] hover:bg-[#e3edf9]"
-              aria-label="Command field history"
-              onClick={() => history.length && setHistOpen((o) => !o)}
-              tabIndex={history.length ? 0 : -1}
-            >
-              <ChevronDown className="h-3 w-3" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64 rounded-none border-[#8fa7bf] p-0.5" align="end" sideOffset={4}>
-            <div className="border-b border-[#d6dfe8] px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-[#5b6d80]">
-              Command Field History
-            </div>
-            {history.length === 0 && (
-              <div className="px-2 py-1.5 text-[12px] text-[#8593a5]">No commands yet</div>
-            )}
-            {history.map((h) => (
-              <button
-                key={h}
-                type="button"
-                className="flex w-full items-center gap-2 px-2 py-1 text-left font-mono text-[12px] text-[#12283c] hover:bg-[#bcd6f2]"
-                onClick={() => {
-                  setValue(h)
-                  setHistOpen(false)
-                  inputRef.current?.focus()
-                }}
-              >
-                {h}
-              </button>
-            ))}
-          </PopoverContent>
-        </Popover>
       </div>
     </div>
   )

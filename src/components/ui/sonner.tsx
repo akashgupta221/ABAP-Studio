@@ -15,6 +15,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
+          // AA contrast for the default Sonner success green (#008a2e).
+          "--success-text": "#006f26",
         } as React.CSSProperties
       }
       {...props}

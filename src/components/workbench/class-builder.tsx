@@ -23,22 +23,22 @@ export function ClassBuilderView() {
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#f0f4f9]">
-      <div className="border-b border-[#c3d0e0] bg-white px-4 py-2.5">
+    <div className="flex h-full min-h-0 flex-col bg-[#ebf1f7]">
+      <div className="border-b border-[#c6d7e6] bg-white px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-3">
           <Braces className="h-5 w-5 text-[#0a6e6e]" />
           <div>
-            <h1 className="text-[14px] font-bold text-[#12283c]">Class Builder (SE24)</h1>
-            <p className="text-[11.5px] text-[#7b8a9c]">
+            <h1 className="text-[14px] font-bold text-[#17324a]">Class Builder (SE24)</h1>
+            <p className="text-[11.5px] text-[#55677a]">
               ABAP Objects classes — definitions and implementations open in the editor
             </p>
           </div>
-          <span className="ml-auto rounded-sm border border-[#c5d2e2] bg-white px-2 py-1 font-mono text-[11px] text-[#3f5468]">
+          <span className="ml-auto rounded-sm border border-[#c6d7e6] bg-white px-2 py-1 font-mono text-[11px] text-[#44586c]">
             {classes?.length ?? '…'} classes
           </span>
         </div>
-        <div className="mt-2 flex items-center gap-1.5 rounded-[3px] border border-[#7f9db9] bg-white px-2 py-1">
-          <Search className="h-3.5 w-3.5 text-[#7f9db9]" />
+        <div className="mt-2 flex items-center gap-1.5 rounded-none border border-[#a8c0d6] bg-white px-2 py-1">
+          <Search className="h-3.5 w-3.5 text-[#55677a]" />
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -54,12 +54,12 @@ export function ClassBuilderView() {
           {classes === null && (
             <div className="space-y-2">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-12 animate-pulse rounded-[4px] bg-[#e2e9f2]" />
+                <div key={i} className="h-12 animate-pulse rounded-none bg-[#e6eef7]" />
               ))}
             </div>
           )}
           {classes !== null && classes.length === 0 && (
-            <p className="rounded-[4px] border border-dashed border-[#c3d0e0] bg-white px-4 py-8 text-center text-[13px] text-[#8593a5]">
+            <p className="rounded-none border border-dashed border-[#c6d7e6] bg-white px-4 py-8 text-center text-[13px] text-[#55677a]">
               No classes in the repository yet — the seeder may still be running, or create one via
               Program → New Object.
             </p>
@@ -68,13 +68,13 @@ export function ClassBuilderView() {
             {list.map((c) => (
               <div
                 key={c.id}
-                className="flex flex-wrap items-center gap-3 rounded-[4px] border border-[#c3d0e0] bg-white px-3 py-2.5 shadow-sm hover:border-[#8fb0d4]"
+                className="flex flex-wrap items-center gap-3 rounded-none border border-[#c6d7e6] bg-white px-3 py-2.5 hover:border-[#8fb0d4]"
               >
                 <Braces className="h-4 w-4 shrink-0 text-[#0a6e6e]" />
                 <div className="min-w-0">
-                  <p className="font-mono text-[13px] font-bold text-[#12283c]">{c.name}</p>
+                  <p className="font-mono text-[13px] font-bold text-[#17324a]">{c.name}</p>
                   <p className="truncate text-[12px] text-[#44586c]">{c.title || c.description}</p>
-                  <p className="mt-0.5 text-[10.5px] text-[#8593a5]">
+                  <p className="mt-0.5 text-[10.5px] text-[#55677a]">
                     {c.topicTitle ? `${c.topicTitle} · ` : ''}
                     {c.executions} executions
                   </p>

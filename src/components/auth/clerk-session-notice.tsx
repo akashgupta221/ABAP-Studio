@@ -16,11 +16,11 @@ function ClerkSessionNoticeInner() {
   if (!isLoaded || !isSignedIn) return null
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2 border border-[#b9c9da] bg-[#eef5fb] px-3 py-2 text-[11.5px] text-[#315f8f]">
+    <div className="mf-auth-notice flex flex-wrap items-center gap-2">
       <span>A secure Clerk session is already active. Sign out to use a different account.</span>
       <button
         type="button"
-        className="sap-btn ml-auto"
+        className="mf-btn ml-auto"
         onClick={() => {
           void signOut()
             .catch(() => {})

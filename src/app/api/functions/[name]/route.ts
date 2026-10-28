@@ -8,8 +8,10 @@ import { ensureExampleFunctionGroups } from '@/lib/function-groups'
 import {
   MAX_FM_SOURCE_BYTES,
   changedOnNow,
+  parseFmParams,
   sanitizeFmParams,
   serializeFmParams,
+  syncFmInterface,
   toFunctionDto,
 } from '@/lib/function-module'
 import { canEditFunction, canEditFunctionGroup, canViewFunction, canViewFunctionGroup } from '@/lib/access'
@@ -84,6 +86,7 @@ export async function PUT(
     let sourceChanged = false
     let paramsChanged = false
     let groupChanged = false
+    let effectiveParams = parseFmParams(fm)
 
     if (typeof body.title === 'string') {
       data.title = body.title.trim().slice(0, 120)
@@ -92,11 +95,10 @@ export async function PUT(
       if (Buffer.byteLength(body.source, 'utf8') > MAX_FM_SOURCE_BYTES) {
         return NextResponse.json({ error: 'Function module source is too large' }, { status: 413 })
       }
-      data.source = body.source
-      sourceChanged = body.source !== fm.source
     }
     if (body.params !== undefined) {
-      const serialized = serializeFmParams(sanitizeFmParams(body.params))
+      effectiveParams = sanitizeFmParams(body.params)
+      const serialized = serializeFmParams(effectiveParams)
       data.importParams = serialized.importParams
       data.exportParams = serialized.exportParams
       data.changingParams = serialized.changingParams
@@ -125,9 +127,15 @@ export async function PUT(
       groupChanged = true
     }
 
+    // The Local Interface comment block always mirrors the parameter tables,
+    // including when only the source or only the parameters were edited.
+    const baseSource = typeof body.source === 'string' ? body.source : fm.source
+    data.source = syncFmInterface(baseSource, effectiveParams)
+    sourceChanged = data.source !== fm.source
+
     const shouldActivate = body.activate === true
     const shouldDeactivate = body.deactivate === true
-    const sourceForCheck = typeof data.source === 'string' ? data.source : fm.source
+    const sourceForCheck = data.source as string
 
     if (shouldActivate) {
       if (!sourceForCheck.trim()) {

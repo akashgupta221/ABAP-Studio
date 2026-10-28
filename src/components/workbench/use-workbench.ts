@@ -113,12 +113,13 @@ interface WorkbenchState {
   se38Subobject: Se38Subobject
   se38ShowSubobject: boolean
   se38Mode: 'display' | 'change'
+  se38Create: { name: string; title?: string; type?: ProgramType } | null
   lastTcode: string
   // dialogs
   pendingSelection: PendingSelection | null
   selectionBusy: boolean
   newDialog: NewDialogState
-  objectDir: { name: string } | null
+  objectDir: { name: string; title?: string; type?: ProgramType } | null
   confirmCreate: { name: string } | null
   aboutOpen: boolean
   tcodeDialogOpen: boolean
@@ -149,6 +150,8 @@ interface WorkbenchState {
   // ── SAP popups ──────────────────────────────────────────────────────
   systemStatusOpen: boolean
   setSystemStatusOpen: (v: boolean) => void
+  settingsOpen: boolean
+  setSettingsOpen: (v: boolean) => void
   logoffConfirm: boolean
   setLogoffConfirm: (v: boolean) => void
   confirmDelete: { name: string } | null
@@ -186,6 +189,8 @@ interface WorkbenchState {
   setSe38Program: (name: string) => void
   setSe38Subobject: (subobject: Se38Subobject) => void
   setSe38ShowSubobject: (v: boolean) => void
+  beginSe38Create: (name: string) => void
+  setSe38Create: (v: { name: string; title?: string; type?: ProgramType } | null) => void
   se38Display: (mode?: 'display' | 'change') => Promise<void>
   updateProgramAttributes: (
     name: string,
@@ -221,7 +226,7 @@ interface WorkbenchState {
 
   openNewDialog: (prefill?: Partial<NewDialogState>) => void
   closeNewDialog: () => void
-  setObjectDir: (v: { name: string } | null) => void
+  setObjectDir: (v: { name: string; title?: string; type?: ProgramType } | null) => void
   setConfirmCreate: (v: { name: string } | null) => void
   setAboutOpen: (v: boolean) => void
   setTcodeDialogOpen: (v: boolean) => void
@@ -258,6 +263,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   se38Subobject: 'source',
   se38ShowSubobject: false,
   se38Mode: 'display',
+  se38Create: null,
   lastTcode: 'SESSION_MANAGER',
   pendingSelection: null,
   selectionBusy: false,
@@ -275,6 +281,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   systemInfoVisible: true,
   editorFontSize: 13,
   systemStatusOpen: false,
+  settingsOpen: false,
   logoffConfirm: false,
   confirmDelete: null,
   whereUsed: { program: '', open: false, loading: false, hits: [] },
@@ -307,12 +314,31 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       view: 'se38',
       lastTcode: 'SE38',
       se38ShowSubobject: false,
+      se38Create: null,
       se38Program: (program ?? fallback).toUpperCase(),
     })
   },
   setSe38Program: (name) => set({ se38Program: name.toUpperCase() }),
   setSe38Subobject: (subobject) => set({ se38Subobject: subobject }),
   setSe38ShowSubobject: (v) => set({ se38ShowSubobject: v }),
+  setSe38Create: (v) => set({ se38Create: v }),
+
+  // Classic SE38 create: Program Attributes → Create Object Directory Entry
+  // → Local Object → ABAP Editor. The marker tells the attributes dialog that
+  // it is collecting attributes for a not-yet-created object.
+  beginSe38Create: (name) => {
+    const key = name.trim().toUpperCase()
+    if (!key) return
+    set({
+      view: 'se38',
+      lastTcode: 'SE38',
+      se38Program: key,
+      se38Subobject: 'attributes',
+      se38ShowSubobject: true,
+      se38Mode: 'change',
+      se38Create: { name: key, title: '', type: 'REPORT' },
+    })
+  },
 
   se38Display: async (mode = 'display') => {
     const s = get()
@@ -321,7 +347,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       s.addMessage('E', 'Enter a program name')
       return
     }
-    set({ se38Program: name, se38Mode: mode })
+    set({ se38Program: name, se38Mode: mode, se38Create: null })
     try {
       const { programs } = await api<{ programs: ProgramListItem[] }>(
         `/api/programs?q=${encodeURIComponent(name)}`,
@@ -986,6 +1012,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   toggleSystemInfo: () => set((s) => ({ systemInfoVisible: !s.systemInfoVisible })),
   setEditorFontSize: (n) => set({ editorFontSize: n }),
   setSystemStatusOpen: (v) => set({ systemStatusOpen: v }),
+  setSettingsOpen: (v) => set({ settingsOpen: v }),
   setLogoffConfirm: (v) => set({ logoffConfirm: v }),
   setConfirmDelete: (v) => set({ confirmDelete: v }),
   setFindOpen: (v) => set({ findOpen: v }),

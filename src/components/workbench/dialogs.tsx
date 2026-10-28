@@ -2,8 +2,10 @@
 
 // ── Dialogs: New Object, Confirm Create, About, T-code Registry, ──────
 //    Confirm Delete, Log Off, System Status (classic SAP GUI popups) ──
-import { useEffect, useState } from 'react'
-import { CircleHelp, FilePlus2, TerminalSquare } from 'lucide-react'
+import { useEffect, useState, type ComponentType } from 'react'
+import {
+  CircleHelp, Database, FilePlus2, Globe, Keyboard, Monitor, TerminalSquare, Wrench,
+} from 'lucide-react'
 import {
   Dialog, DialogContent, DialogDescription, DialogTitle,
 } from '@/components/ui/dialog'
@@ -11,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { useWorkbench } from './use-workbench'
+import { se38CreateSource } from '@/lib/program-defaults'
 import type { ProgramType, Topic } from './types'
 
 const DEFAULT_TEMPLATE = (name: string, type: ProgramType): string => {
@@ -55,12 +58,12 @@ function SapPopupTitle({ title, description, onClose }: {
 }) {
   return (
     <div className="sap-popup-title">
-      <DialogTitle className="truncate text-[12px] font-bold text-white">{title}</DialogTitle>
+      <DialogTitle className="truncate text-[12px] font-bold text-[#17324a]">{title}</DialogTitle>
       <DialogDescription className="sr-only">{description}</DialogDescription>
       <div className="ml-auto flex items-center gap-1">
         <span
           aria-hidden
-          className="flex h-[16px] w-[16px] items-center justify-center text-[11px] font-bold text-[#d6e6f8]"
+          className="flex h-[16px] w-[16px] items-center justify-center text-[11px] font-bold text-[#4c6b8a]"
         >
           ?
         </span>
@@ -69,7 +72,7 @@ function SapPopupTitle({ title, description, onClose }: {
           onClick={onClose}
           aria-label="Close"
           title="Close"
-          className="sap-titlebar-close flex h-[16px] w-[16px] items-center justify-center text-[10px] leading-none text-white"
+          className="sap-titlebar-close flex h-[16px] w-[16px] items-center justify-center text-[10px] leading-none text-[#17324a]"
         >
           ✕
         </button>
@@ -99,13 +102,14 @@ export function ObjectDirectoryDialog() {
 
   const createLocalObject = async () => {
     if (!name || busy) return
+    const type = objectDir?.type ?? 'REPORT'
     setBusy(true)
     try {
       await createProgram({
         name,
-        title: name,
-        type: 'REPORT',
-        source: `REPORT ${name.toLowerCase()}.\n\nWRITE: / 'Hello from ${name}'.\n`,
+        title: objectDir?.title || name,
+        type,
+        source: se38CreateSource(name, type),
       })
     } finally {
       setBusy(false)
@@ -363,7 +367,7 @@ export function NewObjectDialog() {
 export function ConfirmCreateDialog() {
   const confirmCreate = useWorkbench((s) => s.confirmCreate)
   const setConfirmCreate = useWorkbench((s) => s.setConfirmCreate)
-  const openNewDialog = useWorkbench((s) => s.openNewDialog)
+  const beginSe38Create = useWorkbench((s) => s.beginSe38Create)
 
   if (!confirmCreate) return null
 
@@ -389,7 +393,7 @@ export function ConfirmCreateDialog() {
             onClick={() => {
               const name = confirmCreate.name
               setConfirmCreate(null)
-              openNewDialog({ prefillName: name })
+              beginSe38Create(name)
             }}
           >
             Create object…
@@ -629,6 +633,261 @@ export function SystemStatusDialog() {
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ── SAP GUI for HTML settings (real options only) ─────────────────────
+type SettingsSection = 'interaction' | 'visualization' | 'local' | 'services' | 'tools'
+
+const SETTINGS_SECTIONS: {
+  id: SettingsSection
+  label: string
+  icon: ComponentType<{ className?: string }>
+}[] = [
+  { id: 'interaction', label: 'Interaction Design', icon: Keyboard },
+  { id: 'visualization', label: 'Visualization', icon: Monitor },
+  { id: 'local', label: 'Local Data', icon: Database },
+  { id: 'services', label: 'Front-End Services', icon: Globe },
+  { id: 'tools', label: 'Tools', icon: Wrench },
+]
+
+const FONT_CHOICES: { value: number; label: string }[] = [
+  { value: 12, label: 'Small' },
+  { value: 13, label: 'Medium (default)' },
+  { value: 14, label: 'Large' },
+]
+
+export function GuiSettingsDialog() {
+  const open = useWorkbench((s) => s.settingsOpen)
+  const setOpen = useWorkbench((s) => s.setSettingsOpen)
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      {open && <GuiSettingsBody onClose={() => setOpen(false)} />}
+    </Dialog>
+  )
+}
+
+function GuiSettingsBody({ onClose }: { onClose: () => void }) {
+  const editorFontSize = useWorkbench((s) => s.editorFontSize)
+  const setEditorFontSize = useWorkbench((s) => s.setEditorFontSize)
+  const systemInfoVisible = useWorkbench((s) => s.systemInfoVisible)
+  const toggleSystemInfo = useWorkbench((s) => s.toggleSystemInfo)
+  const session = useWorkbench((s) => s.session)
+  const addMessage = useWorkbench((s) => s.addMessage)
+  const setSystemStatusOpen = useWorkbench((s) => s.setSystemStatusOpen)
+
+  const [section, setSection] = useState<SettingsSection>('visualization')
+  const [draftFont, setDraftFont] = useState(editorFontSize)
+  const [draftSystemInfo, setDraftSystemInfo] = useState(systemInfoVisible)
+
+  const save = () => {
+    setEditorFontSize(draftFont)
+    if (draftSystemInfo !== systemInfoVisible) toggleSystemInfo()
+    onClose()
+    addMessage('S', 'SAP GUI settings saved')
+  }
+
+  const resetDraft = () => {
+    setDraftFont(editorFontSize)
+    setDraftSystemInfo(systemInfoVisible)
+  }
+
+  const restoreDefaults = () => {
+    setDraftFont(13)
+    setDraftSystemInfo(true)
+  }
+
+  return (
+      <DialogContent
+        showCloseButton={false}
+        className="sap-popup max-w-[720px] gap-0 p-0 sm:max-w-[720px]"
+        aria-label="SAP GUI for HTML Settings"
+      >
+        <SapPopupTitle
+          title="SAP GUI for HTML Settings"
+          description="Adjust the look and behaviour of the SAP GUI for HTML session"
+          onClose={onClose}
+        />
+
+        <div className="grid min-h-[350px] grid-cols-[188px_minmax(0,1fr)]">
+          <nav className="border-r border-[#c6d7e6] bg-[#f4f8fc] p-1.5" aria-label="Settings sections">
+            {SETTINGS_SECTIONS.map((item) => {
+              const Icon = item.icon
+              const active = section === item.id
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => setSection(item.id)}
+                  className={`mb-0.5 flex w-full items-center gap-2 rounded-[2px] border px-2 py-[6px] text-left text-[12px] ${
+                    active
+                      ? 'border-[#8fb0d4] bg-[#cfe3f8] font-semibold text-[#0a2f57]'
+                      : 'border-transparent text-[#284d74] hover:border-[#d5e2ef] hover:bg-[#e8f1fa]'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  {item.label}
+                </button>
+              )
+            })}
+          </nav>
+
+          <div className="sap-popup-body min-w-0">
+            {section === 'visualization' && (
+              <div>
+                <h2 className="text-[13px] font-bold text-[#17324a]">Visualization</h2>
+                <p className="mt-0.5 text-[11.5px] text-[#55677a]">
+                  These options apply to this browser session only.
+                </p>
+
+                <fieldset className="mt-4">
+                  <legend className="mb-1.5 text-[12px] font-semibold text-[#17324a]">
+                    ABAP editor font size
+                  </legend>
+                  <div className="space-y-1">
+                    {FONT_CHOICES.map((choice) => (
+                      <label
+                        key={choice.value}
+                        className="flex cursor-pointer items-center gap-2 text-[12px] text-[#17324a]"
+                      >
+                        <input
+                          type="radio"
+                          className="sap-radio"
+                          name="gui-font-size"
+                          value={choice.value}
+                          checked={draftFont === choice.value}
+                          onChange={() => setDraftFont(choice.value)}
+                        />
+                        {choice.label}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <div className="mt-3 border border-[#c6d7e6] bg-[#f7fafd]">
+                  <div className="border-b border-[#dce6f0] px-2 py-1 text-[10.5px] font-semibold uppercase tracking-wide text-[#55677a]">
+                    Preview
+                  </div>
+                  <pre
+                    className="overflow-x-auto px-2 py-2 font-mono text-[#17324a]"
+                    style={{ fontSize: draftFont }}
+                  >
+{`REPORT z_demo.
+WRITE: / 'Hello, ABAP!'.`}
+                  </pre>
+                </div>
+
+                <label className="mt-4 flex cursor-pointer items-center gap-2 text-[12px] text-[#17324a]">
+                  <input
+                    type="checkbox"
+                    className="sap-checkbox"
+                    checked={draftSystemInfo}
+                    onChange={(e) => setDraftSystemInfo(e.target.checked)}
+                  />
+                  Display system information in the status bar
+                </label>
+              </div>
+            )}
+
+            {section === 'interaction' && (
+              <div>
+                <h2 className="text-[13px] font-bold text-[#17324a]">Interaction Design</h2>
+                <p className="mt-1 text-[12px] leading-[1.55] text-[#44586c]">
+                  Keyboard behaviour is fixed in this training system. The active shortcuts are:
+                </p>
+                <table className="mt-2 w-full border border-[#c6d7e6] text-[11.5px]">
+                  <tbody>
+                    {[
+                      ['F3', 'Back'],
+                      ['Shift+F3', 'Exit to SAP Easy Access'],
+                      ['F8', 'Execute'],
+                      ['Ctrl+F2', 'Check'],
+                      ['Ctrl+S', 'Save'],
+                      ['Ctrl+K', 'Find object'],
+                      ['Ctrl+L', 'Focus the command field'],
+                    ].map(([key, action]) => (
+                      <tr key={key}>
+                        <td className="w-[120px] border-b border-[#eef3f8] bg-[#f7fafd] px-2 py-[3px] font-mono font-semibold text-[#284d74]">
+                          {key}
+                        </td>
+                        <td className="border-b border-[#eef3f8] px-2 py-[3px] text-[#17324a]">{action}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {section === 'local' && (
+              <div>
+                <h2 className="text-[13px] font-bold text-[#17324a]">Local Data</h2>
+                <p className="mt-1 text-[12px] leading-[1.55] text-[#44586c]">
+                  The current session is stored locally in this browser. Logging off clears the
+                  session; repository objects remain on the server.
+                </p>
+                <dl className="mt-3 grid grid-cols-[110px_minmax(0,1fr)] gap-x-2 gap-y-[5px] text-[12px]">
+                  <dt className="text-right text-[#55677a]">System</dt>
+                  <dd className="font-mono text-[#17324a]">MER</dd>
+                  <dt className="text-right text-[#55677a]">Client</dt>
+                  <dd className="font-mono text-[#17324a]">{session.client}</dd>
+                  <dt className="text-right text-[#55677a]">User</dt>
+                  <dd className="font-mono text-[#17324a]">{session.user}</dd>
+                  <dt className="text-right text-[#55677a]">Language</dt>
+                  <dd className="font-mono text-[#17324a]">{session.language}</dd>
+                </dl>
+              </div>
+            )}
+
+            {section === 'services' && (
+              <div>
+                <h2 className="text-[13px] font-bold text-[#17324a]">Front-End Services</h2>
+                <p className="mt-1 text-[12px] leading-[1.55] text-[#44586c]">
+                  No front-end services require configuration in this training system. Printing
+                  uses the browser print dialog; file upload and download are handled by the
+                  standard browser controls.
+                </p>
+              </div>
+            )}
+
+            {section === 'tools' && (
+              <div>
+                <h2 className="text-[13px] font-bold text-[#17324a]">Tools</h2>
+                <p className="mt-1 text-[12px] leading-[1.55] text-[#44586c]">
+                  The command field keeps a short history for this browser tab. The current
+                  session details are available in System Status.
+                </p>
+                <button
+                  type="button"
+                  className="sap-btn mt-3"
+                  onClick={() => {
+                    onClose()
+                    setSystemStatusOpen(true)
+                  }}
+                >
+                  Open System Status…
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="sap-popup-buttons">
+          <button type="button" className="sap-btn sap-btn-primary" onClick={save}>
+            Save
+          </button>
+          <button type="button" className="sap-btn" onClick={resetDraft}>
+            Reset
+          </button>
+          <button type="button" className="sap-btn" onClick={restoreDefaults}>
+            Restore Default Settings
+          </button>
+          <button type="button" className="sap-btn" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </DialogContent>
   )
 }
 

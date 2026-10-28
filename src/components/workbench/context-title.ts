@@ -1,10 +1,17 @@
 // ── SAP GUI window caption per screen (title bar text) ─────────────────
-import { SE38_SUBOBJECT_LABELS, type Se38Subobject, type TabItem, type ViewKind } from './types'
+import {
+  SE38_SUBOBJECT_LABELS,
+  type ProgramType,
+  type Se38Subobject,
+  type TabItem,
+  type ViewKind,
+} from './types'
 
 export interface TitleInput {
   view: ViewKind
   tabs: TabItem[]
   activeTabKey: string | null
+  activeProgramType?: ProgramType | null
   lastTcode: string
   browserTable: string | null
   selectedFunction: string | null
@@ -16,7 +23,7 @@ export interface TitleInput {
 
 export function getContextTitle(input: TitleInput): string {
   const {
-    view, tabs, activeTabKey, lastTcode, browserTable, selectedFunction, selectionProgram,
+    view, tabs, activeTabKey, activeProgramType, lastTcode, browserTable, selectedFunction, selectionProgram,
     se38Program, se38Subobject, se38ShowSubobject,
   } = input
   const active = tabs.find((t) => t.key === activeTabKey) ?? null
@@ -27,7 +34,17 @@ export function getContextTitle(input: TitleInput): string {
   }
 
   if (view === 'tab') {
-    if (active?.kind === 'program') return `ABAP Editor: ${active.programName}`
+    if (active?.kind === 'program') {
+      const objectLabel =
+        activeProgramType === 'INCLUDE'
+          ? 'Include'
+          : activeProgramType === 'CLASS'
+            ? 'Class Pool'
+            : activeProgramType === 'FUNCTION_GROUP'
+              ? 'Function Group'
+              : 'Report'
+      return `ABAP Editor: Change ${objectLabel} ${active.programName}`
+    }
     if (active?.kind === 'output') return `ABAP List: ${active.programName}`
     return 'SAP Easy Access'
   }

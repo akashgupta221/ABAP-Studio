@@ -20,7 +20,11 @@ interface AbapEditorProps {
   insertRequest?: { text: string; nonce: number } | null
 }
 
-const LINE_HEIGHT = 20
+// The overlay, gutter and textarea must all use exactly this line height.
+// Derive it from the configured font size so larger fonts never overlap.
+export function editorLineHeight(fontSize: number): number {
+  return Math.max(fontSize + 5, Math.round(fontSize * 1.6))
+}
 
 const BLOCK_OPENERS =
   /^(IF|ELSE|ELSEIF|WHEN|DO|WHILE|LOOP|TRY|FORM|METHOD|CLASS|INTERFACE|MODULE|AT|CATCH|BEGIN|DATA|TYPES|CONSTANTS|STATICS|SELECT)\b/
@@ -53,7 +57,8 @@ export function AbapEditor({
   const lines = useMemo(() => value.split('\n'), [value])
   const tokenLines = useMemo(() => highlightAbap(value), [value])
 
-  const lineHeightStyle = { lineHeight: `${LINE_HEIGHT}px` }
+  const lineHeight = editorLineHeight(fontSize)
+  const lineHeightStyle = { lineHeight: `${lineHeight}px` }
 
   const syncScroll = () => {
     const ta = taRef.current
@@ -104,13 +109,13 @@ export function AbapEditor({
     ta.setSelectionRange(at, at + q.length)
     // scroll the found line into view
     const lineIdx = ta.value.slice(0, at).split('\n').length - 1
-    const target = lineIdx * LINE_HEIGHT + 6
-    if (target < ta.scrollTop || target > ta.scrollTop + ta.clientHeight - LINE_HEIGHT * 2) {
+    const target = lineIdx * lineHeight + 6
+    if (target < ta.scrollTop || target > ta.scrollTop + ta.clientHeight - lineHeight * 2) {
       ta.scrollTop = Math.max(0, target - Math.floor(ta.clientHeight / 2))
     }
     syncScroll()
     updateCursor()
-  }, [findNonce, findQ])
+  }, [findNonce, findQ, lineHeight])
 
   const insertText = (text: string, selectOffset?: number) => {
     const ta = taRef.current
@@ -317,10 +322,11 @@ export function AbapEditor({
 export function AbapSourceView({ source, fontSize = 12.5 }: { source: string; fontSize?: number }) {
   const tokenLines = useMemo(() => highlightAbap(source), [source])
   const lineNoWidth = `${Math.max(2, String(tokenLines.length).length) + 1.2}ch`
+  const lineHeight = editorLineHeight(fontSize)
   return (
     <div
       className="wb-scroll h-full overflow-auto whitespace-pre bg-white font-mono text-[#111827]"
-      style={{ fontSize: `${fontSize}px`, lineHeight: '18px' }}
+      style={{ fontSize: `${fontSize}px`, lineHeight: `${lineHeight}px` }}
     >
       {tokenLines.map((toks, i) => (
         <div key={i} className="flex hover:bg-[#f0f6fd]">

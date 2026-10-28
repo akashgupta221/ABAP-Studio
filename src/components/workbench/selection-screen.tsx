@@ -126,8 +126,8 @@ export function SelectionScreen() {
     <div className="sap-screen flex h-full min-h-0 flex-col overflow-auto">
       <div className="w-full max-w-[980px] px-8 py-5">
         {/* screen caption: program + program title */}
-        <div className="font-mono text-[12px] text-[#3f5468]">{pending.programName}</div>
-        <h2 className="mt-0.5 text-[15px] font-bold text-[#1c2b3a]">
+        <div className="font-mono text-[12px] text-[#44586c]">{pending.programName}</div>
+        <h2 className="mt-0.5 text-[15px] font-bold text-[#17324a]">
           {programTitle || `${pending.programName} — Selection Screen`}
         </h2>
 
@@ -157,7 +157,7 @@ export function SelectionScreen() {
               if (p.radioGroup) {
                 return (
                   <div key={p.name} className="mb-[3px] flex items-center">
-                    <div className="w-[300px] shrink-0 pr-2 text-right text-[12.5px] text-[#1c2f43]">
+                    <div className="w-[300px] shrink-0 pr-2 text-right text-[12.5px] text-[#17324a]">
                       {p.label || p.name}
                     </div>
                     <input
@@ -175,7 +175,7 @@ export function SelectionScreen() {
               if (p.asCheckbox) {
                 return (
                   <div key={p.name} className="mb-[3px] flex items-center">
-                    <div className="w-[300px] shrink-0 pr-2 text-right text-[12.5px] text-[#1c2f43]">
+                    <div className="w-[300px] shrink-0 pr-2 text-right text-[12.5px] text-[#17324a]">
                       {p.label || p.name}
                     </div>
                     <input
@@ -193,7 +193,7 @@ export function SelectionScreen() {
                 <div key={p.name} className="mb-[3px] flex items-center">
                   <label
                     htmlFor={`par-${p.name}`}
-                    className="w-[300px] shrink-0 pr-2 text-right text-[12.5px] text-[#1c2f43]"
+                    className="w-[300px] shrink-0 pr-2 text-right text-[12.5px] text-[#17324a]"
                   >
                     {p.obligatory && <span className="pr-1 text-[#b00000]">*</span>}
                     {p.label || p.name}
@@ -214,7 +214,7 @@ export function SelectionScreen() {
               <div key={so.name} className="mb-[3px] flex items-center">
                 <label
                   htmlFor={`so-lo-${so.name}`}
-                  className="w-[300px] shrink-0 pr-2 text-right text-[12.5px] text-[#1c2f43]"
+                  className="w-[300px] shrink-0 pr-2 text-right text-[12.5px] text-[#17324a]"
                 >
                   {so.label || so.name}
                 </label>
@@ -239,12 +239,12 @@ export function SelectionScreen() {
             )
           })}
           {items.length === 0 && (
-            <p className="py-2 text-[12.5px] text-[#5b6d80]">No selection parameters.</p>
+            <p className="py-2 text-[12.5px] text-[#55677a]">No selection parameters.</p>
           )}
         </div>
       </div>
 
-      <div className="mt-auto border-t border-[#cfcfcf] px-6 py-1 font-mono text-[11px] text-[#5b6d80]">
+      <div className="mt-auto border-t border-[#c6d7e6] px-6 py-1 font-mono text-[11px] text-[#55677a]">
         Selection screen · {pending.programName} · F8 Execute · F12 Cancel · PARAMETERS / SELECT-OPTIONS
       </div>
     </div>

@@ -31,7 +31,7 @@ export function OutputView({ programName }: { programName: string }) {
 
   if (!result) {
     return (
-      <div className="flex h-full items-center justify-center bg-white text-[12.5px] text-[#5b6d80]">
+      <div className="flex h-full items-center justify-center bg-white text-[12.5px] text-[#55677a]">
         No output yet — press F8 to execute {programName}.
       </div>
     )
@@ -42,8 +42,8 @@ export function OutputView({ programName }: { programName: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       {/* SAP list header: program · status · stats | actions */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[#b4c4d6] bg-[#eef2f7] px-2 py-[3px]">
-        <span className="text-[12.5px] font-bold text-[#12283c]">List: {programName}</span>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[#b9cbdd] bg-[#edf3fa] px-2 py-[3px]">
+        <span className="text-[12.5px] font-bold text-[#17324a]">List: {programName}</span>
         <span
           className={`inline-flex items-center gap-1 text-[12px] font-semibold ${
             isError ? 'text-[#b3261e]' : 'text-[#17692c]'
@@ -52,11 +52,11 @@ export function OutputView({ programName }: { programName: string }) {
           {isError ? <AlertOctagon className="h-3.5 w-3.5" /> : <CircleCheck className="h-3.5 w-3.5" />}
           {isError ? 'Terminated' : 'Success'}
         </span>
-        <span className="text-[11.5px] text-[#5b6d80]">
+        <span className="text-[11.5px] text-[#55677a]">
           {result.durationMs} ms · {result.stats.steps} steps · {result.stats.linesWritten} list lines ·{' '}
           {result.stats.selects} selects · {result.stats.dbReads} DB reads
         </span>
-        {result.alv && <span className="text-[11.5px] text-[#5b6d80]">· ALV grid</span>}
+        {result.alv && <span className="text-[11.5px] text-[#55677a]">· ALV grid</span>}
         <div className="ml-auto flex items-center gap-1.5">
           <button
             type="button"
@@ -116,11 +116,11 @@ export function OutputView({ programName }: { programName: string }) {
 
         {/* messages */}
         {result.messages.length > 0 && (
-          <div className="mb-3 border border-[#b8b8b8] bg-white">
-            <div className="border-b border-[#d0d0d0] bg-[#f0f0f0] px-2 py-1 text-[11.5px] font-semibold text-[#333333]">
+          <div className="mb-3 border border-[#c6d7e6] bg-white">
+            <div className="border-b border-[#c6d7e6] bg-[#f1f6fb] px-2 py-1 text-[11.5px] font-semibold text-[#17324a]">
               Messages
             </div>
-            <ul className="divide-y divide-[#eeeeee]">
+            <ul className="divide-y divide-[#eef3f8]">
               {result.messages.map((m, i) => (
                 <li key={i} className="flex items-start gap-2 px-2 py-1 text-[12.5px]">
                   <span className="mt-[2px]">
@@ -141,11 +141,11 @@ export function OutputView({ programName }: { programName: string }) {
         )}
 
         {/* classical list — raw SAP list page in a thin frame */}
-        <div className="mb-1 flex items-baseline justify-between px-0.5 text-[11.5px] text-[#5b6d80]">
-          <span className="font-semibold text-[#12283c]">List output</span>
+        <div className="mb-1 flex items-baseline justify-between px-0.5 text-[11.5px] text-[#55677a]">
+          <span className="font-semibold text-[#17324a]">List output</span>
           <span className="font-mono">{result.list.length} lines</span>
         </div>
-        <div className="border border-[#b8b8b8] bg-white">
+        <div className="border border-[#c6d7e6] bg-white">
           <div className="h-[340px]">
             <ListOutput list={result.list} />
           </div>

@@ -14,7 +14,7 @@ function kindBadge(kind: string): { label: string; className: string } {
   if (kind === 'STRUCTURE') return { label: 'STRUCT', className: 'text-[#6b4ea0]' }
   if (kind === 'TABLE') return { label: 'TABLE', className: 'text-[#8a6d1a]' }
   if (kind === 'OBJECT') return { label: 'OBJECT', className: 'text-[#0a6ed1]' }
-  if (kind === 'REF') return { label: 'REF', className: 'text-[#5b6d80]' }
+  if (kind === 'REF') return { label: 'REF', className: 'text-[#55677a]' }
   return { label: kind, className: 'text-[#33475c]' }
 }
 
@@ -22,8 +22,8 @@ function VariableRow({ v }: { v: DebugVariable }) {
   const badge = kindBadge(v.kind)
   const detailText = v.detail === undefined ? undefined : JSON.stringify(v.detail)
   return (
-    <tr className="border-b border-[#eef2f7] hover:bg-[#f2f7fd]">
-      <td className="px-2 py-[3px] font-mono text-[12px] text-[#12283c]" style={{ paddingLeft: `${8 + v.level * 14}px` }}>
+    <tr className="border-b border-[#eef3f8] hover:bg-[#f2f7fd]">
+      <td className="px-2 py-[3px] font-mono text-[12px] text-[#17324a]" style={{ paddingLeft: `${8 + v.level * 14}px` }}>
         {v.name}
       </td>
       <td className={`px-2 py-[3px] font-mono text-[11px] font-semibold ${badge.className}`}>{badge.label}</td>
@@ -31,7 +31,7 @@ function VariableRow({ v }: { v: DebugVariable }) {
         {v.value === '' ? <span className="text-[#93a9c2]">initial</span> : v.value}
       </td>
       <td
-        className="max-w-[260px] truncate px-2 py-[3px] font-mono text-[11px] text-[#7b8a9c]"
+        className="max-w-[260px] truncate px-2 py-[3px] font-mono text-[11px] text-[#55677a]"
         title={detailText}
       >
         {detailText ?? ''}
@@ -67,13 +67,13 @@ export function DebuggerView() {
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       {/* debugger header: position + statement (SAP "New Debugger" info bar) */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[#b4c4d6] bg-[#eef2f7] px-2 py-[3px]">
-        <span className="text-[12.5px] font-bold text-[#12283c]">ABAP Debugger — {session.programName}</span>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[#b9cbdd] bg-[#edf3fa] px-2 py-[3px]">
+        <span className="text-[12.5px] font-bold text-[#17324a]">ABAP Debugger — {session.programName}</span>
         <span className="font-mono text-[11.5px] text-[#33475c]">
           Line {stop.line} · stop #{stop.stopIndex} · {stop.depth === 0 ? 'main program' : `call depth ${stop.depth}`}
         </span>
         {session.busy && <span className="text-[11.5px] text-[#8a6d1a]">running…</span>}
-        <span className="ml-auto font-mono text-[11px] text-[#5b6d80]" title={stop.statement}>
+        <span className="ml-auto font-mono text-[11px] text-[#55677a]" title={stop.statement}>
           {stop.statement}
         </span>
       </div>
@@ -116,7 +116,7 @@ export function DebuggerView() {
           <span>Stop</span>
         </button>
         <span className="sap-toolbar-sep" aria-hidden />
-        <span className="flex items-center gap-1 px-1 text-[11.5px] text-[#5b6d80]" title="Click a line number in the source to set or clear a breakpoint">
+        <span className="flex items-center gap-1 px-1 text-[11.5px] text-[#55677a]" title="Click a line number in the source to set or clear a breakpoint">
           <Ban className="h-3 w-3 text-[#8a6d1a]" />
           {session.breakpoints.length} breakpoint{session.breakpoints.length === 1 ? '' : 's'}
         </span>
@@ -146,7 +146,7 @@ export function DebuggerView() {
                     onClick={() => toggleBreakpoint(line)}
                   >
                     <td
-                      className={`w-12 select-none border-r border-[#d8e1ec] px-1 text-right text-[11px] ${
+                      className={`w-12 select-none border-r border-[#dce6f0] px-1 text-right text-[11px] ${
                         hasBp ? 'font-bold text-[#8a6d1a]' : 'text-[#93a9c2]'
                       }`}
                       title={hasBp ? 'Clear breakpoint' : 'Set breakpoint'}
@@ -163,16 +163,16 @@ export function DebuggerView() {
 
         {/* variables pane */}
         <div className="flex min-h-0 w-[42%] flex-col">
-          <div className="flex items-center gap-2 border-b border-[#d8e1ec] bg-[#f7fafd] px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide text-[#3f5468]">
+          <div className="flex items-center gap-2 border-b border-[#dce6f0] bg-[#f7fafd] px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide text-[#44586c]">
             Variables
-            <span className="ml-auto font-normal normal-case text-[#5b6d80]">
+            <span className="ml-auto font-normal normal-case text-[#55677a]">
               innermost scope first · refreshed each step
             </span>
           </div>
           <div className="wb-scroll min-h-0 flex-1 overflow-auto" tabIndex={0} aria-label="Debugger variables">
             <table className="w-full text-[12px]">
-              <thead className="sticky top-0 bg-[#eef2f8]">
-                <tr className="text-left text-[11px] text-[#3f5468]">
+              <thead className="sticky top-0 bg-[#edf3fa]">
+                <tr className="text-left text-[11px] text-[#44586c]">
                   <th className="px-2 py-1 font-semibold">Name</th>
                   <th className="px-2 py-1 font-semibold">Kind</th>
                   <th className="px-2 py-1 font-semibold">Value</th>
@@ -182,7 +182,7 @@ export function DebuggerView() {
               <tbody>
                 {stop.variables.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-3 py-4 text-[12.5px] text-[#5b6d80]">
+                    <td colSpan={4} className="px-3 py-4 text-[12.5px] text-[#55677a]">
                       No variables declared yet.
                     </td>
                   </tr>
@@ -198,13 +198,13 @@ export function DebuggerView() {
 
       {/* list output produced so far */}
       <div className="flex h-[170px] shrink-0 flex-col border-t-2 border-[#a3b8d0] bg-[#fbfcfe]">
-        <div className="flex items-center gap-2 border-b border-[#d8e1ec] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#3f5468]">
+        <div className="flex items-center gap-2 border-b border-[#dce6f0] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#44586c]">
           List Output So Far
-          <span className="ml-auto font-normal normal-case text-[#5b6d80]">{session.list.length} line(s)</span>
+          <span className="ml-auto font-normal normal-case text-[#55677a]">{session.list.length} line(s)</span>
         </div>
         <div className="wb-scroll min-h-0 flex-1 overflow-auto" tabIndex={0} aria-label="List output produced so far">
           {session.list.length === 0 ? (
-            <div className="px-3 py-2 text-[12.5px] text-[#5b6d80]">Nothing written yet.</div>
+            <div className="px-3 py-2 text-[12.5px] text-[#55677a]">Nothing written yet.</div>
           ) : (
             <div className="h-full px-1 pb-1">
               <ListOutput list={session.list} />

@@ -8,10 +8,7 @@
 //                          Variants · More
 //   Program → Attributes → "ABAP: Program Attributes <name> Change"
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  Bug, ChevronDown, Copy, FileCheck2, FilePlus2, Files, Glasses, Info, MoreHorizontal,
-  Pencil, Play, Power, Search, Trash2, X,
-} from 'lucide-react'
+import { FileCheck2, Search, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useWorkbench, api } from './use-workbench'
@@ -26,7 +23,7 @@ import {
 const SUBOBJECT_ORDER: Se38Subobject[] = ['source', 'variants', 'attributes', 'text', 'doc']
 
 const READONLY_FIELD =
-  'flex h-[22px] w-full items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px] text-[#1c2b3a] shadow-[inset_1px_1px_2px_rgba(0,0,0,0.05)]'
+  'flex h-[22px] w-full items-center border border-[#c6d3e2] bg-[#eef2f6] px-1.5 font-mono text-[12px] text-[#17324a] shadow-[inset_1px_1px_2px_rgba(0,0,0,0.05)]'
 
 const TYPE_LABELS: Record<string, string> = {
   REPORT: 'Executable program',
@@ -77,29 +74,6 @@ export function Se38Initial() {
   return showSubobject ? <SubobjectScreen /> : <InitialScreen />
 }
 
-// ── SE38 application-toolbar text button ──────────────────────────────
-function Se38TextBtn({
-  icon, label, title, onClick,
-}: {
-  icon: React.ReactNode
-  label: string
-  title?: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      className="sap-tool-textbtn"
-      title={title ?? label}
-      aria-label={title ?? label}
-      onClick={onClick}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  )
-}
-
 // ── SE38 initial screen (Program + Subobjects + Display/Change) ───────
 function InitialScreen() {
   const storedProgram = useWorkbench((s) => s.se38Program)
@@ -111,13 +85,17 @@ function InitialScreen() {
 
   const [value, setValue] = useState(storedProgram)
   const [f4Open, setF4Open] = useState(false)
-  const [moreOpen, setMoreOpen] = useState(false)
   const [progList, setProgList] = useState<ProgramListItem[] | null>(null)
   const [f4Filter, setF4Filter] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const actionsRef = useRef<Record<string, () => void>>({})
 
   useEffect(() => {
-    inputRef.current?.focus()
+    let alive = true
+    api<{ programs: ProgramListItem[] }>('/api/programs')
+      .then((r) => { if (alive) setProgList(r.programs) })
+      .catch(() => { if (alive) setProgList([]) })
+    return () => { alive = false }
   }, [])
 
   const openF4 = () => {
@@ -169,8 +147,8 @@ function InitialScreen() {
       s.addMessage('W', `Program ${n} already exists`)
       return
     }
-    // classic flow: Create → Create Object Directory Entry (package $TMP)
-    s.setObjectDir({ name: n })
+    // classic flow: Create → Program Attributes → Object Directory Entry
+    s.beginSe38Create(n)
   }
 
   const ensureLoaded = async () => {
@@ -301,76 +279,54 @@ function InitialScreen() {
     }
     setStoredProgram(n)
     setSubobject(k)
-    setMoreOpen(false)
     void se38Display(mode)
   }
 
+  useEffect(() => {
+    actionsRef.current = {
+      check: () => void checkSyntax(),
+      activate: () => void activate(),
+      execute: () => void execute(),
+      'where-used': () => void whereUsed(),
+      env: environmentAnalysis,
+      help: onlineHelp,
+      delete: deleteObject,
+      copy: copyProgram,
+      rename: renameProgram,
+      debug: debugging,
+      'with-variant': withVariant,
+      variants,
+      create: openCreate,
+      display: () => submit('display'),
+      change: () => submit('change'),
+      attributes: information,
+      text: () => openSubobject('text'),
+      doc: () => openSubobject('doc'),
+      'attributes-change': () => openSubobject('attributes', 'change'),
+    }
+  })
+
+  useEffect(() => {
+    const onAction = (event: Event) => {
+      const detail = (event as CustomEvent<{ target?: string; id?: string }>).detail
+      if (detail?.target !== 'se38' || !detail.id) return
+      actionsRef.current[detail.id]?.()
+    }
+    window.addEventListener('sap-screen-action', onAction)
+    return () => window.removeEventListener('sap-screen-action', onAction)
+  }, [])
+
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white">
-      {/* application toolbar — real SE38 initial-screen button set */}
-      <div className="sap-apptoolbar flex h-[26px] shrink-0 items-center gap-0.5 overflow-x-auto px-1.5">
-        <Se38TextBtn icon={<FileCheck2 className="h-3.5 w-3.5 text-[#2e5b8a]" />} label="Check" title="Check (Ctrl+F2)" onClick={() => void checkSyntax()} />
-        <Se38TextBtn icon={<Power className="h-3.5 w-3.5 text-[#1c7a1c]" />} label="Activate" title="Activate the program" onClick={() => void activate()} />
-        <Se38TextBtn icon={<Play className="h-3.5 w-3.5 text-[#1c7a1c]" />} label="Execute" title="Execute (F8)" onClick={() => void execute()} />
-        <Se38TextBtn icon={<Search className="h-3.5 w-3.5 text-[#2e5b8a]" />} label="Where-Used List" title="Where-Used List" onClick={() => void whereUsed()} />
-        <Se38TextBtn icon={<Glasses className="h-3.5 w-3.5 text-[#2e5b8a]" />} label="Environment Analysis" title="Environment Analysis" onClick={environmentAnalysis} />
-        <Se38TextBtn icon={<Info className="h-3.5 w-3.5 text-[#2e5b8a]" />} label="Online Help" title="Online Help" onClick={onlineHelp} />
-        <span className="sap-toolbar-sep" aria-hidden />
-        <Se38TextBtn icon={<Trash2 className="h-3.5 w-3.5 text-[#a01f1f]" />} label="Delete..." title="Delete program" onClick={deleteObject} />
-        <Se38TextBtn icon={<Copy className="h-3.5 w-3.5 text-[#2e5b8a]" />} label="Copy..." title="Copy program" onClick={copyProgram} />
-        <Se38TextBtn icon={<Pencil className="h-3.5 w-3.5 text-[#2e5b8a]" />} label="Rename..." title="Rename program" onClick={renameProgram} />
-        <span className="sap-toolbar-sep" aria-hidden />
-        <Se38TextBtn icon={<Bug className="h-3.5 w-3.5 text-[#8a6d1a]" />} label="Debugging" title="Debugging" onClick={debugging} />
-        <Se38TextBtn icon={<FileCheck2 className="h-3.5 w-3.5 text-[#2e5b8a]" />} label="With Variant" title="Start the program with a variant" onClick={withVariant} />
-        <Se38TextBtn icon={<Files className="h-3.5 w-3.5 text-[#2e5b8a]" />} label="Variants" title="Maintain variants" onClick={variants} />
-
-        <Popover open={moreOpen} onOpenChange={setMoreOpen}>
-          <PopoverTrigger asChild>
-            <button type="button" className="sap-tool-textbtn" title="More functions">
-              <MoreHorizontal className="h-3.5 w-3.5 text-[#2e5b8a]" />
-              <span>More</span>
-              <ChevronDown className="h-3 w-3 text-[#5b6d80]" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            sideOffset={2}
-            className="w-[250px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[12.5px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
-          >
-            <button type="button" title="Create Object Directory Entry" className="flex w-full items-center rounded-none px-2 py-[4px] text-left hover:bg-[#bcd6f2]" onClick={openCreate}>
-              Create (F5)
-            </button>
-            <button type="button" title="Display the selected subobject" className="flex w-full items-center rounded-none px-2 py-[4px] text-left hover:bg-[#bcd6f2]" onClick={() => submit('display')}>
-              Display (F7)
-            </button>
-            <button type="button" title="Change the selected subobject" className="flex w-full items-center rounded-none px-2 py-[4px] text-left hover:bg-[#bcd6f2]" onClick={() => submit('change')}>
-              Change (F6)
-            </button>
-            <button type="button" title="ABAP: Program Attributes" className="flex w-full items-center rounded-none px-2 py-[4px] text-left hover:bg-[#bcd6f2]" onClick={information}>
-              Information — attributes
-            </button>
-            <button type="button" title="Text symbols and selection texts" className="flex w-full items-center rounded-none px-2 py-[4px] text-left hover:bg-[#bcd6f2]" onClick={() => openSubobject('text')}>
-              Text elements
-            </button>
-            <button type="button" title="Program documentation" className="flex w-full items-center rounded-none px-2 py-[4px] text-left hover:bg-[#bcd6f2]" onClick={() => openSubobject('doc')}>
-              Documentation
-            </button>
-            <button type="button" title="Change program attributes" className="flex w-full items-center rounded-none px-2 py-[4px] text-left hover:bg-[#bcd6f2]" onClick={() => openSubobject('attributes', 'change')}>
-              Attributes (change)
-            </button>
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      <div className="sap-screen min-h-0 flex-1 overflow-auto">
+    <div className="flex h-full min-h-0 flex-col bg-[#ebf1f7]">
+      <div className="min-h-0 flex-1 overflow-auto bg-[#ebf1f7]">
         <h1 className="sr-only">ABAP Editor: Initial Screen</h1>
-        <div className="grid w-full max-w-[780px] grid-cols-[110px_minmax(0,1fr)] items-start gap-x-2 gap-y-5 px-4 pt-9">
-          {/* Program */}
-          <label htmlFor="se38-program" className="pt-1 text-[12.5px] text-[#1c2b3a]">
-            Program
-          </label>
-          <div className="flex items-center gap-2">
-            <div className="relative w-[240px]">
+        <div className="w-full max-w-[784px] px-[32px] py-[24px]">
+          {/* program field */}
+          <div className="mb-[20px] flex items-center gap-[8px]">
+            <label htmlFor="se38-program" className="w-[64px] shrink-0 text-right text-[12px] text-[#17324a]">
+              Program:
+            </label>
+            <div className="flex">
               <input
                 id="se38-program"
                 ref={inputRef}
@@ -389,7 +345,7 @@ function InitialScreen() {
                     openF4()
                   }
                 }}
-                className="sap-field sap-field-req w-full pr-[22px] font-mono uppercase"
+                className="sap-input sap-input-dashed h-[22px] w-[300px] px-1.5 font-mono uppercase text-[#17324a]"
                 spellCheck={false}
                 autoComplete="off"
               />
@@ -397,12 +353,12 @@ function InitialScreen() {
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="absolute right-0 top-0 flex h-full w-[20px] items-center justify-center border-l border-[#c6d3e2] bg-[#eef3f9] text-[#33475c] hover:bg-[#dbe8f8]"
+                    className="flex h-[22px] w-[22px] items-center justify-center border border-l-0 border-[#9aa7b4] bg-[#f4f6f9] text-[#4C6B8A] hover:bg-white"
                     aria-label="Possible entries (F4)"
                     title="Possible entries (F4)"
                     onClick={openF4}
                   >
-                    <ChevronDown className="h-3.5 w-3.5" />
+                    <Search className="h-[13px] w-[13px]" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -410,9 +366,9 @@ function InitialScreen() {
                   sideOffset={2}
                   className="w-[420px] rounded-none border border-[#8fa7bf] bg-white p-0 shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
                 >
-                  <div className="flex items-center gap-1 border-b border-[#c3cfdc] bg-[#eef3f9] px-2 py-1">
+                  <div className="flex items-center gap-1 border-b border-[#c6d7e6] bg-[#eef3f9] px-2 py-1">
                     <span className="text-[11.5px] font-semibold text-[#3f5468]">Program</span>
-                    <span className="ml-auto text-[10.5px] text-[#7b8a9c]">F4 — possible entries</span>
+                    <span className="ml-auto text-[10.5px] text-[#55677a]">F4 — possible entries</span>
                   </div>
                   <div className="border-b border-[#dbe4ee] p-1.5">
                     <input
@@ -425,17 +381,17 @@ function InitialScreen() {
                           choose(f4Matches[0].name)
                         }
                       }}
-                      className="sap-field w-full font-mono"
+                      className="sap-input w-full font-mono"
                       placeholder="Restrict value range…"
                       aria-label="Filter programs"
                     />
                   </div>
                   <div className="wb-scroll max-h-[260px] overflow-auto">
                     {f4Matches === null && (
-                      <div className="px-2 py-1.5 text-[12px] text-[#7b8a9c]">Loading programs…</div>
+                      <div className="px-2 py-1.5 text-[12px] text-[#55677a]">Loading programs…</div>
                     )}
                     {f4Matches?.length === 0 && (
-                      <div className="px-2 py-1.5 text-[12px] text-[#7b8a9c]">No programs found</div>
+                      <div className="px-2 py-1.5 text-[12px] text-[#55677a]">No programs found</div>
                     )}
                     {f4Matches?.map((p) => (
                       <button
@@ -445,7 +401,7 @@ function InitialScreen() {
                         onClick={() => choose(p.name)}
                       >
                         <span className="shrink-0 font-mono text-[12px] text-[#0b4fa8]">{p.name}</span>
-                        <span className="truncate text-[11.5px] text-[#5b6d80]">{p.title}</span>
+                        <span className="truncate text-[11.5px] text-[#55677a]">{p.title}</span>
                       </button>
                     ))}
                   </div>
@@ -454,24 +410,23 @@ function InitialScreen() {
             </div>
             <button
               type="button"
-              className="sap-btn inline-flex items-center gap-1.5 px-2.5"
+              className="sap-btn !px-[12px]"
               title="Create program"
               onClick={openCreate}
             >
-              <FilePlus2 className="h-3.5 w-3.5 text-[#1c7a1c]" />
               Create
             </button>
           </div>
 
-          {/* Subobjects — plain radio list with heading rule, as in SE38 */}
-          <div />
-          <div className="w-full max-w-[430px]">
-            <div className="border-b border-[#9fb2c6] pb-[2px] text-[12.5px] font-semibold text-[#12283c]">
-              Subobjects
+          {/* subobjects */}
+          <div className="mb-[20px]">
+            <div className="flex items-center gap-[12px]">
+              <h3 className="text-[12px] text-[#17324a]">Subobjects</h3>
+              <div className="h-px flex-1 bg-[#c7d8ea]" />
             </div>
-            <div className="space-y-[5px] pt-1.5">
+            <div className="mt-[8px] flex flex-col gap-[7px] py-1" role="radiogroup" aria-label="Subobjects">
               {SUBOBJECT_ORDER.map((k) => (
-                <label key={k} className="flex cursor-pointer items-center gap-2 text-[12.5px] text-[#1c2b3a]">
+                <label key={k} className="flex cursor-pointer items-center gap-[8px] text-[12px] text-[#17324a]">
                   <input
                     type="radio"
                     name="se38-subobject"
@@ -479,27 +434,18 @@ function InitialScreen() {
                     onChange={() => setSubobject(k)}
                     className="sap-radio"
                   />
-                  {SE38_SUBOBJECT_LABELS[k]}
+                  <span>{SE38_SUBOBJECT_LABELS[k]}</span>
                 </label>
               ))}
             </div>
           </div>
 
-          {/* Buttons */}
-          <div />
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="sap-btn inline-flex min-w-[110px] items-center justify-center"
-              onClick={() => submit('display')}
-            >
+          {/* display / change */}
+          <div className="mt-[20px] flex gap-[8px]">
+            <button type="button" className="sap-btn !px-[16px]" onClick={() => submit('display')}>
               Display
             </button>
-            <button
-              type="button"
-              className="sap-btn inline-flex min-w-[110px] items-center justify-center"
-              onClick={() => submit('change')}
-            >
+            <button type="button" className="sap-btn !px-[16px]" onClick={() => submit('change')}>
               Change
             </button>
           </div>
@@ -514,8 +460,14 @@ function ProgramAttributesDialog() {
   const name = useWorkbench((s) => s.se38Program)
   const mode = useWorkbench((s) => s.se38Mode)
   const storeProg = useWorkbench((s) => s.programs[name])
+  const createDraft = useWorkbench((s) => s.se38Create)
   const sessionUser = useWorkbench((s) => s.session.user)
-  const close = () => useWorkbench.getState().setSe38ShowSubobject(false)
+  const creating = createDraft?.name === name
+  const close = () => {
+    const s = useWorkbench.getState()
+    if (s.se38Create?.name === name) s.setSe38Create(null)
+    s.setSe38ShowSubobject(false)
+  }
 
   const [detail, setDetail] = useState<ProgramListItem | null>(null)
   const [title, setTitle] = useState('')
@@ -523,6 +475,9 @@ function ProgramAttributesDialog() {
   const [application, setApplication] = useState('')
   const [editorLock, setEditorLock] = useState(false)
   const [busy, setBusy] = useState(false)
+  // The details request runs asynchronously; never let its response overwrite
+  // fields the user has already edited in the meantime.
+  const fieldsTouched = useRef(false)
 
   useEffect(() => {
     let alive = true
@@ -531,8 +486,9 @@ function ProgramAttributesDialog() {
         if (!alive) return
         const hit = r.programs.find((p) => p.name === name) ?? null
         setDetail(hit)
-        setTitle(hit?.title ?? '')
-        setSelType(hit?.type ?? 'REPORT')
+        if (fieldsTouched.current) return
+        setTitle(hit?.title ?? createDraft?.title ?? '')
+        setSelType(hit?.type ?? createDraft?.type ?? 'REPORT')
       })
       .catch(() => {
         if (alive) setDetail(null)
@@ -540,13 +496,13 @@ function ProgramAttributesDialog() {
     return () => {
       alive = false
     }
-  }, [name])
+  }, [name, createDraft?.title, createDraft?.type])
 
   const isExample = detail?.isExample ?? storeProg?.isExample ?? false
-  const editable = mode === 'change' && !isExample
-  const status = storeProg?.dirty ? 'New(Revised)' : 'Active'
-  const createdAt = formatDate(detail?.createdAt ?? detail?.updatedAt)
-  const changedAt = formatDate(detail?.updatedAt)
+  const editable = (mode === 'change' || creating) && !isExample
+  const status = creating ? 'New' : storeProg?.dirty ? 'New(Revised)' : 'Active'
+  const createdAt = creating ? '—' : formatDate(detail?.createdAt ?? detail?.updatedAt)
+  const changedAt = creating ? '—' : formatDate(detail?.updatedAt)
   const typeSupported = REAL_TYPE_OPTIONS.some((o) => o.value === selType && o.supported)
 
   const checkEntries = () => {
@@ -576,6 +532,14 @@ function ProgramAttributesDialog() {
       s.addMessage('E', `Type ${selType} is not supported by the training runtime`)
       return
     }
+    if (creating) {
+      // Attributes are complete: continue with the object directory entry.
+      s.setSe38Create(null)
+      s.setSe38ShowSubobject(false)
+      s.setObjectDir({ name, title: title.trim(), type: selType as ProgramType })
+      s.addMessage('I', `Attributes for program ${name} saved — maintain the object directory entry`)
+      return
+    }
     setBusy(true)
     try {
       const ok = await useWorkbench.getState().updateProgramAttributes(name, {
@@ -599,20 +563,20 @@ function ProgramAttributesDialog() {
         aria-label={`Program attributes ${name}`}
       >
         <div className="sap-popup-title">
-          <DialogTitle className="truncate text-[12px] font-bold text-white">
+          <DialogTitle className="truncate text-[12px] font-bold text-[#17324a]">
             ABAP: Program Attributes {name} {editable ? 'Change' : 'Display'}
           </DialogTitle>
           <DialogDescription className="sr-only">
             Attributes of ABAP program {name}
           </DialogDescription>
           <div className="ml-auto flex items-center gap-1">
-            <span aria-hidden className="flex h-[16px] w-[16px] items-center justify-center text-[11px] font-bold text-[#d6e6f8]">?</span>
+            <span aria-hidden className="flex h-[16px] w-[16px] items-center justify-center text-[11px] font-bold text-[#4c6b8a]">?</span>
             <button
               type="button"
               onClick={close}
               aria-label="Close"
               title="Close"
-              className="sap-titlebar-close flex h-[16px] w-[16px] items-center justify-center text-[10px] leading-none text-white"
+              className="sap-titlebar-close flex h-[16px] w-[16px] items-center justify-center text-[10px] leading-none text-[#17324a]"
             >
               ✕
             </button>
@@ -621,41 +585,47 @@ function ProgramAttributesDialog() {
 
         <div className="sap-popup-body">
           <div className="grid grid-cols-[140px_minmax(0,1fr)] items-center gap-x-2 gap-y-[7px]">
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Title</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Title</span>
             <input
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                fieldsTouched.current = true
+                setTitle(e.target.value)
+              }}
               className="sap-field w-full max-w-[360px]"
               disabled={!editable}
               maxLength={80}
               aria-label="Program title"
             />
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Original Language</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Original Language</span>
             <span className={`${READONLY_FIELD} w-[70px]`}>EN</span>
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Created</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Created</span>
             <span className={`${READONLY_FIELD} w-[260px]`}>
-              {sessionUser} {createdAt}
+              {creating ? '—' : `${sessionUser} ${createdAt}`}
             </span>
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Last Changed</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Last Changed</span>
             <span className={`${READONLY_FIELD} w-[260px]`}>
-              {sessionUser} {changedAt}
+              {creating ? '—' : `${sessionUser} ${changedAt}`}
             </span>
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Status</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Status</span>
             <span className={`${READONLY_FIELD} w-[150px]`}>{status}</span>
           </div>
 
-          <div className="my-3 border-t border-[#c3cfdc]" />
+          <div className="my-3 border-t border-[#c6d7e6]" />
 
           <div className="grid grid-cols-[140px_minmax(0,1fr)] items-center gap-x-2 gap-y-[7px]">
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Type</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Type</span>
             <select
               className="sap-field w-[280px]"
               value={selType}
-              onChange={(e) => setSelType(e.target.value)}
+              onChange={(e) => {
+                fieldsTouched.current = true
+                setSelType(e.target.value)
+              }}
               disabled={!editable}
               aria-label="Program type"
             >
@@ -666,17 +636,17 @@ function ProgramAttributesDialog() {
               ))}
             </select>
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Status</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Status</span>
             <select className="sap-field w-[200px]" defaultValue="unclassified" disabled={!editable} aria-label="Program status">
               <option value="unclassified">Unclassified</option>
               <option value="system">System program</option>
               <option value="test">Test program</option>
             </select>
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Authorization Group</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Authorization Group</span>
             <input className="sap-field w-[140px]" disabled={!editable} aria-label="Authorization group" />
 
-            <span className="text-right text-[12.5px] text-[#1c2b3a]">Application</span>
+            <span className="text-right text-[12.5px] text-[#17324a]">Application</span>
             <select
               className="sap-field w-[200px]"
               value={application}
@@ -690,7 +660,7 @@ function ProgramAttributesDialog() {
             </select>
 
             <span />
-            <label className="flex items-center gap-2 text-[12.5px] text-[#1c2b3a]">
+            <label className="flex items-center gap-2 text-[12.5px] text-[#17324a]">
               <input
                 type="checkbox"
                 className="sap-checkbox"
@@ -708,13 +678,13 @@ function ProgramAttributesDialog() {
             </p>
           )}
           {!isExample && !editable && (
-            <p className="mt-3 text-[11.5px] italic text-[#5b6d80]">
+            <p className="mt-3 text-[11.5px] italic text-[#55677a]">
               Display mode — choose Change on the initial screen to edit the attributes.
             </p>
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-[#d0d0d0] bg-[#f0f0f0] px-3 py-2">
+        <div className="flex items-center justify-end gap-2 border-t border-[#c6d7e6] bg-[#eef4fa] px-3 py-2">
           <button
             type="button"
             className="sap-btn sap-btn-primary inline-flex items-center gap-1.5"
@@ -767,10 +737,10 @@ function SubobjectScreen() {
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       {/* subobject info line */}
-      <div className="flex items-center gap-3 border-b border-[#c5d2e2] bg-[#f7fafd] px-3 py-[3px] text-[12.5px]">
+      <div className="flex items-center gap-3 border-b border-[#c6d7e6] bg-[#f7fafd] px-3 py-[3px] text-[12.5px]">
         <span className="font-mono font-bold text-[#12283c]">{name}</span>
         <span className="text-[#44586c]">{SE38_SUBOBJECT_LABELS[subobject]}</span>
-        {detail?.title && <span className="max-w-[360px] truncate text-[#7b8a9c]">{detail.title}</span>}
+        {detail?.title && <span className="max-w-[360px] truncate text-[#55677a]">{detail.title}</span>}
         <button
           type="button"
           className="sap-btn ml-auto px-2 py-[1px] text-[11.5px]"
@@ -864,9 +834,9 @@ function TextElementsScreen({
       <section>
         <h3 className="mb-1 text-[12px] font-bold text-[#33475c]">List headings</h3>
         <div className="grid w-full max-w-[640px] grid-cols-[150px_minmax(0,1fr)] items-center gap-x-3 gap-y-[7px]">
-          <span className="text-right text-[12.5px] text-[#1c2b3a]">List heading 1:</span>
+          <span className="text-right text-[12.5px] text-[#17324a]">List heading 1:</span>
           <span className={READONLY_FIELD}>{detail?.title || name}</span>
-          <span className="text-right text-[12.5px] text-[#1c2b3a]">List heading 2:</span>
+          <span className="text-right text-[12.5px] text-[#17324a]">List heading 2:</span>
           <span className={READONLY_FIELD}>—</span>
         </div>
       </section>
@@ -883,15 +853,15 @@ function DocumentationScreen({ name, detail }: { name: string; detail: ProgramLi
       </div>
       <div className="wb-scroll min-h-[220px] flex-1 overflow-auto border border-[#c6d3e2] bg-white p-3 shadow-[inset_1px_1px_2px_rgba(0,0,0,0.06)]">
         {text ? (
-          <p className="whitespace-pre-wrap text-[12.5px] leading-[1.5] text-[#1c2b3a]">{text}</p>
+          <p className="whitespace-pre-wrap text-[12.5px] leading-[1.5] text-[#17324a]">{text}</p>
         ) : (
-          <p className="text-[12.5px] italic text-[#8395a8]">
+          <p className="text-[12.5px] italic text-[#55677a]">
             No documentation maintained for program {name}.
           </p>
         )}
       </div>
       {detail?.topicTitle && (
-        <p className="mt-2 text-[11.5px] text-[#7b8a9c]">Training topic: {detail.topicTitle}</p>
+        <p className="mt-2 text-[11.5px] text-[#55677a]">Training topic: {detail.topicTitle}</p>
       )}
     </div>
   )
@@ -906,7 +876,7 @@ function ListTable({ head, rows, empty }: { head: string[]; rows: string[][]; em
           {head.map((h) => (
             <th
               key={h}
-              className="border border-[#c3cfdc] bg-[#eef3f9] px-2 py-[3px] text-left font-semibold text-[#3f5468]"
+              className="border border-[#c6d7e6] bg-[#eef3f9] px-2 py-[3px] text-left font-semibold text-[#3f5468]"
             >
               {h}
             </th>
@@ -918,7 +888,7 @@ function ListTable({ head, rows, empty }: { head: string[]; rows: string[][]; em
           <tr>
             <td
               colSpan={head.length}
-              className="border border-[#c3cfdc] bg-white px-2 py-[5px] text-[12px] text-[#44586c]"
+              className="border border-[#c6d7e6] bg-white px-2 py-[5px] text-[12px] text-[#44586c]"
             >
               {empty}
             </td>
@@ -927,7 +897,7 @@ function ListTable({ head, rows, empty }: { head: string[]; rows: string[][]; em
           rows.map((r, i) => (
             <tr key={i}>
               {r.map((c, j) => (
-                <td key={j} className="border border-[#c3cfdc] bg-white px-2 py-[3px] font-mono">
+                <td key={j} className="border border-[#c6d7e6] bg-white px-2 py-[3px] font-mono">
                   {c}
                 </td>
               ))}

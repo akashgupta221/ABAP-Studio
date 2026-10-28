@@ -114,9 +114,9 @@ export function EditorView({ programName }: { programName: string }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white">
+    <div className="flex h-full min-h-0 flex-col bg-[#ebf1f7]">
       {/* SE38 editor info line: Report/Include <program> Active/Inactive */}
-      <div className="flex items-center gap-3 border-b border-[#c5d2e2] bg-[#f7fafd] px-3 py-[3px] text-[12.5px]">
+      <div className="flex items-center gap-3 border-b border-[#c6d7e6] bg-[#f1f6fb] px-3 py-[3px] text-[12.5px]">
         <span className="shrink-0 text-[#33475c]">{objectLabel}</span>
         <span
           className="flex h-[20px] max-w-[300px] items-center border border-[#c6d3e2] bg-[#f4f8fc] px-2 font-mono text-[12.5px] text-[#12283c] shadow-[inset_1px_1px_2px_rgba(0,0,0,0.05)]"
@@ -124,7 +124,9 @@ export function EditorView({ programName }: { programName: string }) {
         >
           <span className="truncate">{prog.name}</span>
         </span>
-        <span className="shrink-0 text-[#1c2b3a]">{statusText}</span>
+        <span className={`shrink-0 rounded-[2px] px-1.5 py-[1px] text-[10px] font-semibold ${prog.dirty || prog.active === false ? 'bg-[#fbf0d9] text-[#6f5712]' : 'bg-[#d8efd4] text-[#155f27]'}`}>
+          {statusText}
+        </span>
         {prog.isExample && (
           <span
             className="shrink-0 whitespace-nowrap text-[11.5px] text-[#8a6d1a]"
@@ -174,22 +176,6 @@ export function EditorView({ programName }: { programName: string }) {
         <button
           type="button"
           className="sap-tool-textbtn"
-          title="Open another object"
-          onClick={() => addMessage('I', 'Other Object: enter the object name in the command field (Ctrl+K)')}
-        >
-          <span>Other Object...</span>
-        </button>
-        <button
-          type="button"
-          className="sap-tool-textbtn"
-          title="Enhancement framework"
-          onClick={() => addMessage('I', 'Enhance: the enhancement framework is not part of this training system')}
-        >
-          <span>Enhance</span>
-        </button>
-        <button
-          type="button"
-          className="sap-tool-textbtn"
           title="Check (Ctrl+F2)"
           onClick={() => void checkProgram(programName)}
         >
@@ -227,22 +213,6 @@ export function EditorView({ programName }: { programName: string }) {
           <Search className="h-3.5 w-3.5 text-[#2e5b8a]" />
           <span>Where-Used List</span>
         </button>
-        <button
-          type="button"
-          className="sap-tool-textbtn"
-          title="Display the object list"
-          onClick={() => addMessage('I', `Object list for ${programName}: use the SE80 Object Navigator`)}
-        >
-          <span>Display Object List</span>
-        </button>
-        <button
-          type="button"
-          className="sap-tool-textbtn"
-          title="Display the navigation window"
-          onClick={() => addMessage('I', 'Navigation window: use SAP Easy Access (the Easy Access tab) to navigate')}
-        >
-          <span>Display Navigation Window</span>
-        </button>
 
         <Popover>
           <PopoverTrigger asChild>
@@ -258,6 +228,7 @@ export function EditorView({ programName }: { programName: string }) {
             className="w-[240px] rounded-none border border-[#8fa7bf] bg-white p-0.5 text-[12.5px] shadow-[0_4px_16px_rgba(10,30,60,0.35)]"
           >
             {[
+              { label: 'Back to ABAP Editor (F3)', run: () => useWorkbench.getState().openSe38Initial(programName), disabled: false },
               { label: 'Save (Ctrl+S)', run: () => void saveProgram(programName), disabled: prog.isExample || !prog.dirty },
               { label: 'Save As...', run: saveAs, disabled: false },
               { label: 'Attributes (change)', run: openAttributes, disabled: false },
@@ -444,7 +415,7 @@ export function EditorView({ programName }: { programName: string }) {
       {/* editor status line ("ABAP · Ln/Col" like the real ABAP editor) */}
       <div className="flex items-center gap-4 border-t border-[#d8e1ec] bg-[#eef2f7] px-3 py-[1px] font-mono text-[11px] text-[#5b6d80]">
         <span className="text-[#33475c]">ABAP</span>
-        <span className="text-[10.5px] text-[#93a9c2]">v{prog.version}</span>
+        <span className="text-[10.5px] text-[#55677a]">v{prog.version}</span>
         <span className="ml-auto">
           Ln {cursor.line} Col {cursor.col}
         </span>

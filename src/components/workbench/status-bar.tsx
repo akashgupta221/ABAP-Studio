@@ -28,7 +28,6 @@ function pad(n: number) {
 
 export function StatusBar() {
   const messages = useWorkbench((s) => s.messages)
-  const lastTcode = useWorkbench((s) => s.lastTcode)
   const running = useWorkbench((s) => Object.values(s.programs).some((p) => p.running))
   const session = useWorkbench((s) => s.session)
   const insertMode = useWorkbench((s) => s.insertMode)
@@ -43,8 +42,8 @@ export function StatusBar() {
   }, [])
 
   const last = messages[messages.length - 1]
-  const dateStr = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`
-  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+  const hours12 = now.getHours() % 12 || 12
+  const timeStr = `${pad(hours12)}:${pad(now.getMinutes())} ${now.getHours() < 12 ? 'AM' : 'PM'}`
 
   return (
     <footer className="sap-statusbar shrink-0 px-[14px] pb-[6px] pt-[4px]">
@@ -79,33 +78,9 @@ export function StatusBar() {
 
         <span className="flex-1" />
 
-        {/* right: system information cluster */}
-        <button
-          type="button"
-          className="flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[2px] text-[11px] text-[#9aa7b6] hover:bg-white/10"
-          title={systemInfoVisible ? 'Hide system information' : 'Show system information'}
-          aria-label={systemInfoVisible ? 'Hide system information' : 'Show system information'}
-          onClick={toggleSystemInfo}
-        >
-          {systemInfoVisible ? '❮' : '❯'}
-        </button>
+        {/* right: system information cluster (App 2 order: INS · system · user · time) */}
         {systemInfoVisible && (
           <span className="flex shrink-0 items-center gap-3 text-[11px] text-[#9aa7b6]">
-            <span className="hidden font-mono sm:inline" title="Current transaction">
-              {lastTcode}
-            </span>
-            <span className="hidden font-mono sm:inline" title="System, session and client">
-              MER (1) 105
-            </span>
-            <span className="hidden font-mono md:inline" title={`User ${session.user}`}>
-              {session.user}
-            </span>
-            <span className="hidden font-mono lg:inline" title="System date">
-              {dateStr}
-            </span>
-            <span className="hidden font-mono md:inline" title="System time">
-              {timeStr}
-            </span>
             <button
               type="button"
               title="Data entry mode — click to toggle Insert/Overwrite"
@@ -115,8 +90,26 @@ export function StatusBar() {
             >
               {insertMode}
             </button>
+            <span className="hidden font-mono sm:inline" title="System, session and client">
+              MER (1) 105
+            </span>
+            <span className="hidden font-mono md:inline" title={`User ${session.user}`}>
+              {session.user}
+            </span>
+            <span className="hidden font-mono md:inline" title="System time">
+              {timeStr}
+            </span>
           </span>
         )}
+        <button
+          type="button"
+          className="ml-1 flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[2px] text-[11px] text-[#9aa7b6] hover:bg-white/10"
+          title={systemInfoVisible ? 'Hide system information' : 'Show system information'}
+          aria-label={systemInfoVisible ? 'Hide system information' : 'Show system information'}
+          onClick={toggleSystemInfo}
+        >
+          {systemInfoVisible ? '❮' : '❯'}
+        </button>
       </div>
     </footer>
   )
