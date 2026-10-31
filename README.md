@@ -1,391 +1,168 @@
 <div align="center">
 
-# ABAP-Studio
+<img src="public/abap-atelier-logo.png" alt="ABAP Atelier" width="220" />
 
-**A browser-based SAP NetWeaver®-style ABAP training workbench.**
-Faithful Standard SAP GUI, a from-scratch ABAP interpreter, a dedicated Modern ABAP
-workspace, private user workspaces and a 100% free cloud deployment.
+# ABAP Atelier
 
-![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs&logoColor=white)
-![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![TypeScript 5](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
-![Prisma 6](https://img.shields.io/badge/Prisma-6.19-2D3748?logo=prisma&logoColor=white)
-![Database](https://img.shields.io/badge/Database-SQLite%20%7C%20Turso%20%28libSQL%29-4FF8D2)
-![Deploy](https://img.shields.io/badge/Deploy-Vercel-000?logo=vercel&logoColor=white)
+**A modern, browser-based SAP NetWeaver®-style ABAP training workbench.**
 
-[**▶ Live demo**](https://abap-studio.akashgupta.is-a.dev) · [Deployment guide](DEPLOY.md) · [Master specification](docs/MASTER-PROJECT-SPEC.md) · [Final acceptance report](docs/FINAL-ACCEPTANCE-REPORT.md) · [Report an issue](https://github.com/akashgupta221/ABAP-Studio/issues)
+Write, run, debug and manage *real* ABAP in your browser — a faithful SAP GUI surface,
+a from-scratch ABAP interpreter, a Modern ABAP workspace, private accounts and a 100% free cloud deployment.
+
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![TypeScript 5](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Prisma 6](https://img.shields.io/badge/Prisma-6-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io)
+[![DB](https://img.shields.io/badge/DB-SQLite%20%7C%20Turso-4FF8D2?logo=libsql&logoColor=white)](https://turso.tech)
+[![Auth](https://img.shields.io/badge/Auth-Clerk-6C47FF?logo=clerk&logoColor=white)](https://clerk.com)
+[![Tests](https://img.shields.io/badge/Tests-Playwright%20%2B%20axe-2EAD33?logo=playwright&logoColor=white)](#-testing--quality)
+[![Deploy](https://img.shields.io/badge/Deploy-Vercel-000?logo=vercel&logoColor=white)](https://vercel.com)
+
+**[▶ Open the live workbench](https://abap-studio.akashgupta.is-a.dev)** · [Deployment guide](DEPLOY.md)
 
 </div>
 
 ---
 
-## What is ABAP-Studio?
+## What is ABAP Atelier?
 
-ABAP-Studio recreates the day-to-day feel of working in an SAP NetWeaver system — the
-logon pad, menu tree, SE38 editors, DDIC dictionary views and ALV grids — and runs
-**actual ABAP code** through a purpose-built interpreter written in TypeScript. A separate
-**Modern ABAP workspace** adds executable 7.40 constructor expressions plus validated CDS,
-RAP and AMDP artefacts, with an explicit capability matrix instead of pretending to be a
-real HANA/RAP runtime.
+ABAP Atelier recreates the day-to-day feel of working in an SAP NetWeaver system — the logon
+pad, Easy Access menu tree, SE38 editors, DDIC dictionary views and ALV grids — and runs
+**actual ABAP code** through a purpose-built interpreter written in TypeScript. A dedicated
+**Modern ABAP workspace** adds executable 7.40 constructor expressions plus structurally
+validated CDS, RAP and AMDP artefacts, with an explicit capability matrix instead of
+pretending to be a real HANA/RAP runtime.
 
-The shared curriculum contains 16 topics, **47 preloaded objects** (42 Standard examples,
-1 shared INCLUDE and 4 Modern examples), 11 demo tables with 113 rows and function
-modules. Everyone can read the examples; private programs and sandboxes are isolated per
-user.
+It ships with a ready-made curriculum: **16 topics**, **47 preloaded objects**
+(42 Standard examples, 1 shared include, 4 Modern), **11 demo tables** (SFLIGHT and friends,
+113 rows) and function modules — so a learner can go from first sign-in to running and saving
+real ABAP without an SAP system.
 
-> **Project status:** P0 security/ownership and P1 Clerk cutover are deployed and accepted.
-> The P2 Modern ABAP scope, UI/accessibility automation and permanent legacy-auth removal
-> are deployed and production-smoke-verified. **P3 App 2 integration (Firefox/WebGUI shell + SE37 Function Builder) is deployed and owner-signed-off.** Technical acceptance evidence is in the
-> [final acceptance report](docs/FINAL-ACCEPTANCE-REPORT.md). Live counts are
-> always available at `/api/health`.
+> **ABAP Atelier is an independent training simulator.** It is not affiliated with or endorsed
+> by SAP SE, and it never claims production SAP parity — what runs, what is validated and what
+> is simulated is always labelled in the product.
 
-## Features
+## ✨ Feature highlights
 
-### 🖥️ Authentic Standard SAP GUI (App 2 chrome)
-- SAP-style **logon pad** and the real `MER` / client `105` system identity
-- **Real SAP GUI for HTML window chrome**: 5px blue accent, `#99b7d7` title bar with the SAP logo,
-  centered screen title, `MER (105)` system dropdown and new-session chevron
-- Screen menu bar with the **OK-code command field** and Find / Print / Exit on the right,
-  standard toolbar, application toolbar, tabs — no fake browser wrapper
-- **Dark status bar** (`#333d47`): colored message area with icons, `INS/OVR` toggle,
-  transaction, system, user, date and live clock
-- The simulated Firefox wrapper was removed as a design mistake; the SAP window is the product
-- **Easy Access** tree, command palette and transactions (SE38, SE11, SE16N, **SE37**, SE24, …)
-- Real SAP button sets, field help, dirty-state awareness and keyboard shortcuts
-- The Standard screenshot-fidelity work is preserved; the Modern workspace is a separate
-  view opened from **ABAP Training → Modern ABAP Workspace** or command `MODERN`
+### 🖥️ Authentic SAP GUI surface
+Standard SAP GUI for HTML chrome — `#99b7d7` title bar with the SAP logo, centered screen
+title, `MER (105)` system dropdown and new-session chevron, menu bar with the OK-code field,
+standard + application toolbars, dark status bar (`#333d47`) with colored messages, `INS/OVR`,
+transaction, user, date and a live clock. Easy Access tree with Favorites, command palette,
+real button sets, field help, dirty-state awareness and keyboard conventions (`F8` run,
+`Ctrl+S` save, `Ctrl+F2` check, `/h` debug, `/nex` log off).
 
-### 🧱 SE37 Function Builder (new)
-- **Function Group strip** — clickable chips with module counts; create/delete groups
-- **Function Module tree** — expandable groups, filterable list, create/edit/display modes
-- **Parameter grids** — Import / Export / Changing / Tables with type spec, default, optional, add/delete rows
-- **Exceptions list** — named exceptions with add/delete
-- **Source Code editor** — syntax-highlighted ABAP, read-only for shared examples
-- **Syntax Check** (Ctrl+F2) — real parser validation
-- **Save** (Ctrl+S) — deactivates on save; **Activate / Deactivate** (Ctrl+F3) — check → save → toggle
-- **Test console** (F8) — input parameters → Execute → structured result grid + `sy-subrc` + list output
-- **Full isolation** — private FMs visible/editable only to creator; examples shared read-only; owner sees all
-- **Engine-scoped** — `CALL FUNCTION` from ABAP programs only resolves active FMs the caller may access
-
-### 🐛 ABAP Debugger, ST22 Dump Analysis and Pretty Printer (new)
-- **ABAP Debugger** (`/h` + F8, or the editor **Debug** button) — the SAP New Debugger workflow:
-  stops at the first executable statement, **F5** step, **F6** step over (skips FORM/FM/method bodies),
-  **F8** continue to a breakpoint, variable table refreshed on every stop, list output so far
-- **Line breakpoints** — click a line number in the debugger source pane to toggle
-- **Stateless debug engine** — every step re-runs the deterministic engine server-side and pauses at
-  the requested statement, so it works on serverless deployments without an engine session registry
-  and never leaves the tenant context the server
-- **ST22 ABAP Dump Analysis** (`ST22`) — your own runtime errors with ABAP error type
-  (e.g. `CX_SY_ZERODIVIDE`), short text, source line and list lines produced before the dump
-- **Pretty Printer** (Shift+F1 / toolbar) — upper-cases ABAP keywords outside string literals and
-  re-indents `IF`/`LOOP`/`FORM`/`METHOD`/`CLASS` blocks (replaces the earlier demo stub)
-- **SE16 selection criteria (SE16N-style)** — per-field options `EQ`, `NE`, `GT`, `LT`, `GE`, `LE`,
-  `BT` (low/high) and `CP` (`*`/`+` wildcards), combined per table query
+### 🧭 Transactions
+| Transaction | What you can do |
+| --- | --- |
+| **SE38** | ABAP Editor: create, edit, activate, syntax-check and execute reports, includes and classes |
+| **SE37** | Function Builder: groups, modules, full parameter grids, isolated test console |
+| **SE11** | ABAP Dictionary: browse table definitions; the owner maintains Z*/Y* customer tables |
+| **SE16N** | Data Browser: per-field criteria — `EQ NE GT LT GE LE BT CP` with `*`/`+` wildcards |
+| **SE24** | Class Builder: ABAP Objects with inheritance, events and interfaces |
+| **ST22** | Dump analysis: real runtime errors (`CX_SY_ZERODIVIDE`, …) as readable dumps |
+| **SE80** | Object Navigator: repository-wide search |
+| **SE93** | Transaction registry: customer t-codes that start reports |
+| **SE91** | Message class maintenance — `MESSAGE e001(ZCLASS)` resolves stored texts |
+| **SNRO** | Number ranges with `NUMBER_GET_NEXT` |
+| **AL11 / CG3Y / CG3Z** | Application-server files (`OPEN / READ / TRANSFER DATASET`) |
+| **SM59** | RFC destinations (simulated) |
+| **SCI / SLIN** | Static code inspection of your programs |
+| **SLG1 / SM21** | Application log and system log of every execution |
+| **SM36 / SM37** | Background jobs with stored job logs |
+| **SQ01 / SQ02** | ABAP Query that generates and executes real ABAP |
+| **SE09 / SE10** | Transport organizer with STMS import queue |
+| **SM50** | Work-process activity snapshot |
 
 ### ⚙️ A real ABAP engine — from scratch
-- Hand-written **tokenizer → parser → tree-walking interpreter** (`src/lib/abap/`)
-- Classical ABAP subset: `REPORT`, `WRITE`, `DATA`/`TYPES`, internal tables, control flow,
-  `FORM`/`PERFORM`, string/date built-ins and `CALL FUNCTION`
-- **Selection screens** (`PARAMETERS`, `SELECT-OPTIONS`) and classic ABAP SQL
-- **ALV-style grid** and classic list output with runtime duration
-- **Syntax check** (Ctrl+F2) with SAP-style messages and line positions
-- Interpreter statement and wall-clock limits
+A hand-written **tokenizer → parser → tree-walking interpreter** in TypeScript — not a
+wrapper, not a transpiler. Procedural and object-oriented ABAP, Open SQL against demo
+tables, selection screens, list and **ALV-style output**, internal tables, field symbols,
+control breaks, exception classes — plus a **stateless step-by-re-execution debugger** with
+line breakpoints, live variable inspection and `F5`/`F6`/`F8` stepping, and the **Pretty
+Printer** (`Shift+F1`) with real keyword casing and block re-indentation.
 
-### 🧪 Modern ABAP workspace
-| Capability | Level | What happens |
-|---|---|---|
-| ABAP 7.40 inline declarations, string templates, `VALUE`, `FOR`, `REDUCE`, `COND`, `SWITCH` | **Executable** | Runs in the local interpreter, including the verified `Z_MD_CONSTRUCTORS` example |
-| CDS view entities | **Validated** | Structural DDIC simulator; no SQL is executed |
-| RAP behavior definitions | **Validated** | Structural syntax/relationship checks; no RAP or OData runtime |
-| AMDP classes and SQLScript bodies | **Simulated** | Signature and SQLScript structure checks; the database procedure is not executed |
-| Real HANA pushdown, RAP/OData runtime, AMDP execution, dynpro generation | **Unsupported** | Clearly labelled in the workspace; never implied by the UI |
-
-The workspace includes shared examples, a starter template for private ABAP/CDS/RAP/AMDP
-objects, server-side validation, ABAP execution, save/delete for owner-created private
-objects and an always-visible capability matrix.
+### 🎨 Modern ABAP workspace
+7.40 constructor expressions (`NEW`, `VALUE`, `FOR`, `REDUCE`, `COND`, `SWITCH`, table
+expressions, inline declarations) **execute for real**. CDS view entities and RAP behavior
+definitions are **validated structurally** against the simulated DDIC; AMDP classes are
+simulated. The boundary is always explicit — never implied.
 
 ### 📚 A ready-made learning path
-- 10 syllabus topics following a classical ABAP course progression
-- 42 Standard examples, 1 shared INCLUDE and 4 Modern examples
-- **Private per-user sandbox** opened as “My Practice Program”
-- Save your own programs, keep favorites and see recent activity
+Ten classical topics plus Modern ABAP — from first `SELECT` to CDS, RAP and AMDP — each with
+runnable, read-only examples you can open, study and copy into your private workspace.
 
 ### 🔐 Secure accounts and private workspaces
-- **Clerk Email OTP + Google** with verified-email account linking; password, phone and
-  username sign-in are disabled
-- Clerk proves identity only; the database remains authoritative for roles, suspension,
-  program ownership and audit history
-- **Server-side sessions**, same-origin CSRF checks, rate limiting and session revocation
-- Training examples are shared/read-only; private programs and Modern objects are
-  creator-only, and the owner can inspect all non-example programs
-- **Owner-only admin dashboard** (`/admin`): metrics, 7-day chart, activity, users,
-  programs, audit log, suspend/reactivate, revoke sessions, confirmed deletion and
-  program deletion
-- The owner gate requires database `role = OWNER` **and** a matching `OWNER_EMAIL`;
-  production fails closed if the email is missing or mismatched
-- **Legacy password authentication is permanently retired.** `/api/auth/login` is a
-  `403` stub, `/api/auth/register` is a `410` stub, no password is stored for the live
-  path, and the old scrypt/HMAC modules and password-reset script have been deleted.
-  Automated tests use a separate test-only session broker that refuses Vercel/Turso.
+- **Clerk** identity: verified email one-time code or Google — password logon is retired
+- Server-side sessions, same-origin CSRF checks, rate limiting, session revocation
+- Private programs and Modern objects are creator-only; shared examples stay read-only
+- **Owner-only administrator dashboard**: adoption metrics, 7-day execution chart, user
+  masters, suspension, session revocation, confirmed deletions and a full audit log
 
-Guides: [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md),
-[`docs/GOOGLE-OAUTH-SETUP.md`](docs/GOOGLE-OAUTH-SETUP.md) and
-[`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md).
+## 🏛 Architecture
 
-## Tech stack
+```mermaid
+flowchart LR
+  subgraph Browser["Browser"]
+    GUI["SAP GUI shell<br/>Easy Access · SE38 · ALV · Debugger"]
+    Dash["Owner dashboard"]
+    Land["Landing · sign-in / sign-up"]
+  end
+  subgraph Server["Next.js 16 — App Router"]
+    API["/api/* — programs, execute, debug,<br/>functions, tables, jobs, transports …"]
+    Engine["ABAP engine<br/>tokenizer → parser → interpreter"]
+    Guard["Clerk + DB roles<br/>CSRF · rate limiting · audit"]
+  end
+  DB[("SQLite — local<br/>Turso / libSQL — production")]
+  Land --> API
+  GUI --> API
+  Dash --> API
+  API --> Guard
+  API --> Engine
+  API --> DB
+  Engine --> DB
+```
 
-| Layer | Technology |
+The engine is a **pure, stateless function**: it loads a DB snapshot + FMs + includes, runs,
+and discards. Execution never writes ABAP table changes back to the database — the debugger
+re-executes deterministically per step, so pausing can never mutate persisted rows. The
+schema layer uses an **additive, idempotent migration strategy** (`CREATE TABLE IF NOT
+EXISTS` + column patches) that is safe to race across serverless cold starts.
+
+## 🧪 Testing & quality
+
+Quality is enforced by three automated suites that run alongside lint and type checks:
+
+| Suite | Coverage |
 | --- | --- |
-| Framework | Next.js 16 (App Router, serverless routes) + React 19 |
-| Language | TypeScript 5 |
-| UI | Tailwind CSS 4, Radix UI, Framer Motion, Lucide icons |
-| State / data | Zustand, TanStack Query |
-| Database | Prisma 6 + libSQL driver adapter — SQLite locally, [Turso](https://turso.tech) in the cloud |
-| ABAP engine | Custom tokenizer / parser / interpreter (`src/lib/abap/`) |
-| Deployment | Vercel **Hobby** + Turso **free** plan |
+| **Unit** | ABAP engine, parser, table filters, provisioning logic |
+| **API security** | Live-server tests — authentication, CSRF, tenant isolation, rate limiting, session revocation |
+| **UI + accessibility** | Playwright end-to-end flows (public pages, SE38/SE37, debugger, dashboard) with **axe scans that fail the build on serious or critical violations** |
 
-## Getting started (local)
+The deployment pipeline also includes a schema-apply workflow and a production smoke suite.
 
-**Prerequisites:** [Bun](https://bun.sh) ≥ 1.2 · Git
+## 📜 Roadmap and explicit boundaries
 
-```bash
-# 1) Clone
-git clone https://github.com/akashgupta221/ABAP-Studio.git
-cd ABAP-Studio
+Out of scope — by design, not by omission: connecting to a real SAP system, executing HANA
+SQL, RAP/OData runtime, dynpro generation, production SAP parity. The simulator's value is an
+authentic *training* experience with honest labels; see the in-app capability matrix.
 
-# 2) Install dependencies (also runs prisma generate)
-bun install
-
-# 3) Configure the environment
-cp .env.example .env
-
-# 4) Create the local database schema
-bun run db:push
-
-# 5) Run
-bun run dev                   # → http://localhost:3000
-```
-
-The database file is **not committed** (it contains identities and personal programs). On
-the first request the app auto-seeds the shared syllabus, examples, demo tables and
-function modules.
-
-Manual browser sign-in requires Clerk development keys in `.env`. Without Clerk, the
-workbench stays visually available but there is no manual logon path; use the automated
-suites below, which run against a disposable database with a test-only session broker.
-The production build cannot use the broker because it refuses Vercel and
-`TURSO_DATABASE_URL` environments.
-
-To make a Clerk account the owner:
-
-```bash
-# Sign in once so the Clerk identity creates/links its database row, then:
-OWNER_EMAIL="owner@example.com" OWNER_USERNAME=AKASH bun run owner:provision
-bun run owner:verify
-```
-
-The provisioning script never creates or stores a password. `OWNER_EMAIL` is required for
-production access; `OWNER_USERNAME` is a non-production fallback only and is ignored on
-Vercel or when `NODE_ENV=production`.
-
-Production build locally:
-
-```bash
-bun run build && bun run start
-```
-
-## Environment variables
-
-| Variable | Where | Purpose |
-| --- | --- | --- |
-| `DATABASE_URL` | local | SQLite file path — `file:./db/app.db` (relative to `prisma/`) |
-| `TURSO_DATABASE_URL` | Vercel + shell | libSQL URL of the Turso database (`libsql://…`) |
-| `TURSO_AUTH_TOKEN` | Vercel + shell | Turso access token |
-| `OWNER_EMAIL` | Vercel + provisioning | Authoritative owner identity; must match the verified email on the `OWNER` row. Required in production |
-| `OWNER_USERNAME` | local only | Non-production/unit-test fallback; rejected on Vercel and in production |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Vercel + local | Clerk browser key (`pk_live_…` in production) |
-| `CLERK_SECRET_KEY` | Vercel + local | Clerk server key (`sk_live_…`); never expose |
-| `CLERK_WEBHOOK_SECRET` | Vercel | Clerk webhook signing secret for `/api/webhooks/clerk` |
-| `E2E_TEST_MODE` / `E2E_TEST_SECRET` | test runners only | Disposable test-session broker; never set in Vercel or against real data |
-
-Never commit real values; `.env` is git-ignored. Do not paste secrets into chat or issues.
-`AUTH_SECRET`, `LEGACY_AUTH_MODE` and `NEXT_PUBLIC_LEGACY_AUTH_MODE` are no longer read by
-the application and should be removed from existing deployments.
-
-## Testing
-
-```bash
-bun run lint          # ESLint
-bun run typecheck     # TypeScript (tsc --noEmit)
-bun run test          # 40 unit tests (136 assertions)
-bun run test:api      # 124 disposable live API/security checks (port 3100)
-bun run test:ui       # 14 Playwright UI + axe accessibility tests (port 3101)
-bun run test:all      # lint + typecheck + unit + API + UI
-bun run build         # production build (TypeScript enforced)
-```
-
-The API and UI suites create throwaway databases and isolated servers; they never touch
-local user data or production. Run them sequentially because both use the Next.js `.next`
-build directory. The UI suite fails on serious or critical WCAG 2.x axe findings and
-covers the public logon, secure auth pages, keyboard navigation, mobile overflow, owner
-workbench, SE38, **SE37 Function Builder**, admin tabs and the Modern workspace.
-
-## Deploy for free (Vercel + Turso)
-
-Every `git push` to `main` rebuilds and redeploys the live app. Production is
-`https://abap-studio.akashgupta.is-a.dev`, running Clerk-only authentication. P0/P1 are
-accepted; the P2 release is deployed and production-verified, with final owner visual
-sign-off still pending.
-
-The domain path is documented in [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md).
-The app origin and Clerk Frontend API are live on is-a.dev.
-
-1. **GitHub** — push this repository. The `CI` workflow runs lint, type-check, unit,
-   API, UI/axe and the production build with no secrets.
-2. **Turso** — create a free database, copy its `libsql://` URL and create a token.
-3. **Vercel** — import the repo and set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`,
-   `OWNER_EMAIL`, the Clerk production publishable/secret keys and
-   `CLERK_WEBHOOK_SECRET`. Do **not** set any legacy-auth variables. Follow
-   [`docs/FREE-DOMAIN-SETUP.md`](docs/FREE-DOMAIN-SETUP.md),
-   [`docs/GOOGLE-OAUTH-SETUP.md`](docs/GOOGLE-OAUTH-SETUP.md) and
-   [`docs/CLERK-SETUP.md`](docs/CLERK-SETUP.md).
-4. **Seed the cloud database** — from your machine:
-
-```bash
-TURSO_DATABASE_URL="libsql://…" \
-TURSO_AUTH_TOKEN="…" \
-bun run deploy:db
-```
-
-`deploy:db` applies additive schema changes (including the Modern environment columns) and
-upserts shared content **without deleting users, private programs, favorites or execution
-history**. It verifies all 41 seeded objects, including executable Modern ABAP and the
-validated CDS/RAP/AMDP examples.
-
-5. **Provision the owner** (after a verified backup). The recommended path uses the manual
-   **Provision owner** GitHub Actions workflow: store `TURSO_DATABASE_URL`,
-   `TURSO_AUTH_TOKEN`, and the verified `OWNER_EMAIL` as repository secrets, then run the
-   workflow with `confirm=PROVISION` and `owner_username=AKASH`. It runs
-   `owner:provision` and the read-only `owner:verify` without printing secrets.
-
-   The local equivalent (set `TURSO_*` in your shell, never in Git) is:
-
-```bash
-CONFIRM_OWNER_PROVISION=YES OWNER_USERNAME=AKASH OWNER_EMAIL="owner@example.com" \
-TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" bun run owner:provision
-bun run owner:verify
-```
-
-6. **Verify live access** — sign in with Email OTP or Google. Check `/api/auth/me`
-   (`role=OWNER`, `owner=true`), `/api/admin/overview` (`200`) and `/admin`. Run the manual
-   **Production smoke** workflow for read-only public checks. Do not create a password
-   account.
-
-See **[DEPLOY.md](DEPLOY.md)** for the full walkthrough.
-
-**Deployment diagnostics:** `GET /api/health` returns database configuration and
-reachability without exposing secrets:
-
-```json
-{ "ok": true, "dbTarget": "turso", "clerkConfigured": true, "authProvider": "clerk", "passwordLogon": "retired", "users": 1, "programs": 55 }
-```
-
-`programs` includes shared examples and private objects; use the admin dashboard for the
-current breakdown. The `55` above is illustrative after the four Modern examples are
-seeded, not a frozen acceptance count.
-
-## npm scripts
-
-| Script | Description |
-| --- | --- |
-| `bun run dev` | Start the dev server on port 3000 |
-| `bun run build` | Production build (standalone output) |
-| `bun run start` | Serve the production build |
-| `bun run seed` | Non-destructive content upsert + engine/validator verification |
-| `bun run deploy:db` | Apply additive schema + upsert content on Turso |
-| `bun run owner:provision` | Assign the owner role and claim legacy programs |
-| `bun run owner:verify` | Read-only check: exactly one owner, email match, no unclaimed legacy programs |
-| `bun run owner:favorites` | Dry-run/apply migration of legacy global favorites to the owner |
-| `bun run test` / `test:api` / `test:ui` / `test:all` | Unit / live API / UI+axe / full suites |
-| `bun run db:push` | Sync the Prisma schema to the local database |
-| `bun run db:generate` | Regenerate the Prisma client |
-| `bun run lint` | ESLint |
-| `bun run typecheck` | TypeScript check (`tsc --noEmit`) |
-
-## Project structure
-
-```
-prisma/
-  schema.prisma          Topic, Program, DbTable, DbRow, FunctionModule, FunctionGroup,
-                         ExecutionLog, User, UserFavorite, AdminAuditLog
-scripts/
-  seed-content.ts        Syllabus topics + demo DDIC tables
-  seed-programs-1/2.ts   Standard examples, shared INCLUDE, function modules
-  seed-modern.ts         Four Modern ABAP/CDS/RAP/AMDP examples
-  run-seed.ts            Non-destructive content upsert + engine/validator verification
-  deploy-db.ts           Remote schema + content upsert
-  provision-owner.ts     Owner role + legacy program claim (never a password)
-  verify-owner.ts        Read-only owner/email/legacy consistency check
-.github/workflows/
-  ci.yml                   Lint, type-check, unit, API, UI/axe and build (no secrets)
-  production-smoke.yml     Public read-only production checks
-  deploy-database.yml      Manual production schema/content update (secret-safe)
-  provision-owner.yml      Manual, secret-safe owner provisioning
-  legacy-favorites.yml     Guarded legacy-favorite dry-run/apply
-src/
-  app/admin/             Owner-only dashboard page
-  app/api/               REST endpoints (auth, modern, programs, admin, sandbox, execute, **functions**, **function-groups**, …)
-  components/workbench/  SAP GUI shell + Standard and Modern workspaces + **browser-frame.tsx, function-builder.tsx**
-  components/admin/      Owner dashboard UI
-  lib/abap/              ABAP engine: tokenizer, parser, interpreter, natives
-  lib/modern.ts          Capability matrix, templates and CDS/RAP/AMDP validators
-  lib/test-auth.ts       Test-only session broker (production fails closed)
-  lib/session.ts         DB-validated sessions, owner gate, CSRF, rate limits
-  lib/access.ts          Example/private/legacy visibility and edit rules (+ function modules/groups)
-  lib/sandbox.ts         Per-user practice sandbox template
-  lib/db.ts              Prisma client + additive production schema migration
-  lib/function-module.ts    FM parameter validation, DTOs, test source generation
-  lib/function-groups.ts    Example function group backfill
-tests/                   Unit tests, disposable API suite, Playwright UI/axe suite
-```
-
-### API overview
-
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /api/auth/me`, `POST /api/auth/logout` | Clerk session identity and revocation; legacy login/register are retired (`403`/`410`) |
-| `POST /api/webhooks/clerk` | Signed Clerk user sync (created/updated/deleted) |
-| `/sign-in`, `/sign-up` | Clerk Email OTP + Google authentication pages |
-| `POST /api/check` | ABAP syntax check |
-| `POST /api/execute` | Run an ABAP program (authenticated) |
-| `GET/POST /api/modern`, `GET/PUT/DELETE /api/modern/[id]` | List/detail/create/update/delete Modern objects |
-| `POST /api/modern/validate` | Validate ABAP or CDS/RAP/AMDP source |
-| `GET /api/topics` · `programs` · `tables` · `functions` · `search` | Repository and DDIC content (Standard list only) |
-| `GET/POST /api/functions`, `GET/PUT/DELETE /api/functions/[name]`, `POST /api/functions/test` | **SE37 Function Module CRUD + test execution** (tenant-scoped) |
-| `POST /api/debug` | **ABAP Debugger stepping** (stateless: start/stepInto/stepOver/continue with breakpoints) |
-| `GET /api/dumps` | **ST22 short dump list** (the caller's own runtime errors) |
-| `GET/POST /api/function-groups`, `DELETE /api/function-groups/[name]` | **Function Group CRUD** (tenant-scoped) |
-| `GET/POST /api/favorites` · `GET /api/recents` | Per-user workbench state |
-| `POST /api/sandbox` | Get or create the current user's private sandbox |
-| `GET /api/admin/overview`, `PATCH/DELETE /api/admin/users/[id]`, `DELETE /api/admin/programs/[id]` | Owner-only administration (+ cascade delete FMs/groups) |
-| `GET /api/health` | Deployment diagnostics (no secrets) |
-
-## Roadmap and explicit boundaries
-
-- **P2 Modern ABAP:** implemented, deployed and production-verified.
-- **P3 App 2 Integration (Firefox/WebGUI shell + SE37 Function Builder):** implemented, deployed and owner-signed-off.
-- **Accessibility:** automated axe checks pass for the current serious/critical threshold;
-  broader manual screen-reader review is future work.
-- **Rate limiting:** per process. A shared distributed limiter is future hardening.
-- **Modern runtime:** real HANA pushdown, RAP/OData runtime, AMDP execution and dynpro
-  remain deliberately unsupported and are labelled as such.
-- **Broader ABAP:** additional OO/RAP/AMDP constructs can be added with tests; the current
-  subset is verified, not a full SAP kernel.
-- **P4 App 2 Integration Round 2 (Debugger, ST22, Pretty Printer, SE16N selection criteria):** implemented, all local gates pass; deploy and production smoke pending.
-- **Explicitly out of scope (App 2 features not ported):** SHDB transaction recorder, BDC sessions/SM35, dynpro/module pools (PBO/PAI), AL11, SE51, SE91, SAT runtime analysis, multi-tab Firefox sessions, real SAP connectivity.
+Ideas ahead: multi-session tabs (SM04-style), more curriculum topics, dump-to-source
+navigation, shared class libraries.
 
 ## Credits
 
-Built by [@akashgupta221](https://github.com/akashgupta221). SAP, ABAP and NetWeaver are
-trademarks of SAP SE — this project is an independent educational simulation and is not
-affiliated with or endorsed by SAP.
+Designed, built and operated by **Akash Gupta** —
+[Next.js](https://nextjs.org), [Prisma](https://www.prisma.io),
+[Turso](https://turso.tech), [Clerk](https://clerk.com), [Tailwind CSS](https://tailwindcss.com),
+[shadcn/ui](https://ui.shadcn.com) and [react-bits](https://reactbits.dev).
+
+<div align="center">
+
+© 2026 Akash Gupta. **All rights reserved.**<br/>
+This repository is shown as a portfolio showcase. No license is granted to copy, reuse or
+redistribute the code or assets.<br/>
+**ABAP Atelier** is an independent training simulator — not affiliated with or endorsed by SAP SE.
+SAP, NetWeaver, ABAP and SFLIGHT are trademarks of SAP SE.
+
+</div>
