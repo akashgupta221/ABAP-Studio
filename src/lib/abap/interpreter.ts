@@ -232,6 +232,11 @@ export interface RunOptions {
   stepLimit?: number
   timeLimitMs?: number
   debug?: DebugControl
+  // Passed through from RunInput (SE91/SNRO/AL11 workstreams); the interpreter
+  // reads them off opts when the corresponding features are active.
+  messageClasses?: Map<string, Record<string, string>>
+  numberRanges?: Map<string, { from: number; to: number; current: number }>
+  files?: Map<string, string>
 }
 
 const BUILTIN_EXC_HIER: Record<string, string[]> = {
@@ -274,6 +279,15 @@ export class Interpreter {
   formatState = { color: '', intensified: true, inverse: false, hotspot: false }
   topOfPageDone = false
   noStdHeading = false
+  staticsStore = new Map<string, RtValue>() // STATICS persistence per routine
+  currentRoutineName = '' // enclosing FORM / FUNCTION name (for STATICS keys)
+  cbCtxStack: { intoBox: Box; acc: RtStruct; row: RtStruct }[] = [] // control-break loop context
+  runFiles: Map<string, string> // application server files (persisted seed + this run's writes)
+  runFilesFromRun = new Set<string>() // files created by this run (deletable)
+  fileHandles = new Map<string, { path: string; pos: number }>() // OPEN DATASET handles (handle name → file)
+  fileReadPos = new Map<string, number>() // per-file sequential read offset
+  appLogHandles = new Map<string, { object: string; externalNumber: string; messages: { msgType: string; text: string }[] }>() // BAL_* handles
+  appLogsSaved: { object: string; externalNumber: string; messages: { msgType: string; text: string }[] }[] = []
   // result
   messages: MessageItem[] = []
   alvEmitted = false
@@ -305,6 +319,7 @@ export class Interpreter {
     this.opts = opts
     this.db = opts.db
     this.fms = opts.functionModules ?? new Map()
+    this.runFiles = new Map(opts.files ?? new Map())
     this.stepLimit = opts.stepLimit ?? 8_000_000
     this.timeLimitMs = opts.timeLimitMs ?? 12_000
     if (opts.debug) this.sourceLines = opts.source.split('\n')
@@ -379,6 +394,7 @@ export class Interpreter {
     this.flushLine()
     result.list = this.lines
     result.messages = this.messages
+    if (this.appLogsSaved.length > 0) result.appLogs = this.appLogsSaved
     result.durationMs = Date.now() - t0
     result.stats = { steps: this.steps, linesWritten: this.linesWritten, selects: this.selects, dbReads: this.dbReads }
     if (this.alvRows && this.alvColumns) {
@@ -425,6 +441,28 @@ export class Interpreter {
     uzeit.value = nowHHMMSS()
     sy.fields.set('UZEIT', uzeit)
     this.globalScope.declare('SY', sy)
+    // classic DDIC structures used by data-transfer training (BDC)
+    this.globalScope.typeDefs.set('BDCDATA', {
+      kind: 'struct', fields: [
+        { name: 'PROGRAM', type: { kind: 'elem', type: 'C', length: 40 } },
+        { name: 'DYNPRO', type: { kind: 'elem', type: 'N', length: 4 } },
+        { name: 'DYNBEGIN', type: { kind: 'elem', type: 'C', length: 1 } },
+        { name: 'FNAM', type: { kind: 'elem', type: 'C', length: 132 } },
+        { name: 'FVAL', type: { kind: 'elem', type: 'C', length: 132 } },
+      ],
+    })
+    this.globalScope.typeDefs.set('BDCMSGCOLL', {
+      kind: 'struct', fields: [
+        { name: 'MSGTYP', type: { kind: 'elem', type: 'C', length: 1 } },
+        { name: 'MSGID', type: { kind: 'elem', type: 'C', length: 20 } },
+        { name: 'MSGNR', type: { kind: 'elem', type: 'N', length: 3 } },
+        { name: 'MSGV1', type: { kind: 'elem', type: 'C', length: 50 } },
+        { name: 'MSGV2', type: { kind: 'elem', type: 'C', length: 50 } },
+        { name: 'MSGV3', type: { kind: 'elem', type: 'C', length: 50 } },
+        { name: 'MSGV4', type: { kind: 'elem', type: 'C', length: 50 } },
+        { name: 'FLDNAME', type: { kind: 'elem', type: 'C', length: 30 } },
+      ],
+    })
     // top-level declarations
     for (const st of this.prog.stmts) {
       if (st.t === 'vardecl') this.execDeclaration(st, this.globalScope)
@@ -504,6 +542,9 @@ export class Interpreter {
         const entry = this.globalScope.lookup(st.name)
         if (!entry || entry.value.kind !== 'table') continue
         const rangeTable = entry.value
+        // only replace ranges when the caller actually supplied a value —
+        // INITIALIZATION-filled ranges must survive an empty submission
+        if (values[st.name] === undefined && values[st.name.toLowerCase()] === undefined) continue
         rangeTable.rows = []
         const addRange = (low: string, high: string, sign: string, opt: string) => {
           const line = new RtStruct()
@@ -542,6 +583,11 @@ export class Interpreter {
       // type declaration — store type def
       if (st.typeSpec) {
         const def = this.resolveTypeSpec(st.typeSpec, scope)
+        if (def.kind === 'elem') {
+          if (st.length) def.length = this.exprNum(st.length, scope)
+          if (st.decimals) def.decimals = this.exprNum(st.decimals, scope)
+          if (def.type === 'C' && !def.length) def.length = 1
+        }
         scope.typeDefs.set(st.name, def)
         if (scope === this.globalScope && st.typeSpec.kind === 'struct') {
           // allow ddic-style usage
@@ -574,6 +620,17 @@ export class Interpreter {
         ],
       }
       const tab = new RtTable(rangeLine, 'STANDARD')
+      // header line (classic SELECT-OPTIONS always has one: s_con-low = ... works)
+      const hdr = new RtStruct()
+      const sgn0 = initialElem('C', 1)
+      sgn0.value = 'I'
+      const opt0 = initialElem('C', 2)
+      opt0.value = 'BT'
+      hdr.fields.set('SIGN', sgn0)
+      hdr.fields.set('OPTION', opt0)
+      hdr.fields.set('LOW', initialElem('C', 40))
+      hdr.fields.set('HIGH', initialElem('C', 40))
+      tab.headerLine = hdr
       // default value from VALUE clause: e.g. VALUE 'AA'
       if (st.value) {
         try {
@@ -638,6 +695,12 @@ export class Interpreter {
       if (st.decimals) def.decimals = this.exprNum(st.decimals, scope)
     }
     let value = initialFromDef(def)
+    if (def.kind === 'table' && (def as any).withHeaderLine && value.kind === 'table' && !value.headerLine) {
+      value.headerLine = initialFromDef(def.lineType)
+    }
+    if (def.kind === 'struct' && st.typeSpec?.kind === 'struct') {
+      this.applyStructDefaults(value, st.typeSpec, scope)
+    }
     if (st.value) {
       try {
         const v = this.evalExpr(st.value, scope)
@@ -657,8 +720,34 @@ export class Interpreter {
       } catch { /* ignore default eval errors */ }
     }
     if (st.kind === 'CONSTANTS' && value.kind === 'elem') value.readOnly = true
+    // STATICS: same variable instance across calls of the enclosing form/FM
+    if (st.kind === 'STATICS') {
+      const key = `${this.currentRoutineName || scope.kind.toUpperCase()}:${st.name}`
+      const existing = this.staticsStore.get(key)
+      if (existing) return scope.declare(st.name, existing, st)
+      this.staticsStore.set(key, value)
+      return scope.declare(st.name, value, st)
+    }
     const entry = scope.declare(st.name, value, st)
     return entry
+  }
+
+  // apply VALUE clauses of struct members (incl. nested BEGIN OF groups)
+  private applyStructDefaults(target: RtValue, spec: TypeSpecAST, scope: Scope) {
+    if (target.kind !== 'struct' || spec.kind !== 'struct') return
+    for (const f of spec.fields ?? []) {
+      const key = findFieldKey(target, f.name)
+      if (!key) continue
+      const cur = target.fields.get(key)
+      if (f.value && cur) {
+        try {
+          const v = this.evalExpr(f.value, scope)
+          if (cur.kind === 'elem' && v.kind === 'elem') assignElem(cur, v)
+          else target.fields.set(key, deepCopyValue(v))
+        } catch { /* ignore */ }
+      }
+      if (f.type.kind === 'struct' && cur) this.applyStructDefaults(cur, f.type, scope)
+    }
   }
 
   private exprNum(e: Expr, scope: Scope): number {
@@ -938,13 +1027,37 @@ export class Interpreter {
         return SIG_NONE
       }
       case 'do': {
-        const times = st.times ? this.exprNum(st.times, scope) : Infinity
+        const varying: { var: Expr; from: Expr; next: Expr }[] = st.varying ?? []
+        let times = st.times ? this.exprNum(st.times, scope) : Infinity
+        // DO VARYING: walk consecutive fields of the FROM structure
+        let varyCtx: { boxes: Box[]; struct: RtStruct; keys: string[]; startIdx: number } | null = null
+        if (varying.length === 1) {
+          const vFrom = varying[0].from as any
+          if (vFrom.t === 'member' && vFrom.obj?.t === 'var') {
+            const structBox = this.resolveBox(vFrom.obj, scope)
+            const structVal = structBox.get()
+            if (structVal.kind === 'struct') {
+              const keys = [...structVal.fields.keys()]
+              const startIdx = keys.indexOf(vFrom.name.toUpperCase())
+              if (startIdx >= 0) {
+                const boxes = varying.map((v) => this.resolveBox(v.var, scope))
+                if (times === Infinity) times = keys.length - startIdx
+                varyCtx = { boxes, struct: structVal, keys, startIdx }
+              }
+            }
+          }
+        }
         let i = 0
         for (;;) {
           if (i >= times) break
           this.tick()
           i++
           this.setSys('INDEX', i)
+          if (varyCtx) {
+            const idx = varyCtx.startIdx + i - 1
+            if (idx >= varyCtx.keys.length) break
+            for (const b of varyCtx.boxes) b.set(deepCopyValue(varyCtx.struct.fields.get(varyCtx.keys[idx])!))
+          }
           const sig = this.execStmts(st.body, scope)
           if (sig.type === 'continue') { continue }
           if (sig.type === 'exit') break
@@ -976,6 +1089,59 @@ export class Interpreter {
         return SIG_NONE
       }
       case 'append': return this.execAppend(st, scope)
+      case 'collect': return this.execCollect(st, scope)
+      case 'atblock': {
+        // reached outside a control-break loop → evaluate plainly (defensive)
+        return this.execStmts((st as any).body ?? [], scope)
+      }
+      case 'sum': {
+        // SUM inside a control-break loop replaces the work area with group totals
+        const ctx = this.cbCtxStack[this.cbCtxStack.length - 1]
+        if (ctx) {
+          const sumRow = new RtStruct()
+          for (const [k, f] of ctx.row.fields) {
+            if (f.kind === 'elem' && isNumericType(f.type)) sumRow.fields.set(k, deepCopyValue(ctx.acc.fields.get(k) ?? f))
+            else sumRow.fields.set(k, deepCopyValue(f))
+          }
+          ctx.intoBox.set(sumRow)
+        }
+        return SIG_NONE
+      }
+      case 'hide': return SIG_NONE // interactive hide area — batch runs keep the list only
+      case 'newpage': {
+        this.flushLine()
+        this.curLine = 1
+        const pag = this.sysVal('PAGNO')
+        const pagNum = pag && pag.kind === 'elem' && typeof pag.value === 'number' ? pag.value : 0
+        this.setSys('PAGNO', pagNum + 1)
+        this.setSys('LINNO', 1)
+        this.topOfPageDone = false // TOP-OF-PAGE fires again on the new page
+        return SIG_NONE
+      }
+      case 'createdata': {
+        const box = this.resolveBox((st as any).target, scope)
+        let def: AbapTypeDef | undefined
+        if ((st as any).typeSpec) def = this.resolveTypeSpec((st as any).typeSpec, scope)
+        else if ((st as any).like) {
+          const lv = this.evalExpr((st as any).like, scope)
+          def = this.defOfValue(lv)
+        } else def = { kind: 'elem', type: 'I' }
+        const d = new RtDref()
+        d.target = def ? initialFromDef(def) : initialElem('I')
+        box.set(d)
+        return SIG_NONE
+      }
+      case 'calltransaction': {
+        const name = toStringValue(this.evalExpr((st as any).name, scope))
+        this.setSys('SUBRC', 0)
+        this.setSys('TCODE', name)
+        this.messages.push({ msgType: 'S', text: `CALL TRANSACTION '${name}': simulated — no dynpro runtime in this training system` })
+        return SIG_NONE
+      }
+      case 'callscreen': {
+        throw new RtDump(`CALL SCREEN: dynpro runtime is not simulated in this training system (screen ${(st as any).num ? toStringValue(this.evalExpr((st as any).num, scope)) : ''})`, 'DYNPRO_NOT_SUPPORTED')
+      }
+      case 'dataset': return this.execDataset(st, scope)
       case 'insert': return this.execInsert(st, scope)
       case 'readtable': return this.execReadTable(st, scope)
       case 'modifyitab': return this.execModifyItab(st, scope)
@@ -1028,22 +1194,51 @@ export class Interpreter {
         return SIG_NONE
       }
       case 'assign': {
-        // ASSIGN src TO <fs> [CASTING TYPE t]
-        const box = this.resolveBox(st.src, scope)
-        const fsBox = this.resolveBox(st.fs, scope)
-        this.setSys('SUBRC', 0)
-        // store target box into fs entry
-        const fsName = this.fsNameOf(st.fs)
-        if (fsName) {
-          const entry = scope.lookup(fsName) ?? this.globalScope.lookup(fsName)
-          if (entry) {
-            entry.isFs = true
-            entry.fsBox = box
+        // ASSIGN src TO <fs> [CASTING TYPE t] | ASSIGN COMPONENT c OF STRUCTURE s TO <fs>
+        const fsName0 = this.fsNameOf(st.fs)
+        const fsEntry0 = (fsName0 && scope.lookup(fsName0)) || (fsName0 && this.globalScope.lookup(fsName0)) || null
+        if (st.component !== undefined) {
+          const compVal = toStringValue(this.evalExpr(st.component, scope)).trim().toUpperCase()
+          const structVal = this.evalExpr(st.structure ?? { t: 'str', v: '' }, scope)
+          if (structVal.kind === 'struct') {
+            const keys = [...structVal.fields.keys()]
+            const idx = parseInt(compVal, 10)
+            const key = !isNaN(idx) && idx >= 1 && idx <= keys.length ? keys[idx - 1] : keys.find((k) => k === compVal)
+            if (!key) {
+              this.setSys('SUBRC', 4)
+              return SIG_NONE
+            }
+            this.setSys('SUBRC', 0)
+            if (fsEntry0) {
+              fsEntry0.isFs = true
+              fsEntry0.fsBox = { get: () => structVal.fields.get(key)!, set: (v) => structVal.fields.set(key, v) }
+              return SIG_NONE
+            }
+            const fsBox2 = this.resolveBox(st.fs, scope)
+            fsBox2.set(deepCopyValue(structVal.fields.get(key)!))
             return SIG_NONE
           }
+          this.setSys('SUBRC', 4)
+          return SIG_NONE
         }
-        // fallback: wrap value
-        fsBox.set(box.get())
+        if (st.src === undefined) return SIG_NONE
+        let srcBox: Box
+        try {
+          srcBox = this.resolveBox(st.src, scope)
+        } catch {
+          // source is a value (literal / expression), not an lvalue
+          const v = this.evalExpr(st.src, scope)
+          srcBox = { get: () => v, set: () => {} }
+        }
+        this.setSys('SUBRC', 0)
+        // bind the field symbol to the source box (before any deref of the unassigned fs)
+        if (fsEntry0) {
+          fsEntry0.isFs = true
+          fsEntry0.fsBox = srcBox
+          return SIG_NONE
+        }
+        const fsBox = this.resolveBox(st.fs, scope)
+        fsBox.set(srcBox.get())
         return SIG_NONE
       }
       case 'unassign': {
@@ -1393,8 +1588,10 @@ export class Interpreter {
 
   pushSegment(text: string, x: number, extra: Partial<ListSegment>) {
     if (!this.topOfPageDone && this.lines.length === 0 && this.curSegments.length === 0 && this.prog.events.has('TOP-OF-PAGE')) {
-      this.execStmts(this.prog.events.get('TOP-OF-PAGE')!, this.globalScope)
+      // set the flag BEFORE running the event body — a WRITE inside TOP-OF-PAGE
+      // must not re-trigger the event (infinite recursion)
       this.topOfPageDone = true
+      this.execStmts(this.prog.events.get('TOP-OF-PAGE')!, this.globalScope)
     }
     if (text.length > 0) {
       this.lineOpen = true
@@ -1445,6 +1642,10 @@ export class Interpreter {
     let startIdx = st.from ? this.exprNum(st.from, scope) - 1 : 0
     let endIdx = st.to ? this.exprNum(st.to, scope) - 1 : rows.length - 1
     if (startIdx < 0) startIdx = 0
+    // control-break loop (AT FIRST/NEW/END OF/LAST, SUM)?
+    const hasCb = st.body.some((x: any) => x.t === 'atblock' || x.t === 'sum')
+    const intoBox = st.into ? this.resolveBox(st.into, scope) : null
+    let accStruct: RtStruct | null = null
     for (let i = startIdx; i <= endIdx && i < rows.length; i++) {
       this.tick()
       const row = rows[i]
@@ -1464,9 +1665,89 @@ export class Interpreter {
         d.target = row
         box.set(d)
       }
-      const sig = this.execStmts(st.body, scope)
+      let atActives: Map<Stmt, boolean> | null = null
+      if (hasCb) {
+        atActives = new Map()
+        for (const x of st.body) {
+          if ((x as any).t === 'atblock') atActives.set(x, this.atBlockActive(x as any, rows, i, startIdx, endIdx))
+        }
+        const newGroup = [...atActives.entries()].some(([x, a]) => a && ((x as any).kind === 'NEW'))
+        if (!accStruct || newGroup) accStruct = this.newAccStruct(row)
+        this.accumulateRow(accStruct, row)
+      }
+      const sig = hasCb
+        ? this.execLoopBodyCb(st.body, scope, { intoBox: intoBox!, row: row as RtStruct, acc: accStruct!, atActives: atActives! })
+        : this.execStmts(st.body, scope)
       if (sig.type === 'continue') continue
       if (sig.type === 'exit') break
+      if (sig.type !== 'none') return sig
+    }
+    return SIG_NONE
+  }
+
+  // does the AT block fire for row i? (control level: all fields up to f must match)
+  private atBlockActive(x: { kind: 'FIRST' | 'LAST' | 'NEW' | 'ENDOF'; field?: string }, rows: RtValue[], i: number, startIdx: number, endIdx: number): boolean {
+    if (x.kind === 'FIRST') return i === startIdx
+    if (x.kind === 'LAST') return i === endIdx || i === rows.length - 1
+    const field = (x.field ?? '').toUpperCase()
+    const controlKey = (r: RtValue): string => {
+      if (r.kind !== 'struct' || !x.field) return ''
+      const keys = [...r.fields.keys()]
+      const idx = keys.indexOf(field)
+      const upto = idx >= 0 ? keys.slice(0, idx + 1) : [field]
+      return upto.map((k) => toStringValue(r.fields.get(k) ?? initialElem('C', 1))).join('|')
+    }
+    if (x.kind === 'NEW') return i === startIdx || controlKey(rows[i - 1]) !== controlKey(rows[i])
+    if (x.kind === 'ENDOF') return i === endIdx || i === rows.length - 1 || controlKey(rows[i]) !== controlKey(rows[i + 1])
+    return false
+  }
+
+  private newAccStruct(row: RtValue): RtStruct {
+    const acc = new RtStruct()
+    if (row.kind === 'struct') {
+      for (const [k, f] of row.fields) {
+        if (f.kind === 'elem' && isNumericType(f.type)) acc.fields.set(k, initialElem(f.type, f.length, f.decimals))
+        else acc.fields.set(k, initialElem('C', 1))
+      }
+    }
+    return acc
+  }
+
+  private accumulateRow(acc: RtStruct, row: RtValue) {
+    if (row.kind !== 'struct') return
+    for (const [k, f] of row.fields) {
+      const af = acc.fields.get(k)
+      if (af && af.kind === 'elem' && f.kind === 'elem' && isNumericType(f.type)) {
+        af.value = toNumber(af) + toNumber(f)
+      }
+    }
+  }
+
+  private execLoopBodyCb(body: Stmt[], scope: Scope, ctx: { intoBox: Box; row: RtStruct; acc: RtStruct; atActives: Map<Stmt, boolean> }): Signal {
+    for (const x of body) {
+      const anyS = x as any
+      if (anyS.t === 'atblock') {
+        if (!ctx.atActives.get(x)) continue
+        this.cbCtxStack.push({ intoBox: ctx.intoBox, row: ctx.row, acc: ctx.acc })
+        try {
+          const sig = this.execStmts(anyS.body, scope)
+          if (sig.type !== 'none') return sig
+        } finally {
+          this.cbCtxStack.pop()
+        }
+        continue
+      }
+      if (anyS.t === 'sum') {
+        this.cbCtxStack.push({ intoBox: ctx.intoBox, row: ctx.row, acc: ctx.acc })
+        try {
+          const sig = this.execStmt(x, scope)
+          if (sig.type !== 'none') return sig
+        } finally {
+          this.cbCtxStack.pop()
+        }
+        continue
+      }
+      const sig = this.execStmt(x, scope)
       if (sig.type !== 'none') return sig
     }
     return SIG_NONE
@@ -1514,6 +1795,9 @@ export class Interpreter {
       throw new RtDump('APPEND LINES OF: source is not a table', 'ITAB_WRONG_TYPE')
     } else if (st.src) {
       lineVal = deepCopyValue(this.evalExpr(st.src, scope))
+    } else if (st.headerAppend && table.headerLine) {
+      // classic header-line form: APPEND it. appends the current header line
+      lineVal = deepCopyValue(table.headerLine)
     } else {
       lineVal = initialFromDef(table.lineType)
     }
@@ -1525,6 +1809,134 @@ export class Interpreter {
     return SIG_NONE
   }
 
+  // ── COLLECT ─────────────────────────────────────────────────────────
+  execCollect(st: any, scope: Scope): Signal {
+    const table = this.getTable(st.table, scope)
+    let lineVal: RtValue
+    if (st.src) lineVal = this.evalExpr(st.src, scope)
+    else if (table.headerLine) lineVal = table.headerLine
+    else throw new RtDump('COLLECT: no work area given and no header line', 'ITAB_WRONG_TYPE')
+    if (lineVal.kind === 'struct') {
+      const isNum = (v: RtValue | undefined) => !!v && v.kind === 'elem' && isNumericType(v.type)
+      const match = table.rows.find((r) => {
+        if (r.kind !== 'struct') return false
+        for (const [k, f] of lineVal.fields) {
+          const rf = r.fields.get(k)
+          if (!rf) return false
+          if (isNum(f) && isNum(rf)) continue // numeric components are summed, not keyed
+          if (!valuesEqual(f, rf)) return false
+        }
+        return true
+      })
+      if (match) {
+        for (const [k, f] of lineVal.fields) {
+          const rf = match.kind === 'struct' ? match.fields.get(k) : undefined
+          if (rf && rf.kind === 'elem' && f.kind === 'elem' && isNum(f) && isNum(rf)) rf.value = toNumber(rf) + toNumber(f)
+        }
+        this.setSys('SUBRC', 0)
+        return SIG_NONE
+      }
+    }
+    table.rows.push(deepCopyValue(lineVal))
+    this.setSys('SUBRC', 0)
+    return SIG_NONE
+  }
+
+  // ── OPEN/TRANSFER/READ/CLOSE/DELETE DATASET (AL11 files) ────────────
+  execDataset(st: any, scope: Scope): Signal {
+    const target = toStringValue(this.evalExpr(st.target, scope)).trim()
+    const resolvePath = (): string => {
+      if (this.fileHandles.has(target)) return this.fileHandles.get(target)!.path
+      return target
+    }
+    switch (st.op) {
+      case 'open': {
+        const path = target
+        if (!path || !/^[A-Za-z0-9_./\-]+$/.test(path) || !path.startsWith('/')) {
+          this.setSys('SUBRC', 8)
+          return SIG_NONE
+        }
+        this.fileHandles.set(`HANDLE:${path}:${st.mode ?? 'input'}`, { path, pos: 0 })
+        if (!this.runFiles.has(path)) {
+          if (st.mode === 'output') {
+            this.runFiles.set(path, '')
+            this.runFilesFromRun.add(path)
+            this.fileReadPos.delete(path)
+          } else {
+            this.setSys('SUBRC', 8) // INPUT/APPENDING on a non-existent file
+            return SIG_NONE
+          }
+        }
+        if (!this.fileReadPos.has(path)) this.fileReadPos.set(path, 0)
+        this.setSys('SUBRC', 0)
+        return SIG_NONE
+      }
+      case 'transfer': {
+        const path = resolvePath()
+        const data = toStringValue(this.evalExpr((st as any).source, scope))
+        if (!this.runFiles.has(path)) {
+          this.runFiles.set(path, '')
+          this.runFilesFromRun.add(path)
+        }
+        const cur = this.runFiles.get(path) ?? ''
+        this.runFiles.set(path, cur + (cur && !cur.endsWith('\n') ? '\n' : '') + data + '\n')
+        this.setSys('SUBRC', 0)
+        return SIG_NONE
+      }
+      case 'read': {
+        const path = resolvePath()
+        const content = this.runFiles.get(path)
+        if (content === undefined) {
+          this.setSys('SUBRC', 8)
+          return SIG_NONE
+        }
+        const pos = this.fileReadPos.get(path) ?? 0
+        if (pos >= content.length) {
+          this.setSys('SUBRC', 4) // EOF
+          return SIG_NONE
+        }
+        let end = content.indexOf('\n', pos)
+        if (end < 0) end = content.length
+        const line = content.slice(pos, end).replace(/\r$/, '')
+        this.fileReadPos.set(path, end < content.length ? end + 1 : content.length)
+        if ((st as any).into) {
+          const box = this.resolveBox((st as any).into, scope)
+          const cur = box.get()
+          if (cur.kind === 'elem') assignElem(cur, new RtElem('STRING', line))
+          else box.set(new RtElem('STRING', line))
+        }
+        if ((st as any).length) {
+          const lenBox = this.resolveBox((st as any).length, scope)
+          const lc = lenBox.get()
+          if (lc.kind === 'elem' && isNumericType(lc.type)) lc.value = line.length
+        }
+        this.setSys('SUBRC', 0)
+        return SIG_NONE
+      }
+      case 'close': {
+        const path = resolvePath()
+        this.fileReadPos.delete(path)
+        for (const key of [...this.fileHandles.keys()]) {
+          if (this.fileHandles.get(key)!.path === path) this.fileHandles.delete(key)
+        }
+        this.setSys('SUBRC', 0)
+        return SIG_NONE
+      }
+      case 'delete': {
+        if (this.runFilesFromRun.has(target)) {
+          this.runFiles.delete(target)
+          this.fileReadPos.delete(target)
+          this.setSys('SUBRC', 0)
+        } else {
+          this.setSys('SUBRC', 4) // persisted AL11 files are training content
+        }
+        return SIG_NONE
+      }
+      default:
+        return SIG_NONE
+    }
+  }
+
   adaptToType(v: RtValue, def: AbapTypeDef): RtValue {
     if (def.kind === 'elem') {
       if (v.kind === 'elem') return v
@@ -1533,10 +1945,20 @@ export class Interpreter {
       return e
     }
     if (def.kind === 'struct') {
-      if (v.kind === 'struct') return v
+      // struct → typed struct: convert component-wise with ABAP assignment rules
+      if (v.kind === 'struct') {
+        const s = initialFromDef(def) as RtStruct
+        for (const [k, fv] of v.fields) {
+          const key = findFieldKey(s, k)
+          if (!key) continue
+          const target = s.fields.get(key)!
+          if (target.kind === 'elem' && fv.kind === 'elem') assignElem(target, fv)
+          else s.fields.set(key, deepCopyValue(fv))
+        }
+        return s
+      }
       const s = initialFromDef(def) as RtStruct
       if (v.kind === 'elem') {
-        // spread char over? keep initial
         return s
       }
       return s
@@ -1563,12 +1985,67 @@ export class Interpreter {
         table.rows.splice(idx - 1, 0, lineVal)
         this.setSys('SUBRC', 0)
       } else this.setSys('SUBRC', 4)
+    } else if (table.tableKind === 'SORTED') {
+      const pos = this.sortedInsertPos(table, lineVal)
+      table.rows.splice(pos, 0, lineVal)
+      this.setSys('SUBRC', 0)
+    } else if (table.tableKind === 'HASHED') {
+      const exists = table.rows.some((r) => this.hashRowEqual(r, lineVal, table))
+      if (exists) this.setSys('SUBRC', 4)
+      else {
+        table.rows.push(lineVal)
+        this.setSys('SUBRC', 0)
+      }
     } else {
       table.rows.push(lineVal)
       this.setSys('SUBRC', 0)
     }
-    if (st.assign) this.bindFsToRow(st.assign, table, table.rows.length - 1, scope)
+    if (st.assign) {
+      const assignIdx = table.tableKind === 'SORTED' && !st.index ? table.rows.indexOf(lineVal) : table.rows.length - 1
+      this.bindFsToRow(st.assign, table, assignIdx, scope)
+    }
     return SIG_NONE
+  }
+
+  // duplicate-key check for HASHED tables (key fields if declared, else all fields)
+  private hashRowEqual(a: RtValue, b: RtValue, table: RtTable): boolean {
+    if (a.kind === 'elem' && b.kind === 'elem') return valuesEqual(a, b)
+    if (a.kind !== 'struct' || b.kind !== 'struct') return false
+    const keys = table.keyFields && table.keyFields.length ? table.keyFields : [...a.fields.keys()]
+    for (const k of keys) {
+      const fa = a.fields.get(k)
+      const fb = b.fields.get(k)
+      if (!fa || !fb || !valuesEqual(fa, fb)) return false
+    }
+    return true
+  }
+
+  // insert position for a SORTED table row (by key fields, or all fields for DEFAULT KEY)
+  private sortedInsertPos(table: RtTable, line: RtValue): number {
+    const keyFields = table.keyFields && table.keyFields.length ? table.keyFields : null
+    const cmpRows = (a: RtValue, b: RtValue): number => {
+      if (a.kind === 'elem' && b.kind === 'elem') return compareValues(a, b)
+      if (a.kind !== 'struct' || b.kind !== 'struct') return 0
+      const keys = keyFields ?? [...a.fields.keys()]
+      for (const kf of keys) {
+        const ka = findFieldKey(a, kf)
+        const kb = findFieldKey(b, kf)
+        const fa = ka ? a.fields.get(ka) : undefined
+        const fb = kb ? b.fields.get(kb) : undefined
+        if (!fa || !fb) continue
+        const c = compareValues(fa, fb)
+        if (c !== 0) return c
+      }
+      return 0
+    }
+    let lo = 0
+    let hi = table.rows.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (cmpRows(table.rows[mid], line) < 0) lo = mid + 1
+      else hi = mid
+    }
+    return lo
   }
 
   execReadTable(st: any, scope: Scope): Signal {
@@ -1635,6 +2112,14 @@ export class Interpreter {
   }
 
   execModifyItab(st: any, scope: Scope): Signal {
+    // MODIFY dbtab FROM wa — if the target is a database table (not an itab), route to the DB path
+    if (st.table?.t === 'var') {
+      const entry = scope.lookup(st.table.name)
+      const isDbTable = !entry || (entry.value.kind !== 'table' && entry.value.kind !== 'struct')
+      if (isDbTable && this.db.get(st.table.name)) {
+        return this.execModifyDb({ table: st.table.name, src: st.src, fromTable: false }, scope)
+      }
+    }
     const table = this.getTable(st.table, scope)
     const src = this.evalExpr(st.src, scope)
     let count = 0
@@ -1853,10 +2338,13 @@ export class Interpreter {
     bindParams(form.params.filter((p) => p.kind === 'tables'), st.tables, true)
     this.callDepth++
     let sig: Signal
+    const prevRoutine = this.currentRoutineName
+    this.currentRoutineName = form.name
     try {
       sig = this.execStmts(form.body, formScope)
     } finally {
       this.callDepth--
+      this.currentRoutineName = prevRoutine
     }
     // write back ref params
     const refBoxes: Map<string, Box> = (formScope as any).refBoxes ?? new Map()
@@ -1898,6 +2386,88 @@ export class Interpreter {
         this.setSys('SUBRC', 0)
         return SIG_NONE
       }
+      if (st.name === 'NUMBER_GET_NEXT') {
+        // SNRO: NUMBER_GET_NEXT — EXPORTING OBJECT, NR_RANGE_NR; IMPORTING NUMBER, RETURNCODE
+        const objArg = st.exporting.find((x: any) => x.name === 'OBJECT')
+        const rangeArg = st.exporting.find((x: any) => x.name === 'NR_RANGE_NR')
+        const object = objArg ? toStringValue(this.evalExpr(objArg.value, scope)).toUpperCase() : ''
+        const range = rangeArg ? toStringValue(this.evalExpr(rangeArg.value, scope)).trim() : '01'
+        const state = this.opts.numberRanges?.get(object)
+        if (!state) {
+          this.setSys('SUBRC', 2)
+          throw new RtFatal(`Number range object ${object} does not exist`, 'E')
+        }
+        if (state.current >= state.to) {
+          this.setSys('SUBRC', 1)
+          throw new RtFatal(`Number range ${object} is exhausted (interval ${state.from}-${state.to})`, 'E')
+        }
+        state.current += 1
+        const nextArg = st.importing.find((x: any) => x.name === 'NUMBER')
+        if (nextArg) this.assignTo(nextArg.value, new RtElem('N', String(state.current).padStart(10, '0').slice(-10)), scope)
+        const retArg = st.importing.find((x: any) => x.name === 'RETURNCODE')
+        if (retArg) this.assignTo(retArg.value, new RtElem('C', ' ', 1), scope)
+        this.setSys('SUBRC', 0)
+        return SIG_NONE
+      }
+      if (st.name === 'NUMBER_GET_NEXT') {
+        // SNRO: NUMBER_GET_NEXT — EXPORTING OBJECT, NR_RANGE_NR; IMPORTING NUMBER, RETURNCODE
+        const objArg = st.exporting.find((x: any) => x.name === 'OBJECT')
+        const rangeArg = st.exporting.find((x: any) => x.name === 'NR_RANGE_NR')
+        const object = objArg ? toStringValue(this.evalExpr(objArg.value, scope)).toUpperCase() : ''
+        const range = rangeArg ? toStringValue(this.evalExpr(rangeArg.value, scope)).trim() : '01'
+        const state = this.opts.numberRanges?.get(object)
+        if (!state) {
+          this.setSys('SUBRC', 2)
+          throw new RtFatal(`Number range object ${object} does not exist`, 'E')
+        }
+        if (state.current >= state.to) {
+          this.setSys('SUBRC', 1)
+          throw new RtFatal(`Number range ${object} is exhausted (interval ${state.from}-${state.to})`, 'E')
+        }
+        state.current += 1
+        const nextArg = st.importing.find((x: any) => x.name === 'NUMBER')
+        if (nextArg) this.assignTo(nextArg.value, new RtElem('N', String(state.current).padStart(10, '0').slice(-10)), scope)
+        const retArg = st.importing.find((x: any) => x.name === 'RETURNCODE')
+        if (retArg) this.assignTo(retArg.value, new RtElem('C', ' ', 1), scope)
+        this.setSys('SUBRC', 0)
+        return SIG_NONE
+      }
+      if (st.name === 'BAL_LOG_CREATE') {
+        const objArg = st.exporting.find((x: any) => x.name === 'I_OBJECT')
+        const extArg = st.exporting.find((x: any) => x.name === 'I_EXTERNAL_NUMBER')
+        const object = objArg ? toStringValue(this.evalExpr(objArg.value, scope)).toUpperCase() : 'ZTRAIN'
+        const ext = extArg ? toStringValue(this.evalExpr(extArg.value, scope)) : ''
+        const handle = `LOG${this.appLogHandles.size + 1}`
+        this.appLogHandles.set(handle, { object, externalNumber: ext, messages: [] })
+        const hArg = st.importing.find((x: any) => x.name === 'E_LOG_HANDLE')
+        if (hArg) this.assignTo(hArg.value, new RtElem('C', handle, 20), scope)
+        this.setSys('SUBRC', 0)
+        return SIG_NONE
+      }
+      if (st.name === 'BAL_LOG_MSG_ADD') {
+        const hArg = st.exporting.find((x: any) => x.name === 'I_LOG_HANDLE')
+        const handle = hArg ? toStringValue(this.evalExpr(hArg.value, scope)) : ''
+        const log = this.appLogHandles.get(handle)
+        if (!log) {
+          this.setSys('SUBRC', 4)
+          return SIG_NONE
+        }
+        const tyArg = st.exporting.find((x: any) => x.name === 'I_MSGTY')
+        const txArg = st.exporting.find((x: any) => x.name === 'I_TEXT')
+        const msgType = (tyArg ? toStringValue(this.evalExpr(tyArg.value, scope)) : 'I').trim().toUpperCase() || 'I'
+        const text = txArg ? toStringValue(this.evalExpr(txArg.value, scope)) : ''
+        log.messages.push({ msgType, text })
+        this.setSys('SUBRC', 0)
+        return SIG_NONE
+      }
+      if (st.name === 'BAL_DB_SAVE') {
+        for (const log of this.appLogHandles.values()) {
+          if (log.messages.length > 0) this.appLogsSaved.push({ ...log })
+        }
+        this.appLogHandles.clear()
+        this.setSys('SUBRC', 0)
+        return SIG_NONE
+      }
       throw new RtDump(`Function module ${st.name} is unknown`, 'FUNCTION_NOT_FOUND')
     }
     // run FM
@@ -1920,7 +2490,18 @@ export class Interpreter {
       }
     }
     bind(fm.importing, st.exporting, false)
-    bind(fm.exporting, st.importing, true)
+    // EXPORTING params are output-only: they exist with their interface type
+    // inside the FM and are converted back into the caller's variable on return
+    // (this is what lets DATA(ls_flight) adopt the FM's structured type)
+    for (const p of fm.exporting) {
+      const arg = st.importing.find((a: any) => a.name === p.name.toUpperCase())
+      const def = this.fmParamDef(p)
+      fmScope.declare(p.name, initialFromDef(def))
+      if (arg) {
+        const box = this.resolveBox(arg.value, scope)
+        refBoxes.set(p.name, box)
+      }
+    }
     bind(fm.tables, st.tables, true)
     bind(fm.changing, st.changing, true)
     const outParams = [...fm.exporting.map((p) => p.name), ...fm.tables.map((p) => p.name), ...fm.changing.map((p) => p.name)]
@@ -1929,6 +2510,8 @@ export class Interpreter {
     const prevForm = this.currentFormScope
     this.currentFormScope = fmScope
     this.callDepth++
+    const prevRoutine = this.currentRoutineName
+    this.currentRoutineName = fm.name
     try {
       const sig = this.execStmts(fnDef.body, fmScope)
     } catch (e) {
@@ -1948,6 +2531,7 @@ export class Interpreter {
     } finally {
       this.currentFormScope = prevForm
       this.callDepth--
+      this.currentRoutineName = prevRoutine
     }
     // write back ref params
     for (const [name, box] of refBoxes) {
@@ -1984,10 +2568,25 @@ export class Interpreter {
     } else if (st.id && st.number) {
       const num = st.number.t === 'str' ? (st.number as any).v.replace(/^[eiasiwx]/i, '') : String(toNumber(this.evalExpr(st.number, scope))).padStart(3, '0')
       const args = st.with.map((w: Expr) => toStringValue(this.evalExpr(w, scope)))
-      let t = `Message ${num}(${st.id})`
-      if (args.length) t += `: ${args.join(' ')}`
+      let t: string | undefined
+      // SE91 message class lookup: MESSAGE e001(ZCLASS) WITH ... resolves the stored text
+      const cls = String(st.id ?? '').toUpperCase()
+      const stored = this.opts.messageClasses?.get(cls)?.[num]
+      if (stored !== undefined) {
+        t = stored
+        for (let i = 0; i < 4; i++) {
+          t = t.replaceAll(new RegExp(`&${i + 1}`, 'g'), args[i] ?? '')
+        }
+        t = t.replaceAll(/&[5-9]/g, '')
+      }
+      if (t === undefined) {
+        t = `Message ${num}(${st.id})`
+        if (args.length) t += `: ${args.join(' ')}`
+        if (!st.msgType) st.msgType = 'E'
+      }
       text = t
-      if (!st.msgType) st.msgType = 'E'
+      this.setSys('MSGID', cls)
+      this.setSys('MSGNO', num.padStart(3, '0'))
     }
     const msgType = (st.msgType ?? 'S').toUpperCase()
     const item: MessageItem = { msgType: msgType as any, text, displayLike: st.displayLike, line: st.line }
@@ -2520,6 +3119,12 @@ export class Interpreter {
     this.dbReads++
     const mainTable = this.db.get(st.from.table)
     if (!mainTable) throw new RtDump(`Table ${st.from.table} is unknown in SELECT`, 'DBTABLE_UNKNOWN')
+    // alias → table map (s~carrid resolution for aliases like FROM spfli AS p)
+    const aliasMap: Record<string, string> = {}
+    if (st.from.alias) aliasMap[String(st.from.alias).toUpperCase()] = mainTable.name
+    for (const j of st.joins) {
+      if (j.alias) aliasMap[String(j.alias).toUpperCase()] = String(j.table).toUpperCase()
+    }
     // build joined rows
     type Row = Record<string, any>
     let rows: Row[] = mainTable.rows.map((r) => {
@@ -2539,14 +3144,38 @@ export class Interpreter {
         for (const right of jt.rows) {
           const combined: Row = { ...left }
           for (const f of jt.fields) combined[`${jt.name.toUpperCase()}-${f.name.toUpperCase()}`] = right[f.name.toUpperCase()] ?? ''
-          if (this.evalSqlCond(join.on, combined, scope, mainTable.name, jt.name)) joined.push(combined)
+          if (this.evalSqlCond(join.on, combined, scope, mainTable.name, jt.name, aliasMap)) joined.push(combined)
         }
       }
       rows = joined
     }
-    // WHERE
-    if (st.where) {
-      rows = rows.filter((r) => this.evalSqlCond(st.where, r, scope, st.from.table, st.joins[0]?.table))
+    // FOR ALL ENTRIES IN <itab>: run the WHERE per driver row, then dedupe
+    if (st.fae) {
+      const faeName = exprToName(st.fae).toUpperCase()
+      const faeTab = this.getTable(st.fae, scope)
+      if (faeTab.rows.length === 0) {
+        rows = []
+      } else {
+        const acc: Row[] = []
+        for (const fr of faeTab.rows) {
+          const scope2 = new Scope('form', scope)
+          scope2.declare(faeName, deepCopyValue(fr))
+          if (st.where) {
+            for (const r of rows) {
+              if (this.evalSqlCond(st.where, r, scope2, st.from.table, st.joins[0]?.table, aliasMap)) acc.push(r)
+            }
+          } else acc.push(...rows)
+        }
+        const seen = new Set<string>()
+        rows = acc.filter((r) => {
+          const k = JSON.stringify(r)
+          if (seen.has(k)) return false
+          seen.add(k)
+          return true
+        })
+      }
+    } else if (st.where) {
+      rows = rows.filter((r) => this.evalSqlCond(st.where, r, scope, st.from.table, st.joins[0]?.table, aliasMap))
     }
     // aggregates
     const hasAgg = st.fields.some((f: any) => f.count || /^(SUM|AVG|MIN|MAX)\(/i.test(f.expr))
@@ -2555,28 +3184,29 @@ export class Interpreter {
     if (hasAgg && st.groupBy && st.groupBy.length) {
       const groups = new Map<string, Row[]>()
       for (const r of rows) {
-        const key = st.groupBy.map((g: string) => this.resolveDbField(g, r, st.from.table, st.joins[0]?.table) ?? '').join('|')
+        const key = st.groupBy.map((g: string) => this.resolveDbField(g, r, st.from.table, st.joins[0]?.table, aliasMap) ?? '').join('|')
         if (!groups.has(key)) groups.set(key, [])
         groups.get(key)!.push(r)
       }
       for (const [key, grp] of groups) {
         const out: Record<string, any> = {}
         for (const f of fieldSpecs) {
-          this.assignSqlField(f, out, grp, st.from.table, st.joins[0]?.table, scope)
+          this.assignSqlField(f, out, grp, st.from.table, st.joins[0]?.table, scope, aliasMap)
         }
+        if (st.having && !this.evalHaving(st.having, out, grp, st.from.table, aliasMap, scope)) continue
         outRows.push(out)
       }
     } else if (hasAgg) {
       const out: Record<string, any> = {}
       for (const f of fieldSpecs) {
-        this.assignSqlField(f, out, rows, st.from.table, st.joins[0]?.table, scope)
+        this.assignSqlField(f, out, rows, st.from.table, st.joins[0]?.table, scope, aliasMap)
       }
       outRows.push(out)
     } else {
       for (const r of rows) {
         const out: Record<string, any> = {}
         for (const f of fieldSpecs) {
-          this.assignSqlField(f, out, [r], st.from.table, st.joins[0]?.table, scope)
+          this.assignSqlField(f, out, [r], st.from.table, st.joins[0]?.table, scope, aliasMap)
         }
         outRows.push(out)
       }
@@ -2652,7 +3282,76 @@ export class Interpreter {
     const count = outRows.length
     this.setSys('DBCNT', count)
     this.setSys('SUBRC', count > 0 ? 0 : 4)
-    if (!st.into) return SIG_NONE
+    // positional value lookup for INTO (f1, f2, ...)
+    const sqlFieldKey = (f: any): string => {
+      if (f.count) return f.alias ?? 'COUNT'
+      const agg = f.expr.match(/^(SUM|AVG|MIN|MAX)\((.+)\)$/i)
+      if (agg) return f.alias ?? `${agg[1].toUpperCase()}_${agg[2].toUpperCase()}`
+      return f.alias ?? f.expr
+    }
+    // copy one result row into the INTO target(s)
+    const assignRow = (r: Record<string, any>) => {
+      const line = buildLine(r)
+      if (st.intoMulti) {
+        const vals = fieldSpecs.map((f: any) => r[sqlFieldKey(f)])
+        st.intoMulti.forEach((tgt: Expr, idx: number) => {
+          const box = this.resolveBox(tgt, scope)
+          const v = vals[idx]
+          const cur = box.get()
+          if (cur.kind === 'elem') {
+            if (typeof v === 'number') assignElem(cur, new RtElem('P', v, undefined, 2))
+            else {
+              const sv = String(v ?? '')
+              if (/^-?\d+(\.\d+)?$/.test(sv.trim())) assignElem(cur, new RtElem('P', parseFloat(sv), undefined, 2))
+              else assignElem(cur, new RtElem('STRING', sv))
+            }
+          } else {
+            box.set(new RtElem('STRING', String(v ?? '')))
+          }
+        })
+        return
+      }
+      if (!st.into) return
+      const box = this.resolveBox(st.into, scope)
+      const target = box.get()
+      if (st.intoCorresponding) {
+        if (target.kind === 'struct') this.moveCorresponding(line, target)
+      } else if (target.kind === 'struct') {
+        this.moveCorresponding(line, target)
+      } else if (target.kind === 'elem') {
+        // SELECT SINGLE f INTO lv / INTO wa-field: assign the single field value
+        if (line.kind === 'struct' && line.fields.size >= 1) {
+          const first = [...line.fields.values()][0]
+          if (first.kind === 'elem') assignElem(target, first)
+          else box.set(deepCopyValue(first))
+        } else if (line.kind === 'elem') {
+          assignElem(target, line)
+        }
+      } else {
+        box.set(line)
+      }
+    }
+    // ENDSELECT loop form
+    if (st.body) {
+      if (count === 0) {
+        this.setSys('SUBRC', 4)
+        this.setSys('DBCNT', 0)
+        return SIG_NONE
+      }
+      let processed = 0
+      for (let i = 0; i < outRows.length; i++) {
+        this.setSys('TABIX', i + 1)
+        assignRow(outRows[i])
+        processed++
+        this.setSys('DBCNT', processed)
+        const sig = this.execStmts(st.body, scope)
+        if (sig.type === 'exit') break
+        if (sig.type !== 'none' && sig.type !== 'continue') return sig
+      }
+      this.setSys('SUBRC', 0)
+      return SIG_NONE
+    }
+    if (!st.into && !st.intoMulti) return SIG_NONE
     if (st.intoTable) {
       let table: RtTable
       const intoExpr = st.into
@@ -2671,28 +3370,17 @@ export class Interpreter {
       if (!st.appending) table.rows = []
       for (const r of outRows) table.rows.push(buildLine(r))
     } else {
-      const box = this.resolveBox(st.into, scope)
-      if (outRows.length > 0) {
-        const line = buildLine(outRows[0])
-        if (st.intoCorresponding) {
-          const target = box.get()
-          if (target.kind === 'struct') this.moveCorresponding(line, target)
-        } else {
-          const target = box.get()
-          if (target.kind === 'struct') this.moveCorresponding(line, target)
-          else if (target.kind === 'elem') box.set(line)
-          else box.set(line)
-        }
-      }
+      if (outRows.length > 0) assignRow(outRows[0])
     }
     return SIG_NONE
   }
 
-  resolveDbField(name: string, row: Record<string, any>, mainTable: string, joinTable?: string): any {
+  resolveDbField(name: string, row: Record<string, any>, mainTable: string, joinTable?: string, aliasMap?: Record<string, string>): any {
     const n = name.toUpperCase()
     if (n.includes('~')) {
       const [alias, field] = n.split('~')
-      const key = `${alias}-${field}`
+      const table = aliasMap?.[alias] ?? alias
+      const key = `${table}-${field}`
       for (const k of Object.keys(row)) {
         if (k.toUpperCase() === key) return row[k]
       }
@@ -2706,7 +3394,7 @@ export class Interpreter {
     return undefined
   }
 
-  assignSqlField(f: any, out: Record<string, any>, rows: Record<string, any>[], mainTable: string, joinTable: string | undefined, scope: Scope) {
+  assignSqlField(f: any, out: Record<string, any>, rows: Record<string, any>[], mainTable: string, joinTable: string | undefined, scope: Scope, aliasMap?: Record<string, string>) {
     if (f.expr === '*') {
       const r = rows[0] ?? {}
       for (const [k, v] of Object.entries(r)) {
@@ -2722,7 +3410,7 @@ export class Interpreter {
     if (aggMatch) {
       const fn = aggMatch[1]
       const field = aggMatch[2]
-      const vals = rows.map((r) => parseFloat(String(this.resolveDbField(field, r, mainTable, joinTable) ?? '0')) || 0)
+      const vals = rows.map((r) => parseFloat(String(this.resolveDbField(field, r, mainTable, joinTable, aliasMap) ?? '0')) || 0)
       let v = 0
       if (fn === 'SUM') v = vals.reduce((a, b) => a + b, 0)
       else if (fn === 'AVG') v = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
@@ -2731,13 +3419,67 @@ export class Interpreter {
       out[f.alias ?? `${fn}_${field}`] = Math.round(v * 100) / 100
       return
     }
-    const v = this.resolveDbField(f.expr, rows[0] ?? {}, mainTable, joinTable)
+    const v = this.resolveDbField(f.expr, rows[0] ?? {}, mainTable, joinTable, aliasMap)
     out[f.alias ?? f.expr] = v ?? ''
   }
 
-  evalSqlCond(cond: Expr, row: Record<string, any>, scope: Scope, mainTable: string, joinTable?: string): boolean {
+  // HAVING evaluator — operands are sqlagg nodes, db fields and literals
+  evalHaving(h: Expr, outRow: Record<string, any>, grpRows: Record<string, any>[], mainTable: string, aliasMap: Record<string, string> | undefined, scope: Scope): boolean {
+    const evalOperand = (e: any): number | string => {
+      if (e.t === 'sqlagg') {
+        const key = e.fn === 'COUNT' ? (outRow['COUNT'] !== undefined ? 'COUNT' : `COUNT_${e.arg}`) : `${e.fn}_${e.arg}`
+        const v = outRow[key] ?? outRow[`${e.fn}(${e.arg})`] ?? 0
+        return v
+      }
+      if (e.t === 'num') return e.v
+      if (e.t === 'str') return e.v
+      if (e.t === 'binop' && e.op === '&&') return String(evalOperand(e.l)) + String(evalOperand(e.r))
+      if (e.t === 'var') {
+        const v = this.resolveDbField(e.name, grpRows[0] ?? {}, mainTable, undefined, aliasMap)
+        return v ?? ''
+      }
+      const v = this.evalExpr(e, scope)
+      return v.kind === 'elem' ? (v.value ?? '') : String(toStringValue(v))
+    }
+    const num = (x: number | string) => (typeof x === 'number' ? x : parseFloat(String(x)) || 0)
+    const ev = (e: any): boolean => {
+      if (e.t === 'binop') {
+        if (e.op === 'AND') return ev(e.l) && ev(e.r)
+        if (e.op === 'OR') return ev(e.l) || ev(e.r)
+        const l = evalOperand(e.l)
+        const r = evalOperand(e.r)
+        if (typeof l === 'string' || typeof r === 'string') {
+          const ls = String(l)
+          const rs = String(r)
+          switch (e.op) {
+            case '=': return ls === rs
+            case '<>': return ls !== rs
+            case '>': return num(l) > num(r)
+            case '<': return num(l) < num(r)
+            case '>=': return num(l) >= num(r)
+            case '<=': return num(l) <= num(r)
+            default: return false
+          }
+        }
+        switch (e.op) {
+          case '=': return num(l) === num(r)
+          case '<>': return num(l) !== num(r)
+          case '>': return num(l) > num(r)
+          case '<': return num(l) < num(r)
+          case '>=': return num(l) >= num(r)
+          case '<=': return num(l) <= num(r)
+          default: return false
+        }
+      }
+      if (e.t === 'unop' && e.op === 'NOT') return !ev(e.e)
+      return this.truthy(evalOperand(e) as any)
+    }
+    return ev(h)
+  }
+
+  evalSqlCond(cond: Expr, row: Record<string, any>, scope: Scope, mainTable: string, joinTable?: string, aliasMap?: Record<string, string>): boolean {
     // evaluate condition: identifiers resolve to DB fields first, then scope vars
-    const v = this.evalExpr(cond, scope, undefined, { row, mainTable, joinTable })
+    const v = this.evalExpr(cond, scope, undefined, { row, mainTable, joinTable, aliasMap })
     return this.truthy(v)
   }
 
@@ -3012,8 +3754,8 @@ export class Interpreter {
       throw new RtDump(`Component ${name} of ${ownerName} does not exist`, 'COMPONENT_MISSING')
     }
     if (target.kind === 'table') {
-      // header line?
-      if (target.headerLine) return { get: () => target.headerLine!, set: (v) => { target.headerLine = v } }
+      // header line? resolve the component on the header struct
+      if (target.headerLine) return this.memberBoxOf(target.headerLine, name, sep, ownerName)
       throw new RtDump(`${ownerName} is a table without header line`, 'ITAB_NO_HEADER')
     }
     throw new RtDump(`Cannot access ${name} on ${ownerName}`, 'FIELD_UNKNOWN')
@@ -3130,7 +3872,7 @@ export class Interpreter {
   }
 
   // ── expression evaluation ───────────────────────────────────────────
-  evalExpr(e: Expr, scope: Scope, rowCtx?: RtValue, sqlCtx?: { row: Record<string, any>; mainTable: string; joinTable?: string }): RtValue {
+  evalExpr(e: Expr, scope: Scope, rowCtx?: RtValue, sqlCtx?: { row: Record<string, any>; mainTable: string; joinTable?: string; aliasMap?: Record<string, string> }): RtValue {
     this.tick()
     switch (e.t) {
       case 'num': {
@@ -3177,7 +3919,7 @@ export class Interpreter {
         }
         // SQL context: resolve db fields
         if (sqlCtx) {
-          const fv = this.resolveDbField(name, sqlCtx.row, sqlCtx.mainTable, sqlCtx.joinTable)
+          const fv = this.resolveDbField(name, sqlCtx.row, sqlCtx.mainTable, sqlCtx.joinTable, sqlCtx.aliasMap)
           if (fv !== undefined) {
             if (typeof fv === 'number') return new RtElem('P', fv, undefined, 2)
             const str = String(fv)
@@ -3218,6 +3960,17 @@ export class Interpreter {
       }
       case 'member': {
         const objName = e.obj.t === 'var' ? e.obj.name : null
+        // SQL alias~field (fae driver row component)
+        if (sqlCtx && e.sep === '~' && objName) {
+          const fv = this.resolveDbField(`${objName}~${e.name}`, sqlCtx.row, sqlCtx.mainTable, sqlCtx.joinTable, sqlCtx.aliasMap)
+          if (fv !== undefined) {
+            if (typeof fv === 'number') return new RtElem('P', fv, undefined, 2)
+            const str = String(fv)
+            if (/^-?\d+$/.test(str.trim())) return new RtElem('I', parseInt(str))
+            if (/^-?\d*\.?\d+$/.test(str.trim())) return new RtElem('P', parseFloat(str), undefined, 2)
+            return new RtElem('STRING', str)
+          }
+        }
         // system field sy-xxx
         if (objName === 'SY') {
           const syv = this.sysVal(e.name)
@@ -3304,8 +4057,8 @@ export class Interpreter {
         switch (e.what) {
           case 'INITIAL': return new RtElem('C', isInitial(v) ? 'X' : ' ', 1)
           case 'NOT_INITIAL': return new RtElem('C', isInitial(v) ? ' ' : 'X', 1)
-          case 'BOUND': return new RtElem('C', v.kind === 'oref' && v.clsName !== '' ? 'X' : ' ', 1)
-          case 'NOT_BOUND': return new RtElem('C', v.kind === 'oref' && v.clsName !== '' ? ' ' : 'X', 1)
+          case 'BOUND': return new RtElem('C', (v.kind === 'oref' && v.clsName !== '') || (v.kind === 'dref' && v.target != null) ? 'X' : ' ', 1)
+          case 'NOT_BOUND': return new RtElem('C', (v.kind === 'oref' && v.clsName !== '') || (v.kind === 'dref' && v.target != null) ? ' ' : 'X', 1)
           case 'ASSIGNED': {
             if (e.e.t === 'var') {
               const entry = scope.lookup(e.e.name)
@@ -3337,6 +4090,8 @@ export class Interpreter {
         const range = this.evalExpr(e.range, scope)
         let result = false
         if (range.kind === 'table') {
+          // an empty range table imposes no restriction (ABAP semantics)
+          if (range.rows.length === 0) return new RtElem('C', 'X', 1)
           for (const r of range.rows) {
             if (r.kind !== 'struct') continue
             const sign = toStringValue(r.fields.get('SIGN') ?? new RtElem('C', 'I', 1)).trim()
@@ -3364,6 +4119,14 @@ export class Interpreter {
           }
         }
         return new RtElem('C', result ? 'X' : ' ', 1)
+      }
+      case 'inlist': {
+        // x IN (v1, v2, ...)
+        const v = this.evalExpr(e.e, scope, rowCtx, sqlCtx)
+        for (const item of e.list) {
+          if (valuesEqual(v, this.evalExpr(item, scope, rowCtx, sqlCtx))) return new RtElem('C', 'X', 1)
+        }
+        return new RtElem('C', ' ', 1)
       }
       case 'between': {
         const v = this.evalExpr(e.e, scope, rowCtx, sqlCtx)
@@ -3663,6 +4426,42 @@ export class Interpreter {
                 }
               }
             }
+          }
+        } else if (l.kind === 'fornum') {
+          // numeric FOR: VALUE int4_table( FOR i = 1 THEN i + 2 WHILE i <= 7 ( i ) )
+          const loopScope = new Scope('form', scope)
+          const initVal = this.evalExpr(l.init, loopScope)
+          loopScope.declare(l.iterVar, deepCopyValue(initVal))
+          let guard = 0
+          const condOk = (): boolean => {
+            if (l.while) return this.truthy(this.evalExpr(l.while, loopScope))
+            if (l.until) return !this.truthy(this.evalExpr(l.until, loopScope))
+            return true
+          }
+          while (condOk()) {
+            if (++guard > 100000) throw new RtDump('Numeric FOR in VALUE exceeded 100000 iterations', 'STEP_LIMIT_EXCEEDED')
+            for (const il of l.lines) {
+              if (il.kind === 'row') {
+                const rowFields = il.lines.filter((x: any) => x.kind === 'field')
+                const rowBases = il.lines.filter((x: any) => x.kind === 'base')
+                if (rowFields.length === 0 && rowBases.length === 1) {
+                  const value = this.evalExpr(rowBases[0].expr, loopScope)
+                  if (t.rows.length === 0) t.lineType = this.defOfValue(value)
+                  t.rows.push(deepCopyValue(value))
+                } else {
+                  const row = buildStructFromLines(il.lines)
+                  if (t.rows.length === 0) t.lineType = this.defOfValue(row)
+                  t.rows.push(row)
+                }
+              } else if (il.kind === 'base') {
+                const value = this.evalExpr(il.expr, loopScope)
+                if (t.rows.length === 0) t.lineType = this.defOfValue(value)
+                t.rows.push(deepCopyValue(value))
+              }
+            }
+            const stepExpr = l.step ?? { t: 'binop', op: '+', l: { t: 'var', name: l.iterVar }, r: { t: 'num', v: 1, raw: '1' } }
+            const cur = loopScope.vars.get(l.iterVar)!
+            if (cur.value.kind === 'elem') assignElem(cur.value, this.evalExpr(stepExpr, loopScope))
           }
         }
       } else if (l.kind === 'field') {

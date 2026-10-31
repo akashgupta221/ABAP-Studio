@@ -124,10 +124,14 @@ const COMPOUND_KEYWORDS: { parts: string[]; joined: string }[] = [
   { parts: ['START', 'OF', 'SELECTION'], joined: 'START-OF-SELECTION' },
   { parts: ['END', 'OF', 'SELECTION'], joined: 'END-OF-SELECTION' },
   { parts: ['AT', 'SELECTION', 'SCREEN'], joined: 'AT-SELECTION-SCREEN' },
+  { parts: ['AT', 'LINE', 'SELECTION'], joined: 'AT-LINE-SELECTION' },
+  { parts: ['AT', 'USER', 'COMMAND'], joined: 'AT-USER-COMMAND' },
+  { parts: ['NEW', 'PAGE'], joined: 'NEW-PAGE' },
   { parts: ['LOAD', 'OF', 'PROGRAM'], joined: 'LOAD-OF-PROGRAM' },
   { parts: ['TOP', 'OF', 'PAGE'], joined: 'TOP-OF-PAGE' },
   { parts: ['END', 'OF', 'PAGE'], joined: 'END-OF-PAGE' },
   { parts: ['MOVE', 'CORRESPONDING'], joined: 'MOVE-CORRESPONDING' },
+  { parts: ['FIELD', 'SYMBOLS'], joined: 'FIELD-SYMBOLS' },
   { parts: ['CLASS', 'DATA'], joined: 'CLASS-DATA' },
   { parts: ['CLASS', 'METHODS'], joined: 'CLASS-METHODS' },
   { parts: ['CLASS', 'EVENTS'], joined: 'CLASS-EVENTS' },
@@ -135,26 +139,40 @@ const COMPOUND_KEYWORDS: { parts: string[]; joined: string }[] = [
 
 // Check whether cursor begins a compound keyword; returns matched string or ''
 function tryCompound(c: Cursor): string {
+  return tryCompoundMatch(c)?.joined ?? ''
+}
+
+// tryCompound with the exact token count of the written form
+function tryCompoundMatch(c: Cursor): { joined: string; count: number } | null {
   const t1 = c.peek()
-  if (!t1 || t1.type !== 'IDENT') return ''
+  if (!t1 || t1.type !== 'IDENT') return null
   for (const entry of COMPOUND_KEYWORDS) {
     if (t1.upper !== entry.parts[0]) continue
     let ok = true
     let off = 0
     for (let i = 0; i < entry.parts.length; i++) {
-      // IDENT at off, then '-' at off+1 (except last)
       const idTok = c.peek(off)
       if (!idTok || idTok.type !== 'IDENT' || idTok.upper !== entry.parts[i]) { ok = false; break }
       off++
       if (i < entry.parts.length - 1) {
-        const p = c.peek(off)
-        if (!p || p.type !== 'PUNCT' || p.value !== '-') { ok = false; break }
-        off++
+        // optional '-' between parts (written forms may omit it: AT SELECTION-SCREEN)
+        if (c.peek(off)?.type === 'PUNCT' && c.peek(off)!.value === '-') off++
       }
     }
-    if (ok) return entry.joined
+    if (ok) return { joined: entry.joined, count: off }
   }
-  return ''
+  return null
+}
+
+// true when the cursor sits inside unclosed parentheses/brackets
+function insideParens(c: Cursor): boolean {
+  let depth = 0
+  for (let i = 0; i < c.pos; i++) {
+    const v = c.toks[i].value
+    if (v === '(' || v === '[') depth++
+    if (v === ')' || v === ']') depth--
+  }
+  return depth > 0
 }
 
 // number of tokens a compound keyword occupies
@@ -199,6 +217,7 @@ export class Parser {
   private currentEvent = '' // '' = default (START-OF-SELECTION)
   private repid = ''
   private topLevel: Stmt[] = []
+  private macros = new Map<string, Token[]>() // DEFINE / END-OF-DEFINITION
 
   constructor(source: string) {
     this.c = new Cursor(tokenize(source))
@@ -242,6 +261,15 @@ export class Parser {
     const t = c.peek()
     if (!t) return
     if (t.type !== 'IDENT') {
+      // <fs> = ... statement — parse as expression statement
+      if (t.type === 'PUNCT' && t.value === '<' && c.peek(1)?.type === 'IDENT' && c.isPunc('>', 2)) {
+        const st0 = this.parseStatement()
+        if (st0) {
+          if (Array.isArray(st0)) st0.forEach((x) => this.push(x))
+          else this.push(st0 as Stmt)
+        }
+        return
+      }
       // stray punctuation — skip statement
       c.rawStatement()
       return
@@ -249,7 +277,8 @@ export class Parser {
     const comp = tryCompound(c)
     const kw = comp || t.upper
     if (comp) {
-      for (let i = 0; i < compoundTokenCount(comp); i++) c.next()
+      const cm = tryCompoundMatch(c)
+      for (let i = 0; i < (cm?.count ?? compoundTokenCount(comp)); i++) c.next()
     } else {
       c.next()
     }
@@ -263,6 +292,10 @@ export class Parser {
       case 'START-OF-SELECTION': this.beginEvent('START-OF-SELECTION'); return
       case 'END-OF-SELECTION': this.beginEvent('END-OF-SELECTION'); return
       case 'AT-SELECTION-SCREEN': this.beginEvent('AT-SELECTION-SCREEN'); return
+      case 'AT-LINE-SELECTION': case 'AT-USER-COMMAND': case 'AT-PFNN': {
+        // interactive list events: parsed as event blocks, never executed in batch runs
+        this.beginEvent(kw); return
+      }
       case 'LOAD-OF-PROGRAM': this.beginEvent('LOAD-OF-PROGRAM'); return
       case 'TOP-OF-PAGE': this.beginEvent('TOP-OF-PAGE'); return
       case 'END-OF-PAGE': this.beginEvent('END-OF-PAGE'); return
@@ -272,6 +305,42 @@ export class Parser {
         for (const s of stmts) this.push(s)
         return
       }
+      case 'DEFINE': {
+        // macro definition: DEFINE name. <statement tokens>. END-OF-DEFINITION.
+        const nameTok = c.expectIdent('macro name')
+        c.expectPunc('.', 'after macro name')
+        const body: Token[] = []
+        for (;;) {
+          if (c.isKw('END')) {
+            // END-OF-DEFINITION (hyphens optional between the parts)
+            const save = c.pos
+            c.next()
+            c.tryPunc('-')
+            if (c.isKw('OF')) {
+              c.next()
+              c.tryPunc('-')
+              if (c.isKw('DEFINITION')) {
+                c.next()
+                c.rawStatement()
+                break
+              }
+            }
+            c.pos = save
+          }
+          if (c.atEnd()) break
+          // collect one statement's tokens, KEEPING ':' and ',' separators so the
+          // expanded statement keeps its chain shape (WRITE: / &1, &2.)
+          for (;;) {
+            if (c.atEnd()) break
+            const t0 = c.cur!
+            if (t0.value === '.' && !insideParens(c)) { c.next(); break }
+            body.push(c.next())
+          }
+        }
+        this.macros.set(nameTok.upper, body)
+        return
+      }
+      case 'END-OF-DEFINITION': { c.rawStatement(); return }
       default: {
         // regular statement parsed in shared statement parser
         this.c.pos-- // unconsume
@@ -457,6 +526,11 @@ export class Parser {
         c.next()
         const vt = c.peek()
         if (vt && vt.type === 'IDENT') c.next() // STRUCTURE gs — type taken from variable
+      } else if (u === 'READ-ONLY' || u === 'READ') {
+        // class attribute READ-ONLY qualifier — tolerated (tokenizer may split it)
+        c.next()
+        if (c.isPunc('-')) c.next()
+        c.tryKw('ONLY')
       } else if (u === 'LENGTH') {
         c.next()
         c.tryKw('IS')
@@ -477,7 +551,7 @@ export class Parser {
       } else if (u === 'WITH' && c.isKw('HEADER', 1) && c.isKw('LINE', 2)) {
         c.next(); c.next(); c.next()
         if (typeSpec) typeSpec = { kind: 'table', tableKind: 'STANDARD', lineType: typeSpec, headerLine: true }
-      } else if (u === 'READ') { c.next(); c.next() } // READ-ONLY
+      } else if (u === 'READ' && c.isKw('ONLY', 1)) { c.next(); c.next() } // READ-ONLY (split form fallback)
       else if (kw === 'PARAMETERS' && (u === 'OBLIGATORY')) {
         c.next()
         decl.obligatory = true
@@ -575,6 +649,9 @@ export class Parser {
     if (c.isKw('REF') && c.isKw('TO', 1)) {
       c.next(); c.next()
       const cls = c.expectIdent('class name').upper
+      // REF TO <generic data type> is a data reference, not an object reference
+      const genericDataTypes = new Set(['DATA', 'ANY', 'I', 'INT8', 'F', 'P', 'C', 'N', 'D', 'T', 'X', 'STRING', 'XSTRING', 'B', 'S', 'NUMERIC', 'CLIKE', 'SIMPLE'])
+      if (genericDataTypes.has(cls)) return { kind: 'dref', typeName: cls }
       return { kind: 'oref', typeName: cls }
     }
     // BEGIN OF (inside TYPES parse via group — handled by parseDeclaration)
@@ -621,8 +698,10 @@ export class Parser {
         let uniq = false
         if (c.tryKw('UNIQUE')) uniq = true
         else if (c.tryKw('NON')) {
-          c.tryKw('-')
+          c.tryPunc('-')
           c.tryKw('UNIQUE')
+        } else if (c.tryKw('NON-UNIQUE')) {
+          // tokenizer merged form
         }
         if (c.isKw('DEFAULT')) {
           c.next()
@@ -732,6 +811,10 @@ export class Parser {
         if (this.c.tryKw('TYPE') || this.c.tryKw('LIKE')) {
           typed = true
           typeSpec = this.parseTypeSpec(false)
+        }
+        if (this.c.tryKw('STRUCTURE')) {
+          // TABLES p STRUCTURE ddic — consume the structure reference (by-ref param)
+          if (this.c.peek()?.type === 'IDENT') this.c.next()
         }
         if (this.c.tryKw('LENGTH')) length = this.parseExpr()
         params.push({ name: pname, typeSpec, byValue, kind, typed, length })
@@ -890,7 +973,8 @@ export class Parser {
       if (!t || t.type !== 'IDENT') { this.c.rawStatement(); continue }
       const kw = comp || t.upper
       if (comp) {
-        for (let i = 0; i < compoundTokenCount(comp); i++) this.c.next()
+        const cm = tryCompoundMatch(this.c)
+        for (let i = 0; i < (cm?.count ?? compoundTokenCount(comp)); i++) this.c.next()
       } else this.c.next()
       if (['DATA', 'TYPES', 'CONSTANTS', 'STATICS', 'CLASS-DATA'].includes(kw)) {
         const decls = this.parseDeclaration(kw, 'class', currentVis, kw === 'CLASS-DATA')
@@ -1146,6 +1230,10 @@ export class Parser {
     if (!t) return null
     if (t.type === 'PUNCT' && t.value === '.') { c.next(); return null }
     if (t.type !== 'IDENT') {
+      // <fs> = ... / WRITE <fs> target statement
+      if (t.type === 'PUNCT' && t.value === '<' && c.peek(1)?.type === 'IDENT' && c.isPunc('>', 2)) {
+        return this.parseExpressionStatement()
+      }
       // e.g. stray STRING? skip statement
       c.rawStatement()
       return null
@@ -1153,7 +1241,8 @@ export class Parser {
     const comp = tryCompound(c)
     let kw = comp || t.upper
     if (comp) {
-      for (let i = 0; i < compoundTokenCount(comp); i++) c.next()
+      const cm = tryCompoundMatch(c)
+      for (let i = 0; i < (cm?.count ?? compoundTokenCount(comp)); i++) c.next()
     } else {
       c.next()
     }
@@ -1499,12 +1588,124 @@ export class Parser {
       case 'STATICS': return this.parseDeclaration('STATICS', 'local')
       case 'ENHANCEMENT': case 'ENDENHANCEMENT': { c.rawStatement(); return null }
       case 'AT': {
-        // AT FIRST/LAST/NEW f — group loops; treat as no-op boundary
-        c.rawStatement()
-        return null
+        // AT FIRST / AT LAST / AT NEW f / AT END OF f ... ENDAT — control-break blocks.
+        // AT SELECTION-SCREEN variants inside event bodies are tolerated as no-ops.
+        if (c.isKw('SELECTION') || c.isKw('USER') || c.isKw('PF')) {
+          c.rawStatement()
+          return null
+        }
+        const atLine = this.line()
+        let kind: 'FIRST' | 'LAST' | 'NEW' | 'ENDOF'
+        let field: string | undefined
+        if (c.tryKw('FIRST')) kind = 'FIRST'
+        else if (c.tryKw('LAST')) kind = 'LAST'
+        else if (c.tryKw('NEW')) {
+          kind = 'NEW'
+          c.tryKw('OF')
+          field = c.expectIdent('field').upper
+        } else if (c.tryKw('END')) {
+          c.tryKw('OF')
+          field = c.expectIdent('field').upper
+          kind = 'ENDOF'
+        } else {
+          c.rawStatement()
+          return null
+        }
+        c.expectPunc('.', 'after AT')
+        const atBody: Stmt[] = []
+        this.parseBodyUntil(atBody, () => this.c.isKw('ENDAT'))
+        this.c.rawStatement() // consume ENDAT.
+        return { t: 'atblock', kind, field, body: atBody, line: atLine }
       }
       case 'ENDAT': { c.rawStatement(); return null }
-      case 'SUM': { c.rawStatement(); return null }
+      case 'SUM': { return { t: 'sum' } }
+      case 'ASSIGN': {
+        // ASSIGN <src> TO <fs>. | ASSIGN COMPONENT c OF STRUCTURE s TO <fs>.
+        const line0 = this.line()
+        if (c.tryKw('COMPONENT')) {
+          const component = this.parseExpr()
+          if (!c.tryKw('OF')) c.err('Expected OF in ASSIGN COMPONENT')
+          c.tryKw('STRUCTURE')
+          const structure = this.parseExpr()
+          if (!c.tryKw('TO')) c.err('Expected TO in ASSIGN COMPONENT')
+          const fs = this.parseExpr()
+          c.expectPunc('.', 'after ASSIGN')
+          return { t: 'assign', component, structure, fs, line: line0 } as any
+        }
+        const src = this.parseExpr()
+        if (!c.tryKw('TO')) c.err('Expected TO in ASSIGN')
+        c.tryKw('CASTING')
+        const fs = this.parseExpr()
+        c.expectPunc('.', 'after ASSIGN')
+        return { t: 'assign', src, fs, line: line0 } as any
+      }
+      case 'COLLECT': {
+        // COLLECT wa INTO it.
+        const line0 = this.line()
+        const src = this.parseExpr()
+        let table: Expr
+        if (c.tryKw('INTO')) table = this.parseExpr()
+        else table = src // COLLECT it. — header-line style
+        c.expectPunc('.', 'after COLLECT')
+        return { t: 'collect', src, table, line: line0 }
+      }
+      case 'HIDE': {
+        // HIDE f1 f2 ... | HIDE: f1, f2.
+        const line0 = this.line()
+        const targets: Expr[] = []
+        c.tryPunc(':')
+        for (;;) {
+          targets.push(this.parseExpr())
+          if (c.tryPunc(',')) continue
+          break
+        }
+        c.expectPunc('.', 'after HIDE')
+        return { t: 'hide', targets, line: line0 }
+      }
+      case 'NEW-PAGE': {
+        // NEW-PAGE [LINE-SIZE n] [PRINT ON|OFF] [WITH TITLE ...] — options tolerated
+        const line0 = this.line()
+        c.rawStatement()
+        return { t: 'newpage', line: line0 }
+      }
+      case 'OPEN': {
+        // OPEN DATASET <path> FOR OUTPUT|INPUT|APPENDING IN TEXT|BINARY MODE [ENCODING ...]
+        const line0 = this.line()
+        if (!c.tryKw('DATASET')) { c.rawStatement(); return null }
+        const target = this.parseExpr()
+        let mode: 'output' | 'input' | 'appending' = 'input'
+        if (c.tryKw('FOR')) {
+          if (c.tryKw('OUTPUT')) mode = 'output'
+          else if (c.tryKw('APPENDING')) mode = 'appending'
+          else c.tryKw('INPUT')
+        }
+        c.tryKw('IN')
+        c.tryKw('TEXT'); c.tryKw('BINARY'); c.tryKw('LEGACY'); c.tryKw('MODE')
+        c.tryKw('WITH'); c.tryKw('LINE'); c.tryKw('FEED')
+        if (c.tryKw('ENCODING')) { c.tryKw('DEFAULT'); c.tryKw('UTF-8'); c.tryKw('NON-UNICODE'); if (c.peek()?.type === 'IDENT') c.next() }
+        if (c.tryKw('CODE')) { c.tryKw('PAGE'); if (c.peek()?.type === 'IDENT' || c.peek()?.type === 'STRING') c.next() }
+        c.tryKw('FILTER')
+        if (c.isPunc('(')) { let d = 0; do { const tk = c.next(); if (tk.value === '(') d++; if (tk.value === ')') d-- } while (d > 0 && !c.atEnd()) }
+        c.expectPunc('.', 'after OPEN DATASET')
+        return { t: 'dataset', op: 'open', mode, target, line: line0 }
+      }
+      case 'TRANSFER': {
+        // TRANSFER <source> TO <path>
+        const line0 = this.line()
+        const source = this.parseExpr()
+        if (!c.tryKw('TO')) c.err('Expected TO after TRANSFER source')
+        const target = this.parseExpr()
+        c.rawStatementToDotWhere()
+        return { t: 'dataset', op: 'transfer', source, target, line: line0 }
+      }
+      case 'CLOSE': {
+        // CLOSE DATASET <path|handle>
+        const line0 = this.line()
+        if (!c.tryKw('DATASET')) { c.rawStatement(); return null }
+        const target = this.parseExpr()
+        c.expectPunc('.', 'after CLOSE DATASET')
+        return { t: 'dataset', op: 'close', target, line: line0 }
+      }
       case 'TOP-OF-PAGE': case 'END-OF-PAGE': { c.rawStatement(); return null }
       case 'WHEN': case 'ELSE': case 'ENDIF': case 'ENDCASE': case 'ENDDO': case 'ENDWHILE': case 'ENDLOOP': case 'ENDFORM': case 'ENDFUNCTION': case 'ENDCLASS': case 'ENDINTERFACE': case 'ENDMETHOD': case 'ENDTRY': case 'CATCH': case 'CLEANUP': case 'ELSEIF': case 'OTHERS': {
         c.err(`Unexpected ${kw}`)
@@ -1513,11 +1714,49 @@ export class Parser {
       case 'SELECT-': case 'WITH': { c.rawStatement(); return null }
       default: {
         // unknown statement: could be assignment or method call expression
+        // macro invocation: statement starts with a DEFINE'd macro name
+        if (!comp && this.macros.has(kw)) {
+          return this.expandMacroInvocation(kw)
+        }
         c.pos-- // unconsume keyword token
         if (comp) c.pos -= 1 // rough
         return this.parseExpressionStatement()
       }
     }
+  }
+
+  // splice a macro invocation: substitute &1..&9 with invocation tokens and re-parse
+  private expandMacroInvocation(name: string): Stmt | Stmt[] | null {
+    const body = this.macros.get(name)!
+    const args: Token[] = this.c.rawStatement() ?? []
+    const out: Token[] = []
+    for (let i = 0; i < body.length; i++) {
+      const t = body[i]
+      if (t.value === '&' && body[i + 1] && /^\d$/.test(body[i + 1].value)) {
+        const idx = parseInt(body[i + 1].value, 10) - 1
+        if (args[idx]) out.push(args[idx])
+        i++
+        continue
+      }
+      out.push(t)
+    }
+    const saved = this.c
+    // the invocation's terminating '.' was consumed with the args — restore it
+    out.push({ type: 'PUNCT', value: '.', upper: '.', line: args[args.length - 1]?.line ?? 0, col: 0 })
+    this.c = new Cursor(out)
+    const results: Stmt[] = []
+    try {
+      while (!this.c.atEnd()) {
+        const st = this.parseStatement()
+        if (st) {
+          if (Array.isArray(st)) results.push(...st)
+          else results.push(st)
+        }
+      }
+    } finally {
+      this.c = saved
+    }
+    return results
   }
 
   // assignment or method-call statement: starts with IDENT / <fs> etc.
@@ -1714,38 +1953,58 @@ export class Parser {
 
   private parseDo(): Stmt {
     let times: Expr | undefined
-    // DO [n TIMES] [VARYING x FROM a NEXT b].
+    const varying: { var: Expr; from: Expr; next: Expr }[] = []
+    // DO [n TIMES] [VARYING x FROM a NEXT b] ...
     if (this.c.peek()?.type === 'NUMBER' && this.c.isKw('TIMES', 1)) {
       times = { t: 'num', v: parseFloat(this.c.next().value), raw: '' }
       this.c.next()
+    } else if (this.c.isKw('VARYING')) {
+      // VARYING clauses only
     } else if (this.c.peek()?.type === 'IDENT' && !this.c.isPunc('.')) {
-      // VARYING or expr TIMES
+      // expr TIMES
       const save = this.c.pos
-      if (this.c.isKw('VARYING')) {
-        // consume until '.'
-        this.c.rawStatement()
-      } else {
-        this.c.pos = save
-        try {
-          const e = this.parseExpr()
-          if (this.c.tryKw('TIMES')) {
-            times = e
-            this.c.expectPunc('.', 'after DO')
-          } else {
-            this.c.expectPunc('.', 'after DO')
-          }
-        } catch {
-          this.c.pos = save
+      try {
+        const e = this.parseExpr()
+        if (this.c.tryKw('TIMES')) {
+          times = e
+        } else {
+          this.c.expectPunc('.', 'after DO')
+          const body0: Stmt[] = []
+          this.parseBodyUntil(body0, () => this.c.isKw('ENDDO'))
           this.c.rawStatement()
+          return { t: 'do', times, body: body0, varying }
         }
+      } catch {
+        this.c.pos = save
+        this.c.rawStatement()
+        const body0: Stmt[] = []
+        this.parseBodyUntil(body0, () => this.c.isKw('ENDDO'))
+        this.c.rawStatement()
+        return { t: 'do', times, body: body0, varying }
       }
     } else {
+      // plain DO. — '.' consumed by rawStatement
       this.c.rawStatement()
+      const body0: Stmt[] = []
+      this.parseBodyUntil(body0, () => this.c.isKw('ENDDO'))
+      this.c.rawStatement()
+      return { t: 'do', times, body: body0, varying }
     }
+    while (this.c.isKw('VARYING')) {
+      this.c.next()
+      const v = this.parseExpr()
+      if (!this.c.tryKw('FROM')) this.c.err('Expected FROM in DO VARYING')
+      const from = this.parseExpr()
+      if (!this.c.tryKw('NEXT')) this.c.err('Expected NEXT in DO VARYING')
+      const next = this.parseExpr()
+      varying.push({ var: v, from, next })
+      if (this.c.isPunc('.')) break
+    }
+    this.c.expectPunc('.', 'after DO')
     const body: Stmt[] = []
     this.parseBodyUntil(body, () => this.c.isKw('ENDDO'))
     this.c.rawStatement()
-    return { t: 'do', times, body }
+    return { t: 'do', times, body, varying }
   }
 
   private parseWhile(): Stmt {
@@ -1826,6 +2085,7 @@ export class Parser {
     let linesOf: Expr | undefined
     let assigning: Expr | undefined
     let sortedBy: Expr | undefined
+    let headerAppend = false
     let c = this.c
     // APPEND [wa TO | INITIAL LINE TO | LINES OF it1 TO] it2 [ASSIGNING <fs>] [SORTED BY f]
     if (c.isKw('INITIAL') && c.isKw('LINE', 1)) {
@@ -1840,9 +2100,10 @@ export class Parser {
       src = this.parseExpr()
       if (c.tryKw('TO')) table = this.parseExpr()
       else if (c.isPunc('.')) {
-        // APPEND it. → append initial line of it (header line semantics) — treat table=src
+        // APPEND it. → header-line style: append current header line
         table = src
         src = undefined
+        headerAppend = true
       }
     }
     if (c.tryKw('ASSIGNING')) assigning = this.parseExpr()
@@ -1853,7 +2114,7 @@ export class Parser {
     }
     if (c.isKw('TO')) { c.next(); table = this.parseExpr() }
     c.expectPunc('.', 'after APPEND')
-    return { t: 'append', src, table: table ?? src!, initialLine, linesOf, assigning, sortedBy, line }
+    return { t: 'append', src, table: table ?? src!, initialLine, linesOf, assigning, sortedBy, headerAppend, line }
   }
 
   private parseInsert(): Stmt {
@@ -1913,6 +2174,7 @@ export class Parser {
       if (c.isKw('FROM')) {
         // INSERT dbtab FROM wa / FROM TABLE it
         isDb = true
+        c.next() // consume FROM
         dbTable = (src as any).name ?? ''
         if (c.tryKw('TABLE')) {
           fromTable = true
@@ -1960,6 +2222,17 @@ export class Parser {
     // READ TABLE it INTO wa INDEX n | WITH KEY k = v | WITH TABLE KEY k = v [BINARY SEARCH] [COMPARING...] [TRANSPORTING...]
     // also READ TABLE it ASSIGNING <fs> ...
     if (!c.tryKw('TABLE')) {
+      // READ DATASET <path> INTO <var> [LENGTH len] — application server file read
+      if (c.isKw('DATASET')) {
+        c.next()
+        const target = this.parseExpr()
+        let into: Expr | undefined
+        if (c.tryKw('INTO')) into = this.parseExpr()
+        let length: Expr | undefined
+        if (c.tryKw('LENGTH')) length = this.parseExpr()
+        c.expectPunc('.', 'after READ DATASET')
+        return { t: 'dataset', op: 'read', target, into, length, line }
+      }
       // READ REPORT etc.
       c.rawStatement()
       return { t: 'datainfo', raw: 'READ ...', line }
@@ -2017,6 +2290,9 @@ export class Parser {
             const v = this.parseExpr()
             comps.push({ name, value: v })
             if (c.isKw('AND')) { c.next(); continue }
+            // next space-separated component: name = value
+            const nt2 = c.peek()
+            if (nt2 && nt2.type === 'IDENT' && c.isPunc('=', 1)) continue
             break
           }
           withKey = { comps }
@@ -2110,6 +2386,13 @@ export class Parser {
     }
     // forms: DELETE it [INDEX n | WHERE cond | FROM i TO j | ADJACENT DUPLICATES [COMPARING...]]
     //        DELETE TABLE it WITH KEY... | DELETE dbtab FROM wa | DELETE FROM dbtab WHERE...
+    // DELETE DATASET <path> — application server file delete
+    if (c.isKw('DATASET')) {
+      c.next()
+      const target = this.parseExpr()
+      c.expectPunc('.', 'after DELETE DATASET')
+      return { t: 'dataset', op: 'delete', target, line }
+    }
     // detect "DELETE FROM"
     if (c.isKw('FROM')) {
       c.next()
@@ -2512,6 +2795,47 @@ export class Parser {
 
   private parseCall(): Stmt | null {
     const c = this.c
+    if (c.isKw('TRANSACTION')) {
+      // CALL TRANSACTION 'X' [AND SKIP FIRST SCREEN] [USING itab [MODE m] [UPDATE u] [MESSAGES INTO it]]
+      const line = this.line()
+      c.next()
+      const t = c.peek()
+      let name: Expr = { t: 'str', v: '' }
+      if (t?.type === 'STRING') { name = { t: 'str', v: t.value }; c.next() }
+      else if (t?.type === 'IDENT') { name = { t: 'var', name: t.upper }; c.next() }
+      let using: Expr | undefined
+      let mode: Expr | undefined
+      let update: Expr | undefined
+      let messagesInto: Expr | undefined
+      if (c.isKw('AND')) { c.next(); c.rawStatementToDotWhere(); return { t: 'calltransaction', name, line } }
+      for (;;) {
+        if (c.isPunc('.') || c.atEnd()) break
+        if (c.tryKw('USING')) {
+          using = this.parseExpr()
+          continue
+        }
+        if (c.tryKw('MODE')) { mode = this.parseExpr(); continue }
+        if (c.tryKw('UPDATE')) { update = this.parseExpr(); continue }
+        if (c.tryKw('MESSAGES')) {
+          c.tryKw('INTO')
+          messagesInto = this.parseExpr()
+          continue
+        }
+        if (c.tryKw('OPTIONS')) { c.rawStatementToDotWhere(); return { t: 'calltransaction', name, using, mode, update, messagesInto, line } }
+        c.next()
+      }
+      c.expectPunc('.', 'after CALL TRANSACTION')
+      return { t: 'calltransaction', name, using, mode, update, messagesInto, line }
+    }
+    if (c.isKw('SCREEN')) {
+      // CALL SCREEN n — dynpro runtime is not simulated
+      const line = this.line()
+      c.next()
+      let num: Expr | undefined
+      if (c.peek()?.type === 'NUMBER') num = { t: 'num', v: parseFloat(c.next().value), raw: c.peek(-1)!.value }
+      c.rawStatement()
+      return { t: 'callscreen', num, line }
+    }
     if (c.isKw('METHOD')) {
       c.next()
       // CALL METHOD [oref->|class=>]meth [EXPORTING...]
@@ -2684,9 +3008,15 @@ export class Parser {
     for (;;) {
       if (c.isPunc('.') || c.atEnd()) { c.tryPunc('.'); break }
       if (c.tryKw('WITH')) {
+        const withEnd = new Set(['TYPE', 'DISPLAY', 'RAISE', 'RAISING', 'INTO', 'WITH', 'LIKE', 'USING'])
         for (;;) {
           withArgs.push(this.parseExpr())
           if (c.isPunc(',')) { c.next(); continue }
+          // WITH args are space-separated: continue while a value token follows
+          // (literal, number, parenthesized, @host, or an identifier that is not a clause keyword)
+          const nt = c.peek()
+          if (nt && (nt.type === 'STRING' || nt.type === 'NUMBER' || (nt.type === 'PUNCT' && (nt.value === '(' || nt.value === '@' || nt.value === '-')))) continue
+          if (nt && nt.type === 'IDENT' && !withEnd.has(nt.upper)) continue
           break
         }
         continue
@@ -2745,9 +3075,25 @@ export class Parser {
       return { t: 'createobject', target, className, exporting, exceptions: [], line }
     }
     if (c.isKw('DATA')) {
-      // CREATE DATA dref [TYPE ...] — tolerate
-      c.rawStatement()
-      return null
+      // CREATE DATA dref [TYPE <type>|LIKE <obj>]
+      const line = this.line()
+      c.next()
+      const target = this.parseExpr()
+      let typeSpec: TypeSpecAST | undefined
+      let like: Expr | undefined
+      if (c.tryKw('TYPE')) {
+        if (c.isPunc('(')) {
+          // CREATE DATA dref TYPE (typename) — dynamic, tolerate
+          c.next()
+          c.rawStatementToDotWhere()
+          return { t: 'createdata', target, line }
+        }
+        typeSpec = this.parseTypeSpec(false)
+      } else if (c.tryKw('LIKE')) {
+        like = this.parseExpr()
+      }
+      c.expectPunc('.', 'after CREATE DATA')
+      return { t: 'createdata', target, typeSpec, like, line }
     }
     c.rawStatement()
     return null
@@ -2873,9 +3219,10 @@ export class Parser {
       if (c.isKw('FOR')) { c.next(); c.tryKw('UPDATE') }
     }
     if (c.isKw('DISTINCT')) { c.next(); sel.distinct = true }
-    // fields: until FROM — collect raw text pieces (support s~carrid, *, a-b, COUNT(*) AS n)
+    // fields: until FROM / INTO / other clause keyword — collect raw text pieces (support s~carrid, *, a-b, COUNT(*) AS n)
+    const fieldEndKws = new Set(['FROM', 'INTO', 'APPENDING', 'WHERE', 'GROUP', 'ORDER', 'HAVING', 'UP', 'FOR', 'CLIENT', 'USING'])
     const fieldParts: { expr: string; alias?: string; count?: boolean }[] = []
-    while (!c.isKw('FROM') && !c.atEnd() && !c.isPunc('.')) {
+    while (!c.atEnd() && !c.isPunc('.') && !fieldEndKws.has(c.peek()!.upper || '')) {
       const t = c.peek()!
       if (t.type === 'PUNCT' && t.value === ',') { c.next(); continue }
       if (t.upper === 'COUNT') {
@@ -2926,7 +3273,7 @@ export class Parser {
       fieldParts.push({ expr: name, alias })
     }
     sel.fields = fieldParts
-    if (c.tryKw('FROM')) {
+    const parseFromClause = () => {
       const nameTok = c.expectIdent('table name')
       sel.from.table = nameTok.upper
       if (c.tryKw('AS')) sel.from.alias = c.expectIdent('alias').upper
@@ -2946,9 +3293,11 @@ export class Parser {
         sel.joins.push({ table: jt.upper, alias: jalias, on })
       }
     }
+    if (c.isKw('FROM')) { c.next(); parseFromClause() }
     // remaining clauses in any order
     for (;;) {
       if (c.isPunc('.') || c.atEnd()) { c.tryPunc('.'); break }
+      if (c.isKw('FROM') && !sel.from.table) { c.next(); parseFromClause(); continue }
       if (c.tryKw('INTO')) {
         if (c.tryKw('CORRESPONDING')) { c.tryKw('FIELDS'); c.tryKw('OF'); sel.intoCorresponding = true }
         if (c.isKw('TABLE')) {
@@ -2969,9 +3318,21 @@ export class Parser {
               continue
             }
           }
-          // field list INTO (f1, f2)
+          // field list INTO (f1, f2) — multi-target
           c.pos = save
-          sel.into = this.parseExpr()
+          c.next() // consume '('
+          const targets: Expr[] = []
+          for (;;) {
+            if (c.isPunc(')')) { c.next(); break }
+            if (c.atEnd()) break
+            targets.push(this.parseExpr())
+            if (c.tryPunc(',')) continue
+            if (c.isPunc(')')) { c.next(); break }
+            // tolerate unparenthesized remainder
+            break
+          }
+          sel.intoMulti = targets
+          continue
         } else {
           sel.into = this.parseExpr()
         }
@@ -3021,7 +3382,7 @@ export class Parser {
       if (c.isKw('GROUP')) {
         c.next(); c.tryKw('BY')
         const groups: string[] = []
-        while (!c.isPunc('.') && !c.atEnd() && !c.isKw('INTO')) {
+        while (!c.isPunc('.') && !c.atEnd() && !c.isKw('INTO') && !c.isKw('HAVING') && !c.isKw('ORDER') && !c.isKw('UP') && !c.isKw('FOR')) {
           const t = c.peek()
           if (t?.type === 'IDENT') groups.push(c.next().upper)
           else c.next()
@@ -3029,11 +3390,79 @@ export class Parser {
         sel.groupBy = groups
         continue
       }
+      if (c.isKw('FOR') && c.isKw('ALL', 1) && c.isKw('ENTRIES', 2)) {
+        // FOR ALL ENTRIES IN <itab>
+        c.next(); c.next(); c.next()
+        if (!c.tryKw('IN')) c.err('Expected IN after FOR ALL ENTRIES')
+        sel.fae = this.parseExpr()
+        continue
+      }
       if (c.isKw('FOR')) { c.next(); c.rawStatementToDotWhere() ; continue }
+      if (c.isKw('HAVING')) {
+        c.next()
+        sel.having = this.parseHavingCond(c)
+        continue
+      }
       if (c.isKw('CLIENT') || c.isKw('USING')) { while (!c.isPunc('.') && !c.atEnd()) c.next(); continue }
       c.next()
     }
+    // loop form (ENDSELECT) unless single-row by definition:
+    // SELECT SINGLE, INTO TABLE/APPENDING, or aggregate without GROUP BY
+    const hasAgg = fieldParts.some((f) => f.count || /^(SUM|AVG|MIN|MAX)\(/i.test(f.expr))
+    const loopForm = !sel.single && !sel.intoTable && !sel.appending && !(hasAgg && !(sel.groupBy && sel.groupBy.length))
+    if (loopForm) {
+      const body: Stmt[] = []
+      this.parseBodyUntil(body, () => this.c.isKw('ENDSELECT'))
+      this.c.rawStatement() // consume ENDSELECT.
+      sel.body = body
+    }
     return sel
+  }
+
+  // HAVING condition: operands are aggregates AGG(field), db fields and literals
+  private parseHavingCond(c: Cursor): Expr {
+    const parseOperand = (): Expr => {
+      const t = c.peek()
+      if (!t) c.err('Unexpected end of HAVING')
+      if (t.type === 'NUMBER') { c.next(); return { t: 'num', v: parseFloat(t.value), raw: t.value } }
+      if (t.type === 'STRING') { c.next(); return { t: 'str', v: t.value } }
+      if (t.type === 'IDENT') {
+        const u = c.next().upper
+        if (['COUNT', 'SUM', 'AVG', 'MIN', 'MAX'].includes(u) && c.isPunc('(')) {
+          c.next()
+          let arg = ''
+          if (c.isPunc('*')) { c.next(); arg = '*' }
+          else arg = c.expectIdent('field').upper
+          c.expectPunc(')')
+          return { t: 'sqlagg', fn: u, arg }
+        }
+        // field (possibly alias~field)
+        if (c.isPunc('~')) { c.next(); return { t: 'var', name: `${u}~${c.expectIdent('field').upper}` } }
+        return { t: 'var', name: u }
+      }
+      c.next()
+      return { t: 'num', v: 0, raw: '' }
+    }
+    const parseCmp = (): Expr => {
+      const l = parseOperand()
+      const t = c.peek()
+      let op = ''
+      if (t?.type === 'PUNCT' && ['=', '<>', '<', '>', '<=', '>='].includes(t.value)) op = c.next().value
+      else if (t?.type === 'IDENT' && ['EQ', 'NE', 'LT', 'GT', 'LE', 'GE'].includes(t.upper)) {
+        op = { EQ: '=', NE: '<>', LT: '<', GT: '>', LE: '<=', GE: '>=' }[t.upper]!
+        c.next()
+      }
+      if (!op) return l
+      const r = parseOperand()
+      return { t: 'binop', op, l, r }
+    }
+    let l = parseCmp()
+    for (;;) {
+      if (c.isKw('AND')) { c.next(); l = { t: 'binop', op: 'AND', l, r: parseCmp() }; continue }
+      if (c.isKw('OR')) { c.next(); l = { t: 'binop', op: 'OR', l, r: parseCmp() }; continue }
+      break
+    }
+    return l
   }
 
   private pendingInlineDecl: { name: string; tableOf: boolean } | null = null
@@ -3149,6 +3578,26 @@ export class Parser {
         return { t: 'strpred', op: 'LIKE', l, r }
       } else if (u === 'IN') {
         c.next()
+        // value list: x IN ( v1, v2, ... )
+        if (c.isPunc('(')) {
+          const save = c.pos
+          c.next()
+          const list: Expr[] = []
+          let okList = true
+          for (;;) {
+            if (c.isPunc(')')) { c.next(); break }
+            if (c.atEnd()) { okList = false; break }
+            try {
+              list.push(this.parseConcat(c))
+            } catch { okList = false; break }
+            if (c.tryPunc(',')) continue
+            if (c.isPunc(')')) { c.next(); break }
+            okList = false
+            break
+          }
+          if (okList && list.length > 0) return { t: 'inlist', e: l, list } as any
+          c.pos = save
+        }
         const r = this.parseConcat(c)
         return { t: 'in', e: l, range: r }
       } else if (u === 'IS') {
@@ -3221,6 +3670,12 @@ export class Parser {
   private parsePostfix(c: Cursor): Expr {
     let e = this.parsePrimary(c)
     for (;;) {
+      // dereference token ->* (tokenizer emits it as one token)
+      if (c.isPunc('->*')) {
+        c.next()
+        e = { t: 'deref', ref: e }
+        continue
+      }
       if (c.isPunc('->') || c.isPunc('=>') || c.isPunc('~')) {
         const sep = c.next().value as '->' | '=>' | '~'
         // obj->* deref
@@ -3470,7 +3925,14 @@ export class Parser {
     }
     if (u === 'REDUCE') {
       if (c.isPunc('#')) c.next()
-      else if (c.peek()?.type === 'IDENT') c.next()
+      else if (c.peek()?.type === 'IDENT') {
+        c.next()
+        // REDUCE p DECIMALS 2 ( … ) — skip the type suffix before the paren
+        while (c.peek()?.type === 'IDENT' && ['DECIMALS', 'LENGTH'].includes(c.peek()!.upper)) {
+          c.next()
+          if (c.peek()?.type === 'NUMBER') c.next()
+        }
+      }
       c.expectPunc('(')
       let init: { name: string; expr: Expr } | null = null
       let next: { name: string; expr: Expr } | null = null
@@ -3633,8 +4095,23 @@ export class Parser {
             currentForLines = forLine.lines
           }
         } else {
-          // numeric FOR i = init THEN step WHILE cond — inside VALUE: skip tokens
-          while (!c.isPunc(',') && !c.isPunc(')') && !c.atEnd() && !c.isKw('FOR')) c.next()
+          // numeric FOR i = init [THEN step] [WHILE cond | UNTIL cond] ( row )
+          c.expectPunc('=')
+          const init = this.parseOr(c)
+          let step: Expr | undefined
+          let whileCond: Expr | undefined
+          let untilCond: Expr | undefined
+          if (c.tryKw('THEN')) step = this.parseOr(c)
+          if (c.tryKw('WHILE')) whileCond = this.parseOr(c)
+          if (c.tryKw('UNTIL')) untilCond = this.parseOr(c)
+          const forNumLine: ValueLine = { kind: 'fornum', iterVar: v, init, step, while: whileCond, until: untilCond, lines: [] }
+          if (currentForLines) {
+            currentForLines.push(forNumLine)
+            currentForLines = forNumLine.lines
+          } else {
+            lines.push(forNumLine)
+            currentForLines = forNumLine.lines
+          }
         }
         continue
       }

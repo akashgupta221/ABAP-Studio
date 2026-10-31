@@ -6,7 +6,26 @@ import { useWorkbench } from './use-workbench'
 import { api } from './use-workbench'
 import type { ProgramListItem } from './types'
 
-const TCODES = ['SE38', 'SE80', 'SE11', 'SE16', 'SE24', 'SE37', 'SE93', 'SLG1', 'ST22', 'SEARCH', 'MODERN']
+const TCODES = [
+  'SE38', 'SE80', 'SE11', 'SE12', 'SE16', 'SE16N', 'SE24', 'SE37', 'SE93', 'SLG1', 'ST22', 'SEARCH', 'MODERN',
+  'SLG0', 'SM21', 'SM36', 'SM37', 'SM50', 'SQ01', 'SQ02', 'SQ03', 'SE09', 'SE10', 'STMS', 'SCC1',
+  'ST05', 'SAT', 'SE30', 'SCI', 'SLIN', 'SM12', 'SM13', 'SU53', 'SU20', 'SU21',
+  'SA38', 'SE91', 'SNRO', 'AL11', 'SM59', 'SM30', 'SM31', 'SE84', 'SE15', 'ABAPDOCU', 'SE14',
+  'SE32', 'SE36', 'SE39', 'SE35', 'SE41', 'SE43', 'SE51', 'SE54', 'SM34',
+  'SE71', 'SE72', 'SE73', 'SE78', 'SO10', 'SMARTFORMS', 'SMARTSTYLES', 'NACE', 'SP01', 'SPAD',
+  'SHDB', 'SM35', 'LSMW', 'CG3Y', 'CG3Z', 'FILE', 'BAPI',
+  'WE31', 'WE30', 'WE81', 'WE82', 'WE21', 'WE20', 'BD64', 'WE19', 'WE02', 'WE05', 'BD87',
+  'CMOD', 'SMOD', 'SE18', 'SE19', 'FIBF', 'SPAU', 'SPDD',
+]
+// transactions with real screens in this workbench
+const BOUNDARY_TCODES = new Set([
+  'ST05', 'SAT', 'SE30', 'SM12', 'SM13', 'SU53', 'SU20', 'SU21', 'SCC1', 'SQ03', 'SLG0',
+  'SE14', 'SE32', 'SE36', 'SE39', 'SE35', 'SE41', 'SE43', 'SE51', 'SE54', 'SM34',
+  'SE71', 'SE72', 'SE73', 'SE78', 'SO10', 'SMARTFORMS', 'SMARTSTYLES', 'NACE', 'SP01', 'SPAD',
+  'SHDB', 'SM35', 'LSMW', 'CG3Y', 'CG3Z', 'FILE', 'BAPI',
+  'WE31', 'WE30', 'WE81', 'WE82', 'WE21', 'WE20', 'BD64', 'WE19', 'WE02', 'WE05', 'BD87',
+  'CMOD', 'SMOD', 'SE18', 'SE19', 'FIBF', 'SPAU', 'SPDD',
+])
 
 export function CommandField() {
   const [value, setValue] = useState('')
@@ -157,6 +176,135 @@ export function CommandField() {
             navigate('modern')
             addMessage('S', 'Modern ABAP Workspace (7.40, CDS, RAP, AMDP)')
             return
+          case 'SE91':
+            useWorkbench.setState({ lastTcode: 'SE91' })
+            navigate('messages')
+            addMessage('S', 'Message Class Maintenance (SE91)')
+            return
+          case 'SE93':
+            useWorkbench.setState({ lastTcode: 'SE93' })
+            navigate('transactions')
+            addMessage('S', 'Transaction Code Registry (SE93)')
+            return
+          case 'SNRO':
+            useWorkbench.setState({ lastTcode: 'SNRO' })
+            navigate('number-ranges')
+            addMessage('S', 'Number Range Objects (SNRO)')
+            return
+          case 'AL11':
+            useWorkbench.setState({ lastTcode: 'AL11' })
+            navigate('al11')
+            addMessage('S', 'Application Server Directory (AL11)')
+            return
+          case 'SM59':
+            useWorkbench.setState({ lastTcode: 'SM59' })
+            navigate('rfc')
+            addMessage('S', 'RFC Destinations (SM59)')
+            return
+          case 'SM30': case 'SM31': {
+            useWorkbench.setState({ lastTcode: 'SM30' })
+            navigate('dictionary')
+            addMessage('I', `Table maintenance (SM30) — open a table in SE11 and maintain its entries${arg ? `: ${arg.toUpperCase()}` : ''}`)
+            return
+          }
+          case 'SE54':
+            useWorkbench.setState({ lastTcode: 'SE54' })
+            navigate('dictionary')
+            addMessage('I', 'SE54 maintenance dialogs are covered by direct entry maintenance — use SM30 in SE11')
+            return
+          case 'SE12':
+            useWorkbench.setState({ lastTcode: 'SE12' })
+            navigate('dictionary')
+            addMessage('S', 'ABAP Dictionary display (SE12) — same object list as SE11')
+            return
+          case 'SA38': {
+            useWorkbench.setState({ lastTcode: 'SA38' })
+            if (arg && /^[A-Za-z_\/][A-Za-z0-9_\/%$#]*$/.test(arg)) {
+              await openProgramByName(arg)
+              addMessage('S', `ABAP Program Execution (SA38) — ${arg.toUpperCase()}`)
+              return
+            }
+            st().openSe38Initial()
+            addMessage('I', 'ABAP Program Execution (SA38) — enter a report name')
+            return
+          }
+          case 'SE84': case 'SE15':
+            useWorkbench.setState({ lastTcode: first })
+            navigate('search')
+            addMessage('S', `Repository Information System (${first})`)
+            return
+          case 'SCI': case 'SLIN':
+            useWorkbench.setState({ lastTcode: first })
+            navigate('inspector')
+            addMessage('S', `Code Inspector (${first}) — static checks and metrics`)
+            return
+          case 'SLG1':
+            useWorkbench.setState({ lastTcode: 'SLG1' })
+            navigate('slg1')
+            addMessage('S', 'Application Log (SLG1)')
+            return
+          case 'SLG0':
+            useWorkbench.setState({ lastTcode: 'SLG0', boundaryTcode: 'SLG0', view: 'boundary' })
+            return
+          case 'SM21':
+            useWorkbench.setState({ lastTcode: 'SM21' })
+            navigate('sm21')
+            addMessage('S', 'System Log (SM21)')
+            return
+          case 'SM36': case 'SM37':
+            useWorkbench.setState({ lastTcode: first })
+            navigate('jobs')
+            addMessage('S', first === 'SM36' ? 'Background Jobs — schedule (SM36)' : 'Background Jobs — monitor (SM37)')
+            return
+          case 'SM50':
+            useWorkbench.setState({ lastTcode: 'SM50' })
+            navigate('sm50')
+            addMessage('S', 'Work Process Monitor (SM50) — simulated activity snapshot')
+            return
+          case 'SQ01': case 'SQ02':
+            useWorkbench.setState({ lastTcode: first })
+            navigate('query')
+            addMessage('S', first === 'SQ01' ? 'ABAP Query — run queries (SQ01)' : 'ABAP Query — infosets (SQ02)')
+            return
+          case 'SE09': case 'SE10':
+            useWorkbench.setState({ lastTcode: first })
+            navigate('transports')
+            addMessage('S', `Transport Organizer (${first})`)
+            return
+          case 'STMS':
+            useWorkbench.setState({ lastTcode: 'STMS' })
+            navigate('transports')
+            addMessage('S', 'Transport Management System — import queue (STMS)')
+            return
+          case 'ABAPDOCU':
+            useWorkbench.setState({ lastTcode: 'ABAPDOCU' })
+            navigate('syllabus')
+            addMessage('S', 'ABAP Keyword Documentation — the training syllabus with runnable examples')
+            return
+          default: {
+            if (BOUNDARY_TCODES.has(first)) {
+              useWorkbench.setState({ lastTcode: first, boundaryTcode: first, view: 'boundary' })
+              addMessage('W', `Transaction ${first} — see the simulation boundary`)
+              return
+            }
+          }
+        }
+      }
+
+      // customer transactions registered in SE93
+      if (/^[A-Z]/.test(upper)) {
+        try {
+          const { transactions } = await api<{ transactions: { code: string; program: string }[] }>('/api/transactions')
+          const tx = transactions.find((t) => t.code === upper)
+          if (tx) {
+            useWorkbench.setState({ lastTcode: tx.code })
+            await st().openProgramByName(tx.program)
+            addMessage('S', `Transaction ${tx.code} — report ${tx.program}`)
+            setValue('')
+            return
+          }
+        } catch {
+          /* fall through */
         }
       }
 
@@ -212,6 +360,16 @@ export function CommandField() {
       setValue('')
     }
   }
+
+  // boundary screens suggest an alternative transaction — dispatch via window event
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const cmd = (e as CustomEvent<string>).detail
+      if (typeof cmd === 'string' && cmd) void handleCommand(cmd)
+    }
+    window.addEventListener('abap-command', handler)
+    return () => window.removeEventListener('abap-command', handler)
+  }, [handleCommand])
 
   return (
     <div className="flex items-stretch" role="search" aria-label="Command field">

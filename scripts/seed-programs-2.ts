@@ -892,6 +892,171 @@ SKIP.
 * ENDDO.
 `,
   },
+
+  // ══════════ TOPIC 11: Selection Screens ══════════
+  {
+    name: 'Z_SELECTION_SCREEN_DEMO',
+    title: 'Selection Screens: PARAMETERS & SELECT-OPTIONS',
+    description: 'Selection-screen blocks, PARAMETERS with DEFAULT/OBLIGATORY, SELECT-OPTIONS ranges filled in INITIALIZATION, and IN in Open SQL.',
+    type: 'REPORT', paradigm: 'POP', topicCode: 'TOPIC_11', isExample: true,
+    tags: 'selection-screen,parameters,select-options,initialization,blocks,range',
+    source: `REPORT Z_SELECTION_SCREEN_DEMO.
+
+SELECTION-SCREEN BEGIN OF BLOCK routes WITH FRAME.
+PARAMETERS p_carr TYPE spfli-carrid DEFAULT 'LH' OBLIGATORY.
+SELECT-OPTIONS s_conn FOR spfli-connid.
+SELECTION-SCREEN END OF BLOCK routes.
+
+INITIALIZATION.
+  " pre-fill a range in the header line, then append it
+  s_conn-low  = '0400'.
+  s_conn-high = '0401'.
+  APPEND s_conn.
+
+START-OF-SELECTION.
+  DATA wa TYPE spfli.
+  SELECT * FROM spfli INTO wa
+    WHERE carrid = p_carr AND connid IN s_conn.
+    WRITE: / wa-carrid, wa-connid, wa-cityfrom, '->', wa-cityto.
+  ENDSELECT.
+
+  " an EMPTY range means no restriction — try clearing the defaults
+  SKIP.
+  WRITE / 'Empty s_conn would list all airlines (ABAP range semantics).'.
+`,
+  },
+
+  // ══════════ TOPIC 12: Classical Reports & Lists ══════════
+  {
+    name: 'Z_CLASSICAL_LIST_DEMO',
+    title: 'Classical Report Events & List Formatting',
+    description: 'TOP-OF-PAGE, START-OF-SELECTION, END-OF-SELECTION events with WRITE, ULINE, SKIP, FORMAT colors and system fields (sy-pagno).',
+    type: 'REPORT', paradigm: 'POP', topicCode: 'TOPIC_12', isExample: true,
+    tags: 'top-of-page,end-of-selection,write,uline,skip,format,events,list',
+    source: `REPORT Z_CLASSICAL_LIST_DEMO.
+
+DATA wa TYPE spfli.
+
+TOP-OF-PAGE.
+  WRITE: / 'Flight schedule — page', sy-pagno.
+  ULINE.
+
+START-OF-SELECTION.
+  SELECT * FROM spfli INTO wa.
+    FORMAT COLOR COL_NORMAL.
+    WRITE: / wa-carrid, wa-connid, wa-cityfrom, wa-cityto.
+  ENDSELECT.
+
+END-OF-SELECTION.
+  SKIP 1.
+  ULINE.
+  FORMAT COLOR COL_TOTAL.
+  WRITE: / 'End of list'.
+  FORMAT RESET.
+`,
+  },
+
+  // ══════════ TOPIC 13: ABAP Dictionary ══════════
+  {
+    name: 'Z_DICTIONARY_DEMO',
+    title: 'ABAP Dictionary: DDIC Types in Programs',
+    description: 'Reference dictionary objects directly: DATA TYPE scarr, internal tables typed with DDIC tables, SELECT from the dictionary and DESCRIBE.',
+    type: 'REPORT', paradigm: 'POP', topicCode: 'TOPIC_13', isExample: true,
+    tags: 'se11,ddic,data element,table type,describe,structure',
+    source: `REPORT Z_DICTIONARY_DEMO.
+
+DATA: wa TYPE scarr,
+      it TYPE STANDARD TABLE OF spfli WITH DEFAULT KEY.
+
+SELECT * FROM scarr INTO wa WHERE currcode = 'EUR'.
+  WRITE: / wa-carrid, wa-carrname, wa-currcode.
+ENDSELECT.
+
+SELECT * FROM spfli INTO TABLE it.
+DESCRIBE TABLE it LINES DATA(lv_lines).
+WRITE: / 'Flights loaded:', lv_lines.
+`,
+  },
+
+  // ══════════ TOPIC 14: Open SQL ══════════
+  {
+    name: 'Z_OPEN_SQL_DEMO',
+    title: 'Open SQL: JOIN, ORDER BY, Aggregates',
+    description: 'SELECT SINGLE, JOIN across SPFLI/SCARR, ORDER BY, COUNT/SUM aggregates — the everyday read-side of Open SQL.',
+    type: 'REPORT', paradigm: 'POP', topicCode: 'TOPIC_14', isExample: true,
+    tags: 'open sql,select,join,order by,aggregates,count,sum,select single',
+    source: `REPORT Z_OPEN_SQL_DEMO.
+
+DATA wa TYPE spfli.
+
+SELECT SINGLE carrname FROM scarr INTO DATA(lv_name) WHERE carrid = 'LH'.
+WRITE: / 'Airline:', lv_name.
+
+SELECT p~connid p~cityfrom p~cityto
+  INTO (wa-connid, wa-cityfrom, wa-cityto)
+  FROM spfli AS p INNER JOIN scarr AS s ON s~carrid = p~carrid
+  WHERE p~carrid = 'LH'
+  ORDER BY p~connid.
+  WRITE: / wa-connid, wa-cityfrom, '->', wa-cityto.
+ENDSELECT.
+
+DATA: lv_cnt TYPE i, lv_sum TYPE p DECIMALS 4.
+SELECT COUNT(*) SUM( luggweight ) INTO (lv_cnt, lv_sum)
+  FROM sbook WHERE carrid = 'LH'.
+WRITE: / 'Bookings:', lv_cnt, ' Total luggage:', lv_sum.
+`,
+  },
+
+  // ══════════ TOPIC 15: Changing Data ══════════
+  {
+    name: 'Z_DB_UPDATE_DEMO',
+    title: 'INSERT / UPDATE / MODIFY / DELETE + COMMIT WORK',
+    description: 'The SAP LUW in action: insert a demo airline, update it, read it back, delete it again and COMMIT WORK.',
+    type: 'REPORT', paradigm: 'POP', topicCode: 'TOPIC_15', isExample: true,
+    tags: 'insert,update,modify,delete,commit work,rollback,sap luw',
+    source: `REPORT Z_DB_UPDATE_DEMO.
+
+DATA wa TYPE scarr.
+
+wa-carrid = 'ZZ'. wa-carrname = 'Demo Air'. wa-currcode = 'EUR'.
+INSERT scarr FROM wa.
+IF sy-subrc = 0.
+  WRITE / 'Airline inserted'.
+ENDIF.
+
+UPDATE scarr SET currcode = 'USD' WHERE carrid = 'ZZ'.
+
+SELECT SINGLE carrname FROM scarr INTO wa-carrname WHERE carrid = 'ZZ'.
+WRITE: / 'Updated:', wa-carrname.
+
+DELETE FROM scarr WHERE carrid = 'ZZ'.
+COMMIT WORK.
+WRITE / 'Deleted again (demo only)'.
+`,
+  },
+
+  // ══════════ TOPIC 16: Runtime tools ══════════
+  {
+    name: 'Z_RUNTIME_DEMO',
+    title: 'Runtime Tools: GET RUNTIME, lines( ), Messages',
+    description: 'Measure execution with GET RUNTIME, table expressions with lines( ), and MESSAGE types — plus a look at the debugger.',
+    type: 'REPORT', paradigm: 'POP', topicCode: 'TOPIC_16', isExample: true,
+    tags: 'get runtime,message,lines,debugger,st05,sat,performance',
+    source: `REPORT Z_RUNTIME_DEMO.
+
+DATA t0 TYPE i.
+GET RUNTIME FIELD t0.
+
+DATA it TYPE STANDARD TABLE OF i.
+DO 100 TIMES.
+  APPEND sy-index TO it.
+ENDDO.
+
+WRITE: / 'Rows filled:', lines( it ).
+WRITE: / 'Runtime measured:', t0 >= 0.
+MESSAGE 'Demo finished' TYPE 'S'.
+`,
+  },
 ]
 
 // ── Function modules ───────────────────────────────────────────────────

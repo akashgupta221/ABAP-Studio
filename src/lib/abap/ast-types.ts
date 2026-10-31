@@ -72,7 +72,7 @@ export interface FuncCall {
 export interface CallArg { name?: string; value: Expr; section?: 'exporting' | 'importing' | 'changing' | 'receiving' }
 export interface NewExpr { t: 'new'; className: string; args: CallArg[]; base?: boolean } // NEW cls( )
 export interface ValueExpr { t: 'value'; base?: string; valueType?: AbapTypeDef; lines: ValueLine[] }
-export type ValueLine = { kind: 'base'; expr: Expr } | { kind: 'field'; name: string; expr: Expr } | { kind: 'for'; iterVar: string; table: Expr; where?: Expr; lines: ValueLine[] } | { kind: 'row'; lines: ValueLine[] }
+export type ValueLine = { kind: 'base'; expr: Expr } | { kind: 'field'; name: string; expr: Expr } | { kind: 'for'; iterVar: string; table: Expr; where?: Expr; lines: ValueLine[] } | { kind: 'fornum'; iterVar: string; init: Expr; step?: Expr; while?: Expr; until?: Expr; lines: ValueLine[] } | { kind: 'row'; lines: ValueLine[] }
 export interface ConvExpr { t: 'conv'; base?: string; expr: Expr }
 export interface CondExpr { t: 'cond'; base?: string; whens: { when: Expr[]; then: Expr }[]; els?: Expr }
 export interface ReduceExpr { t: 'reduce'; init: { name: string; expr: Expr }; next: { name: string; expr: Expr }; forOf?: { var: string; table: Expr; where?: Expr }; forNum?: { var: string; init: Expr; step: Expr; while: Expr }; while?: Expr }
@@ -89,6 +89,8 @@ export type Expr =
   | BinOp | UnOp | IsOp | InOp | BetweenOp | StringPredOp
   | FuncCall | NewExpr | ValueExpr | ConvExpr | CondExpr | ReduceExpr | RefExpr | SwitchExpr
   | InlineDeclExpr | FsDeclExpr
+  | { t: 'inlist'; e: Expr; list: Expr[] }          // x IN (v1, v2, ...)
+  | { t: 'sqlagg'; fn: string; arg: string }        // aggregate ref in HAVING (COUNT/SUM/AVG/MIN/MAX)
 
 // ─── Statements ────────────────────────────────────────────────────────
 export interface PosSpec { col?: Expr; len?: Expr }
@@ -159,7 +161,7 @@ export interface FormatStmt {
 }
 export interface IfStmt { t: 'if'; branches: { cond: Expr; body: Stmt[] }[]; elseBody: Stmt[] }
 export interface CaseStmt { t: 'case'; subject: Expr; whens: { values: Expr[]; body: Stmt[] }[]; others?: Stmt[] }
-export interface DoStmt { t: 'do'; times?: Expr; body: Stmt[] }
+export interface DoStmt { t: 'do'; times?: Expr; body: Stmt[]; varying?: { var: Expr; from: Expr; next: Expr }[] }
 export interface WhileStmt { t: 'while'; cond: Expr; body: Stmt[] }
 export interface LoopStmt {
   t: 'loop'
@@ -175,7 +177,7 @@ export interface LoopStmt {
 }
 export interface ControlStmt { t: 'continue' | 'exit' | 'return' }
 export interface CheckStmt { t: 'check'; cond: Expr; line: number }
-export interface AppendStmt { t: 'append'; src?: Expr; table: Expr; initialLine?: boolean; linesOf?: Expr; assigning?: Expr; sortedBy?: Expr; line: number }
+export interface AppendStmt { t: 'append'; src?: Expr; table: Expr; initialLine?: boolean; linesOf?: Expr; assigning?: Expr; sortedBy?: Expr; headerAppend?: boolean; line: number }
 export interface InsertStmt { t: 'insert'; src?: Expr; table?: Expr; index?: Expr; linesOf?: Expr; into?: Expr; initialLine?: boolean; assign?: Expr; line: number }
 export interface ReadTableStmt {
   t: 'readtable'
@@ -196,7 +198,7 @@ export interface ClearStmt { t: 'clear'; targets: Expr[]; withDefault?: boolean;
 export interface RefreshStmt { t: 'refresh'; table: Expr }
 export interface FreeStmt { t: 'free'; target: Expr }
 export interface DescribeStmt { t: 'describe'; table: Expr; linesInto?: Expr; kindInto?: Expr; occursInto?: Expr; lengthInto?: Expr; typeInto?: Expr; componentsInto?: Expr; line: number }
-export interface AssignStmt { t: 'assign'; src: Expr; fs: Expr; castTo?: TypeSpecAST; line: number }
+export interface AssignStmt { t: 'assign'; src?: Expr; fs: Expr; component?: Expr; structure?: Expr; castTo?: TypeSpecAST; line: number }
 export interface UnassignStmt { t: 'unassign'; fs: Expr }
 export interface MoveStmt { t: 'move'; src: Expr; dst: Expr; corresponding?: boolean; cast?: boolean; line: number }
 export interface ComputeStmt { t: 'compute'; target: Expr; expr: Expr; op: '=' | '+=' ; line: number }
@@ -289,13 +291,17 @@ export interface SelectStmt {
   from: { table: string; alias?: string }
   joins: { table: string; alias?: string; on: Expr }[]
   into?: Expr
+  intoMulti?: Expr[]                 // INTO (f1, f2, ...)
   intoCorresponding?: boolean
   intoTable?: boolean
   appending?: boolean
   upTo?: Expr
   where?: Expr
+  fae?: Expr                         // FOR ALL ENTRIES IN <itab>
+  having?: Expr                      // HAVING condition (may contain sqlagg nodes)
   orderBy: { expr: string; dir: 'asc' | 'desc' }[]
   groupBy?: string[]
+  body?: Stmt[]                      // statements until ENDSELECT (loop form)
   line: number
 }
 export interface InsertDbStmt { t: 'insertdb'; table: string; src: Expr; fromTable?: boolean; line: number }
@@ -312,6 +318,15 @@ export interface SetTitlebar { t: 'settitlebar'; title: Expr; line: number }
 export interface AuthorityCheckStmt { t: 'authoritycheck'; line: number }
 export interface SubmitStmt { t: 'submit'; name: Expr; line: number }
 export interface DataInfoStmt { t: 'datainfo'; raw: string; line: number } // gracefully-ignored statements
+export interface AtBlockStmt { t: 'atblock'; kind: 'FIRST' | 'LAST' | 'NEW' | 'ENDOF'; field?: string; body: Stmt[]; line?: number }
+export interface SumStmt { t: 'sum'; line?: number }
+export interface HideStmt { t: 'hide'; targets: Expr[]; line?: number }
+export interface NewPageStmt { t: 'newpage'; line?: number }
+export interface CollectStmt { t: 'collect'; src?: Expr; table: Expr; line?: number }
+export interface CreateDataStmt { t: 'createdata'; target: Expr; typeSpec?: TypeSpecAST; like?: Expr; line?: number }
+export interface CallTransactionStmt { t: 'calltransaction'; name: Expr; using?: Expr; mode?: Expr; update?: Expr; messagesInto?: Expr; line?: number }
+export interface CallScreenStmt { t: 'callscreen'; num?: Expr; line?: number }
+export interface DatasetStmt { t: 'dataset'; op: 'open' | 'transfer' | 'read' | 'close' | 'delete'; mode?: 'output' | 'input' | 'appending'; target: Expr; into?: Expr; source?: Expr; length?: Expr; line?: number }
 export interface ExprStmt { t: 'expr'; expr: Expr; line: number }
 
 export type Stmt =
@@ -327,6 +342,8 @@ export type Stmt =
   | SelectStmt | InsertDbStmt | UpdateDbStmt | ModifyDbStmt | DeleteDbStmt
   | WaitStmt | LeaveStmt | CommitStmt | GetTimeStmt | GetRunTimeStmt
   | SetPfStatus | SetTitlebar | AuthorityCheckStmt | SubmitStmt | DataInfoStmt | ExprStmt
+  | AtBlockStmt | SumStmt | HideStmt | NewPageStmt | CollectStmt
+  | CreateDataStmt | CallTransactionStmt | CallScreenStmt | DatasetStmt
 
 // ─── Program structure ─────────────────────────────────────────────────
 export interface AbapProgram {
@@ -414,6 +431,7 @@ export interface RunResult {
   alv?: AlvGrid
   messages: MessageItem[]
   selectionScreen?: SelectionScreenItem[]
+  appLogs?: { object: string; externalNumber: string; messages: { msgType: string; text: string }[] }[]
   durationMs: number
   stats: { steps: number; linesWritten: number; selects: number; dbReads: number }
 }

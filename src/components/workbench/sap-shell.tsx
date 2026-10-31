@@ -1,10 +1,10 @@
 'use client'
 
 // ── SAP GUI shell — NetWeaver ABAP Workbench look & feel ──────────────
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { UserButton } from '@clerk/nextjs'
-import { ChevronRight, Redo2, Undo2 } from 'lucide-react'
+import { ChevronRight, Redo2, Sparkles, TerminalSquare, Undo2 } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent,
@@ -21,6 +21,8 @@ import { OutputView } from './output-view'
 import { SyllabusView } from './syllabus-view'
 import { SearchView } from './search-view'
 import { DictionaryView } from './dictionary-view'
+import { Al11View, BoundaryView, MessagesView, NumberRangesView, RfcView, TransactionsView } from './tcode-views'
+import { InspectorView, JobsView, QueryView, Slg1View, Sm21View, TransportsView, WorkprocessView } from './tcode-views2'
 import { DataBrowserView } from './data-browser'
 import { FunctionBuilderView } from './function-builder'
 import { ClassBuilderView } from './class-builder'
@@ -37,6 +39,8 @@ import { LogonPad } from './logon-pad'
 import { SapLogo } from './sap-logo'
 import { getContextTitle } from './context-title'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { BrandMark } from '@/components/brand-mark'
+import type { ViewKind } from './types'
 
 // ── SAP toolbar icons (inline SVG approximations of GUI icons) ─────────
 
@@ -397,6 +401,76 @@ function MenuList({ items }: { items: MItem[] }) {
   )
 }
 
+// ── post-login entry chooser (Classic ABAP vs Modern ABAP) ────────────
+
+function EntryChooser({ onChoose }: { onChoose: (mode: 'classic' | 'modern') => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-[#041627]/85 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Choose your workspace"
+    >
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[#1c4a7c] bg-white shadow-2xl">
+        <div className="flex items-center gap-3 border-b border-[#e1e9f1] bg-[#f4f7fa] px-5 py-4">
+          <BrandMark size={44} />
+          <div className="min-w-0">
+            <p className="truncate text-[15px] font-bold text-[#16283b]">Welcome to ABAP Atelier</p>
+            <p className="truncate text-[12px] text-[#5b6d80]">
+              Choose how you want to work today — you can switch any time.
+            </p>
+          </div>
+          <span className="ml-auto hidden font-mono text-[9px] uppercase tracking-[0.14em] text-[#5b6d80] sm:inline">
+            MER · Client 105
+          </span>
+        </div>
+
+        <div className="grid gap-4 p-5 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => onChoose('classic')}
+            className="group rounded-xl border border-[#c9d4e0] bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[#0a6ed1] hover:shadow-lg"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8f1fa] text-[#0a4d8c] transition-colors group-hover:bg-[#0a6ed1] group-hover:text-white">
+              <TerminalSquare className="h-5 w-5" />
+            </span>
+            <p className="mt-3.5 text-[15px] font-bold text-[#16283b]">Classic ABAP</p>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-[#5b6d80]">
+              The full SAP workbench: Easy Access, the SE38 editor, the debugger, SE11/SE16N,
+              ST22 dump analysis and the Pretty Printer.
+            </p>
+            <p className="mt-2.5 inline-block rounded border border-[#e1e9f1] bg-[#f4f7fa] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#3d5068]">
+              SE38 · SE37 · SE11 · SE16N
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onChoose('modern')}
+            className="group rounded-xl border border-[#c9d4e0] bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[#0a6ed1] hover:shadow-lg"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8f1fa] text-[#0a4d8c] transition-colors group-hover:bg-[#0a6ed1] group-hover:text-white">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <p className="mt-3.5 text-[15px] font-bold text-[#16283b]">Modern ABAP</p>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-[#5b6d80]">
+              Executable 7.40 constructor expressions plus structurally validated CDS view
+              entities, RAP behavior definitions and AMDP classes.
+            </p>
+            <p className="mt-2.5 inline-block rounded border border-[#e1e9f1] bg-[#f4f7fa] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#3d5068]">
+              7.40 · CDS · RAP · AMDP
+            </p>
+          </button>
+        </div>
+
+        <div className="border-t border-[#e1e9f1] bg-[#f4f7fa] px-5 py-2.5 text-center font-mono text-[9px] uppercase tracking-[0.13em] text-[#5b6d80]">
+          Switch anytime — type MODERN in the command field, or Easy Access from the Modern workspace
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── shell ──────────────────────────────────────────────────────────────
 
 export function SapShell() {
@@ -457,6 +531,58 @@ export function SapShell() {
   useEffect(() => {
     document.title = title
   }, [title])
+
+  // ── one-shot deep link (?entry=1 / ?program=NAME / ?tcode=CODE) ─────
+  // Reached from the login flow (?entry=1) or dashboard links. Consumed
+  // exactly once, after the session is restored.
+  const deepLinked = useRef(false)
+  const [entryChooser, setEntryChooser] = useState(false)
+  useEffect(() => {
+    if (!logon || deepLinked.current) return
+    deepLinked.current = true
+    const sp = new URLSearchParams(window.location.search)
+    const program = (sp.get('program') ?? '').trim()
+    const tcode = (sp.get('tcode') ?? '').trim().toUpperCase()
+    const st = useWorkbench.getState()
+    if (sp.get('entry') === '1') {
+      // Fresh login: offer the Classic / Modern ABAP choice first.
+      setEntryChooser(true)
+      window.history.replaceState({}, '', '/workbench')
+      return
+    }
+    if (program && /^[A-Za-z_/][A-Za-z0-9_/%$#]*$/.test(program)) {
+      void st.openProgramByName(program)
+      return
+    }
+    const tcodeViews: Partial<Record<string, ViewKind>> = {
+      SE80: 'search',
+      SE11: 'dictionary',
+      SE16: 'browser',
+      SE24: 'classes',
+      SE37: 'functions',
+      ST22: 'dumps',
+      MODERN: 'modern',
+    }
+    if (tcode === 'SE38') {
+      st.openSe38Initial()
+    } else if (tcodeViews[tcode]) {
+      useWorkbench.setState({ lastTcode: tcode })
+      st.navigate(tcodeViews[tcode] as ViewKind)
+    }
+  }, [logon])
+
+  const chooseEntry = (mode: 'classic' | 'modern') => {
+    setEntryChooser(false)
+    const st = useWorkbench.getState()
+    if (mode === 'modern') {
+      useWorkbench.setState({ lastTcode: 'MODERN' })
+      st.navigate('modern')
+      st.addMessage('S', 'Modern ABAP Workspace (7.40, CDS, RAP, AMDP)')
+    } else {
+      st.navigate('home')
+      st.addMessage('S', 'SAP Easy Access (S000)')
+    }
+  }
 
   // ── common actions (store-level, stable) ─────────────────────────────
   const back = () => {
@@ -581,7 +707,7 @@ export function SapShell() {
         },
         { sep: true },
         { label: 'ABAP Keyword Documentation', disabled: true },
-        { label: 'About ABAPForge', run: () => w().setAboutOpen(true) },
+        { label: 'About ABAP Atelier', run: () => w().setAboutOpen(true) },
       ],
     }
 
@@ -1065,7 +1191,8 @@ export function SapShell() {
   const isEditorTab = activeTab?.kind === 'program' && !!activeProgramName
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#ebf1f7] text-[#17324a]" data-app="abapforge">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#ebf1f7] text-[#17324a]" data-app="abap-atelier">
+      {entryChooser && <EntryChooser onChoose={chooseEntry} />}
       <div className="h-[5px] shrink-0 bg-[#118ad8]" aria-hidden />
       {/* ── window title bar (SAP GUI for HTML: logo, centered title, system menu) ── */}
       <header className="sap-titlebar relative flex h-[42px] shrink-0 items-center justify-between pl-3 pr-2" role="banner">
@@ -1117,9 +1244,9 @@ export function SapShell() {
           </DropdownMenu>
           <button
             type="button"
-            title="Open a new SAP session in a browser tab"
-            aria-label="Open a new SAP session"
-            onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
+            title="New session — opens an independent workbench window in a new tab (pick Classic or Modern there)"
+            aria-label="New session — opens an independent workbench window in a new tab"
+            onClick={() => window.open('/workbench?entry=1', '_blank', 'noopener,noreferrer')}
             className="flex h-[26px] w-[26px] items-center justify-center rounded text-[#22456a] hover:bg-[#b3cde7]"
           >
             <ChevronRight className="h-[16px] w-[16px]" />
@@ -1420,6 +1547,19 @@ export function SapShell() {
             {view === 'classes' && <ClassBuilderView />}
             {view === 'functions' && <FunctionBuilderView />}
             {view === 'modern' && <ModernWorkspace />}
+            {view === 'messages' && <MessagesView />}
+            {view === 'transactions' && <TransactionsView />}
+            {view === 'number-ranges' && <NumberRangesView />}
+            {view === 'al11' && <Al11View />}
+            {view === 'rfc' && <RfcView />}
+            {view === 'slg1' && <Slg1View />}
+            {view === 'sm21' && <Sm21View />}
+            {view === 'jobs' && <JobsView />}
+            {view === 'inspector' && <InspectorView />}
+            {view === 'query' && <QueryView />}
+            {view === 'transports' && <TransportsView />}
+            {view === 'sm50' && <WorkprocessView />}
+            {view === 'boundary' && <BoundaryView tcode={useWorkbench.getState().boundaryTcode} />}
             {view === 'debugger' && <DebuggerView />}
             {view === 'dumps' && <DumpsView />}
           </div>

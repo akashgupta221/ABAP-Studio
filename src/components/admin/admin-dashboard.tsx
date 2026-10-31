@@ -341,7 +341,7 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
             AV
           </span>
           <div className="mf-brandtext">
-            <h1>ABAP-Studio · System Administration</h1>
+            <h1>System Administration</h1>
             <span className="mf-badge">MER · Client 105</span>
           </div>
         </div>
@@ -1049,7 +1049,7 @@ export function AdminDashboard({ ownerName }: { ownerName: string }) {
               Owner authorization is enforced server-side on every request. Metrics derive from stored
               users and execution logs.
             </span>
-            <span>ABAP-Studio administration · MER (105)</span>
+            <span>ABAP Atelier administration · MER (105)</span>
           </footer>
         </main>
       </div>

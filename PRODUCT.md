@@ -25,7 +25,7 @@ The product combines faithful SAP NetWeaver interaction patterns with a from-scr
 ## Operating Context
 
 - Runs in a web browser on desktop and mobile; the SAP-style workbench is the primary surface, with a separate Modern ABAP view opened from ABAP Training or the `MODERN` command.
-- The shared curriculum has 10 topics, 41 preloaded objects (36 Standard examples, 1 shared INCLUDE, 4 Modern examples), 11 demo tables with 113 rows, and function modules.
+- The shared curriculum has 16 topics, 47 preloaded objects (42 Standard examples, 1 shared INCLUDE, 4 Modern examples), 11 demo tables with 113 rows, and function modules.
 - Users work through Easy Access, transaction codes, editors, selection screens, ALV-style output, the debugger, ST22 dump analysis and the Pretty Printer.
 - Identity is provided by Clerk. The application database remains authoritative for roles, suspension, program ownership and audit history.
 - Production runs on Vercel Hobby with a Turso free-plan database; local development uses SQLite. The product is intended to stay free to deploy and use.
@@ -33,7 +33,7 @@ The product combines faithful SAP NetWeaver interaction patterns with a from-scr
 
 ## Capabilities and Constraints
 
-- **Workbench:** Easy Access tree and command field; transactions SE38, SE37, SE11, SE16N, SE24; ABAP editor; syntax check; ALV-style and list output; selection screens; debugger with line breakpoints; ST22; Pretty Printer; function module CRUD and test execution; Modern ABAP workspace.
+- **Workbench:** Easy Access tree and command field; transactions SE38, SE37, SE11, SE16N, SE24 (SE11: browse all tables; the owner creates and maintains customer tables Z*/Y* and their entries, SAP examples stay read-only); ABAP editor; syntax check; ALV-style and list output; selection screens; debugger with line breakpoints; ST22; Pretty Printer; function module CRUD and test execution; Modern ABAP workspace; SE91 message class maintenance (MESSAGE e001(ZCLASS) resolves stored texts); SE93 transaction registry (customer T-codes start reports from the command field); SNRO number ranges (NUMBER_GET_NEXT); AL11/CG3Y/CG3Z application-server files (OPEN/READ/TRANSFER DATASET read persisted files); SM59 RFC destinations; SCI/SLIN-style static code inspection; SLG1 application logs (BAL_LOG_CREATE/BAL_LOG_MSG_ADD/BAL_DB_SAVE built-ins); SM21 system log of every execution; SM36/SM37 background jobs with stored job logs; SQ01/SQ02 ABAP Query generating and executing real ABAP; SE09/SE10 transport organizer with STMS import queue; SM50 work-process activity snapshot.
 - **Authentication:** Clerk Email OTP and Google with verified-email account linking. Password, phone and username sign-in are disabled. `/api/auth/login` is a `403` stub and `/api/auth/register` is a `410` stub; legacy password authentication is permanently retired.
 - **Authorization:** All authorization is enforced server-side, never from browser-supplied role or user id. Shared examples are readable by everyone and read-only. Private programs and Modern objects are creator-only. The owner can inspect all non-example programs. A server-side owner gate protects `/admin`, and each admin API enforces the same rule independently.
 - **Admin capabilities that must remain:** overview metrics, 7-day execution chart, recent executions, users, all programs, audit log, suspend/reactivate, revoke sessions, user deletion with exact-username confirmation, and program deletion.
@@ -44,7 +44,7 @@ The product combines faithful SAP NetWeaver interaction patterns with a from-scr
 
 ## Brand Commitments
 
-- The product name is **ABAP-Studio**.
+- The product name is **ABAP Atelier** (renamed from ABAP-Studio/ABAPForge by owner decision, 2026-10-31).
 - Its identity is an authentic SAP NetWeaver training workbench. SAP interaction patterns, transaction codes and system identity (`MER`, client `105`) are core recognition cues, not decoration.
 - The voice is precise, instructional and SAP-fluent. It explains what a control does and states simulation limits plainly; it never pretends the simulator is a live SAP production system.
 - The product is explicitly a learning environment: welcoming to trainees, but never cartoonish or inaccurate for experienced SAP users.

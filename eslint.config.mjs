@@ -44,7 +44,20 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
+  // The impeccable live-mode helper injects a dev-only sync <script src>
+  // into src/app/layout.tsx (removed by `impeccable live-server stop`).
+  files: ["src/app/layout.tsx"],
+  rules: { "@next/next/no-sync-scripts": "off" },
+}, {
+  ignores: [
+    "node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills",
+    // Vendored react-bits registry components (upstream animation code reads
+    // refs during render and sets state in effects by design).
+    "src/components/GradientWaves.tsx", "src/components/GradientText.tsx",
+    "src/components/ScrollVelocity.tsx", "src/components/ScrollFloat.tsx",
+    "src/components/ScrollReveal.tsx", "src/components/SpotlightCard.tsx",
+    "src/components/Aurora.tsx", "src/components/CountUp.tsx",
+  ]
 }];
 
 export default eslintConfig;

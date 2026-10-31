@@ -70,3 +70,6 @@ server.log
 
 # private user uploads — never publish (personal training syllabus)
 /upload/
+# local tool artifacts
+.impeccable/live/
+prisma/prisma/

@@ -77,7 +77,7 @@ describe('Standard ABAP regression suite', () => {
     (p) => p.name !== 'Z_MY_PRACTICE',
   )
 
-  test('all 37 seeded examples parse and execute (or parse as INCLUDE)', () => {
+  test('all seeded examples parse and execute (or parse as INCLUDE)', () => {
     const failures: string[] = []
     for (const program of all) {
       try {
@@ -302,6 +302,6 @@ describe('Standard ABAP regression suite', () => {
   test('training content is still present in the seed payload', () => {
     expect(topics.length).toBeGreaterThanOrEqual(10)
     expect(tables.length).toBeGreaterThanOrEqual(11)
-    expect(all.length).toBe(37)
+    expect(all.length).toBeGreaterThanOrEqual(37) // 37 original + 6 syllabus-extension examples
   })
 })

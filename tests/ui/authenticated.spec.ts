@@ -7,8 +7,8 @@ test.describe('owner workbench and administration', () => {
   })
 
   test('owner reaches the SAP workbench and the admin dashboard', async ({ page }) => {
-    await page.goto('/')
-    await expect(page.locator('[data-app="abapforge"]')).toBeVisible()
+    await page.goto('/workbench')
+    await expect(page.locator('[data-app="abap-atelier"]')).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Main menu' })).toBeVisible()
     await expect(page.getByText('SAP Easy Access').first()).toBeVisible()
 
@@ -46,8 +46,8 @@ test.describe('owner workbench and administration', () => {
   })
 
   test('owner can open SE38 and execute a shared example', async ({ page }) => {
-    await page.goto('/')
-    await expect(page.locator('[data-app="abapforge"]')).toBeVisible()
+    await page.goto('/workbench')
+    await expect(page.locator('[data-app="abap-atelier"]')).toBeVisible()
 
     await page.getByRole('textbox', { name: 'Command field' }).fill('SE38')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
@@ -60,7 +60,7 @@ test.describe('owner workbench and administration', () => {
 
   test('SE38 create walks Program Attributes and Object Directory Entry into a clean include', async ({ page }) => {
     const name = `Z_UI_INC_${Date.now().toString().slice(-6)}`
-    await page.goto('/')
+    await page.goto('/workbench')
     await page.getByRole('textbox', { name: 'Command field' }).fill('SE38')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('heading', { name: 'ABAP Editor: Initial Screen' })).toBeVisible()
@@ -91,7 +91,7 @@ test.describe('owner workbench and administration', () => {
   })
 
   test('SE38 action row keeps critical actions visible without horizontal scrolling', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/workbench')
     await page.getByRole('textbox', { name: 'Command field' }).fill('SE38')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('heading', { name: 'ABAP Editor: Initial Screen' })).toBeVisible()
@@ -120,7 +120,7 @@ test.describe('Modern ABAP workspace', () => {
   })
 
   test('owner can validate and execute the Modern ABAP example', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/workbench')
     await page.getByRole('textbox', { name: 'Command field' }).fill('MODERN')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
 
@@ -141,7 +141,7 @@ test.describe('Modern ABAP workspace', () => {
   })
 
   test('owner can validate a CDS definition while runtime execution stays disabled', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/workbench')
     await page.getByRole('textbox', { name: 'Command field' }).fill('MODERN')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('heading', { name: 'Modern ABAP Workspace' })).toBeVisible()
@@ -160,7 +160,7 @@ test.describe('Modern ABAP workspace', () => {
 
   test('owner can create, save, execute and delete a private Modern object', async ({ page }) => {
     const name = `Z_MD_UI_${Date.now().toString().slice(-6)}`
-    await page.goto('/')
+    await page.goto('/workbench')
     await page.getByRole('textbox', { name: 'Command field' }).fill('MODERN')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('heading', { name: 'Modern ABAP Workspace' })).toBeVisible()
@@ -189,7 +189,7 @@ test.describe('Modern ABAP workspace', () => {
 
   test('Modern workspace fits a phone viewport and returns to the standard workbench', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto('/')
+    await page.goto('/workbench')
     await page.getByRole('textbox', { name: 'Command field' }).fill('MODERN')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('heading', { name: 'Modern ABAP Workspace' })).toBeVisible()
@@ -205,14 +205,14 @@ test.describe('Modern ABAP workspace', () => {
 })
 
 test.describe('ordinary user boundaries', () => {
-  test('ordinary user is redirected away from /admin', async ({ page }) => {
+  test('ordinary user is redirected away from /admin to the workbench', async ({ page }) => {
     const username = `UI${Date.now().toString().slice(-8)}`
     await createTestUser(page, username)
     await loginAs(page, username)
 
     await page.goto('/admin')
-    await expect(page).toHaveURL(/\/$/)
-    await expect(page.locator('[data-app="abapforge"]')).toBeVisible()
+    await expect(page).toHaveURL(/\/workbench$/)
+    await expect(page.locator('[data-app="abap-atelier"]')).toBeVisible()
     await expect(page.getByRole('heading', { name: /System Administration/ })).toHaveCount(0)
   })
 })
@@ -220,7 +220,7 @@ test.describe('ordinary user boundaries', () => {
 test.describe('Function Builder (SE37)', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, 'TESTOWNER')
-    await page.goto('/')
+    await page.goto('/workbench')
     await page.getByRole('textbox', { name: 'Command field' }).fill('SE37')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('heading', { name: 'Function Builder: Initial Screen' })).toBeVisible()

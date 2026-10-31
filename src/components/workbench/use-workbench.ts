@@ -124,6 +124,7 @@ interface WorkbenchState {
   aboutOpen: boolean
   tcodeDialogOpen: boolean
   favorites: Favorite[]
+  boundaryTcode: string // which transaction the boundary screen documents
 
   // ── ABAP Debugger ───────────────────────────────────────────────────
   debugSession: DebugSessionState | null
@@ -273,6 +274,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   aboutOpen: false,
   tcodeDialogOpen: false,
   favorites: [],
+  boundaryTcode: '',
   debugSession: null,
   debugArmed: false,
 
@@ -1005,6 +1007,9 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         debugSession: null,
         debugArmed: false,
       })
+
+      // Logoff ends the visit: return to the public landing page.
+      window.location.assign('/')
     })()
   },
 

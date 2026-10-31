@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     }
     const repid = (body.name || 'ZPROGRAM').toUpperCase().replace(/[^A-Z0-9_/]/g, '').slice(0, 40) || 'ZPROGRAM'
 
-    const { dbSnap, fms, includes } = await loadEngineContext({
+    const { dbSnap, fms, includes, messageClasses, numberRanges, files } = await loadEngineContext({
       user: auth.user,
       owner: isOwner(auth.user),
     })
@@ -56,6 +56,9 @@ export async function POST(req: NextRequest) {
       includes,
       functionModules: fms,
       parameters: body.parameters,
+      messageClasses,
+      numberRanges,
+      files,
     })
 
     // Persist the execution against the caller. A program row is attached only
@@ -77,6 +80,31 @@ export async function POST(req: NextRequest) {
           hadAlv: !!result.alv,
         },
       })
+      // SLG1: persist application logs created by BAL_LOG_CREATE/BAL_LOG_MSG_ADD/BAL_DB_SAVE
+      if (result.appLogs?.length) {
+        for (const log of result.appLogs.slice(0, 20)) {
+          await db.applicationLog.create({
+            data: {
+              object: log.object.slice(0, 40),
+              externalNumber: log.externalNumber.slice(0, 60),
+              messages: JSON.stringify(log.messages.slice(0, 200)),
+              createdBy: auth.user.username,
+            },
+          })
+        }
+      }
+      // SM21: system log entry for every execution (dump-level detail on errors)
+      try {
+        const sysType = result.status === 'ERROR' ? (result.error?.abapType ? 'DUMP' : 'ERROR') : 'INFO'
+        const sysText = result.status === 'ERROR'
+          ? `Report ${repid} aborted: ${result.error?.message?.slice(0, 300) ?? 'runtime error'}`
+          : `Report ${repid} finished successfully`
+        await db.systemLog.create({
+          data: { type: sysType, text: sysText, userName: auth.user.username, program: repid },
+        })
+      } catch {
+        // system log is best-effort
+      }
       if (attach) {
         await db.program.update({
           where: { id: attach.id },

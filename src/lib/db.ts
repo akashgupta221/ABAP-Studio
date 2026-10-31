@@ -115,6 +115,138 @@ async function migrateSchema(): Promise<void> {
     )
   `)
 
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "MessageClass" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "name" TEXT NOT NULL,
+      "description" TEXT NOT NULL DEFAULT '',
+      "messages" TEXT NOT NULL DEFAULT '[]',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "TransactionCode" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "code" TEXT NOT NULL,
+      "program" TEXT NOT NULL,
+      "description" TEXT NOT NULL DEFAULT '',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "NumberRange" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "object" TEXT NOT NULL,
+      "shortText" TEXT NOT NULL DEFAULT '',
+      "fromNumber" INTEGER NOT NULL,
+      "toNumber" INTEGER NOT NULL,
+      "currentNumber" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "AppServerFile" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "path" TEXT NOT NULL,
+      "content" TEXT NOT NULL DEFAULT '',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "RfcDestination" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "name" TEXT NOT NULL,
+      "description" TEXT NOT NULL DEFAULT '',
+      "target" TEXT NOT NULL DEFAULT '',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "ApplicationLog" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "object" TEXT NOT NULL,
+      "externalNumber" TEXT NOT NULL DEFAULT '',
+      "messages" TEXT NOT NULL DEFAULT '[]',
+      "createdBy" TEXT NOT NULL DEFAULT '',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "SystemLog" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "type" TEXT NOT NULL DEFAULT 'INFO',
+      "text" TEXT NOT NULL,
+      "userName" TEXT NOT NULL DEFAULT '',
+      "program" TEXT NOT NULL DEFAULT '',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "BackgroundJob" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "name" TEXT NOT NULL,
+      "report" TEXT NOT NULL,
+      "parameters" TEXT NOT NULL DEFAULT '{}',
+      "status" TEXT NOT NULL DEFAULT 'SCHEDULED',
+      "scheduledAt" DATETIME NOT NULL,
+      "startedAt" DATETIME,
+      "finishedAt" DATETIME,
+      "resultStatus" TEXT NOT NULL DEFAULT '',
+      "resultLog" TEXT NOT NULL DEFAULT '[]',
+      "resultError" TEXT NOT NULL DEFAULT '',
+      "createdBy" TEXT NOT NULL DEFAULT '',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "QueryInfoset" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "name" TEXT NOT NULL,
+      "baseTable" TEXT NOT NULL,
+      "description" TEXT NOT NULL DEFAULT '',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "QueryDef" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "name" TEXT NOT NULL,
+      "infoset" TEXT NOT NULL,
+      "fields" TEXT NOT NULL DEFAULT '[]',
+      "filters" TEXT NOT NULL DEFAULT '[]',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "TransportRequest" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "reqId" TEXT NOT NULL,
+      "description" TEXT NOT NULL DEFAULT '',
+      "type" TEXT NOT NULL DEFAULT 'WORKBENCH',
+      "status" TEXT NOT NULL DEFAULT 'OPEN',
+      "entries" TEXT NOT NULL DEFAULT '[]',
+      "createdBy" TEXT NOT NULL DEFAULT '',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "releasedAt" DATETIME,
+      "importedAt" DATETIME
+    )
+  `)
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "MessageClass_name_key" ON "MessageClass"("name")')
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "TransactionCode_code_key" ON "TransactionCode"("code")')
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "NumberRange_object_key" ON "NumberRange"("object")')
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "AppServerFile_path_key" ON "AppServerFile"("path")')
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "RfcDestination_name_key" ON "RfcDestination"("name")')
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "QueryInfoset_name_key" ON "QueryInfoset"("name")')
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "QueryDef_name_key" ON "QueryDef"("name")')
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "TransportRequest_reqId_key" ON "TransportRequest"("reqId")')
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "TransactionCode_code_key" ON "TransactionCode"("code")')
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "NumberRange_object_key" ON "NumberRange"("object")')
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "AppServerFile_path_key" ON "AppServerFile"("path")')
+  await db.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "RfcDestination_name_key" ON "RfcDestination"("name")')
+
   const statements = [
     'CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email")',
     'CREATE UNIQUE INDEX IF NOT EXISTS "User_clerkId_key" ON "User"("clerkId")',

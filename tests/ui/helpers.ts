@@ -20,6 +20,17 @@ export async function createTestUser(page: Page, username: string): Promise<void
 }
 
 export async function expectNoSeriousA11y(page: Page): Promise<void> {
+  // Dialog/toast fade transitions leave interpolated colors behind; jump every
+  // running animation and transition to its end state before measuring.
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) {
+      try {
+        animation.finish()
+      } catch {
+        /* finished already */
+      }
+    }
+  })
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze()

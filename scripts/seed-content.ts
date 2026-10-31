@@ -1,5 +1,7 @@
-// ── Seed content: 10 syllabus topics + 11 SAP demo tables (with data) ──
-// Based on the HCLTech SAP ABAP Training Syllabus
+// ── Seed content: 16 syllabus topics + 11 SAP demo tables (with data) ──
+// Based on the HCLTech SAP ABAP Training Syllabus (classical chapters completed
+// by scripts/seed-content-syllabus.ts)
+import { syllabusTopics } from './seed-content-syllabus'
 
 export const topics = [
   {
@@ -452,6 +454,7 @@ Managed scenario: RAP runtime handles create/update/delete. Unmanaged: you imple
 
 Run **Z_CDS_INTRO** and **Z_AMDP_BTP_OVERVIEW** for guided concept walk-throughs, and check the **SFLIGHT** demo model in SE11 — the ancestor of every training VDM.`,
   },
+  ...syllabusTopics,
 ]
 
 // ── SAP demo tables (flight model + logistics) ─────────────────────────

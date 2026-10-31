@@ -17,6 +17,9 @@ export interface RunInput {
   includes?: Map<string, string>
   functionModules?: Map<string, FmEntry>
   parameters?: Record<string, string | string[]>
+  messageClasses?: Map<string, Record<string, string>> // SE91: class → number → text
+  numberRanges?: Map<string, { from: number; to: number; current: number }> // SNRO
+  files?: Map<string, string> // AL11: application server path → content
 }
 
 // resolve INCLUDE statements (line-level, iterative, cycle-safe)
@@ -80,6 +83,9 @@ function buildInterpreter(input: RunInput, debug?: DebugControl): { source: stri
     functionModules: input.functionModules ?? new Map(),
     parameters: input.parameters,
     debug,
+    messageClasses: input.messageClasses,
+    numberRanges: input.numberRanges,
+    files: input.files,
   })
   return { source, repid, interp, error: null }
 }

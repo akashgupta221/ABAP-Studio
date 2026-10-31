@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic' // always server-rendered (serverless-saf
 import { NextRequest, NextResponse } from 'next/server'
 import { runAbap } from '@/lib/abap'
 import { db, ensureSchema } from '@/lib/db'
-import { loadDbSnapshot, loadFunctionModules, loadIncludes } from '@/lib/engine-context'
+import { loadAppServerFiles, loadDbSnapshot, loadFunctionModules, loadIncludes, loadMessageClasses, loadNumberRanges } from '@/lib/engine-context'
 import { ensureSeeded } from '@/lib/ensure-seed'
 import { ensureExampleFunctionGroups } from '@/lib/function-groups'
 import {
@@ -57,10 +57,13 @@ export async function POST(req: NextRequest) {
       inputs[key.toUpperCase()] = String(value ?? '').slice(0, 500)
     }
 
-    const [dbSnap, fms, includes] = await Promise.all([
+    const [dbSnap, fms, includes, messageClasses, numberRanges, files] = await Promise.all([
       loadDbSnapshot(),
       loadFunctionModules({ user: auth.user, owner: isOwner(auth.user) }, false),
       loadIncludes({ user: auth.user, owner: isOwner(auth.user) }),
+      loadMessageClasses(),
+      loadNumberRanges(),
+      loadAppServerFiles(),
     ])
     const knownStructures: Record<string, string[]> = {}
     for (const [tableName, table] of dbSnap.tables) {
@@ -74,6 +77,9 @@ export async function POST(req: NextRequest) {
       db: dbSnap,
       includes,
       functionModules: fms,
+      messageClasses,
+      numberRanges,
+      files,
     })
     const lines = listLinesToText(result.list)
     const outputs: Record<string, string> = {}

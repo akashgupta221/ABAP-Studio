@@ -79,6 +79,126 @@ model DbRow {
   @@index([tableId])
 }
 
+
+
+// ── SLG1 Application logs (written by ABAP via BAL_* built-ins) ────────
+model ApplicationLog {
+  id            Int      @id @default(autoincrement())
+  object        String   // log object, e.g. ZTRAIN
+  externalNumber String  @default("")
+  messages      String   @default("[]") // JSON: [{msgType, text}]
+  createdBy     String   @default("")
+  createdAt     DateTime @default(now())
+}
+
+// ── SM21 System log ────────────────────────────────────────────────────
+model SystemLog {
+  id        Int      @id @default(autoincrement())
+  type      String   @default("INFO") // INFO | WARNING | ERROR | DUMP
+  text      String
+  userName  String   @default("")
+  program   String   @default("")
+  createdAt DateTime @default(now())
+}
+
+// ── SM36/SM37 Background jobs ──────────────────────────────────────────
+model BackgroundJob {
+  id           Int       @id @default(autoincrement())
+  name         String
+  report       String
+  parameters   String    @default("{}") // JSON: selection-screen parameters
+  status       String    @default("SCHEDULED") // SCHEDULED | FINISHED | CANCELED
+  scheduledAt  DateTime
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  resultStatus String    @default("")
+  resultLog    String    @default("[]") // JSON: list lines
+  resultError  String    @default("")
+  createdBy    String    @default("")
+  createdAt    DateTime  @default(now())
+}
+
+// ── SQ02 Infosets / SQ01 Queries ───────────────────────────────────────
+model QueryInfoset {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // ZQA_FLIGHT
+  baseTable   String
+  description String    @default("")
+  createdAt   DateTime @default(now())
+}
+
+model QueryDef {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique // ZQA_FLIGHT_LIST
+  infoset    String
+  fields     String   @default("[]") // JSON: ["CARRID", "PRICE"] in output order
+  filters    String   @default("[]") // JSON: [{field, op, low, high}]
+  createdAt  DateTime @default(now())
+}
+
+// ── SE09/SE10/STMS Transport requests ──────────────────────────────────
+model TransportRequest {
+  id          Int      @id @default(autoincrement())
+  reqId       String   @unique // ECQK900001
+  description String   @default("")
+  type        String   @default("WORKBENCH") // WORKBENCH | CUSTOMIZING
+  status      String   @default("OPEN") // OPEN | RELEASED | IMPORTED
+  entries     String   @default("[]") // JSON: [{objectType, objectName}]
+  createdBy   String   @default("")
+  createdAt   DateTime @default(now())
+  releasedAt  DateTime?
+  importedAt  DateTime?
+}
+
+// ── SE91 Message Class maintenance ─────────────────────────────────────
+model MessageClass {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // ZMSG_TRAINING
+  description String   @default("")
+  messages    String   @default("[]") // JSON: [{number:"001", text:"... &1 ..."}]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ── SE93 Transaction code registry ─────────────────────────────────────
+model TransactionCode {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique // ZRUN_REPORT
+  program     String   // report started by the transaction (SA38-style)
+  description String   @default("")
+  createdAt   DateTime @default(now())
+}
+
+// ── SNRO Number range objects ──────────────────────────────────────────
+model NumberRange {
+  id            Int      @id @default(autoincrement())
+  object        String   @unique // ZTRAIN_ORDER
+  shortText     String   @default("")
+  fromNumber    Int
+  toNumber      Int
+  currentNumber Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── AL11 Application server files (virtual) ────────────────────────────
+model AppServerFile {
+  id        Int      @id @default(autoincrement())
+  path      String   @unique // /tmp/training/demo.txt
+  content   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── SM59 RFC destinations ──────────────────────────────────────────────
+model RfcDestination {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // PRODSYS
+  description String   @default("")
+  target      String   @default("") // host or logical target (simulated)
+  createdAt   DateTime @default(now())
+}
+
 // ── Function Builder (SE37) ────────────────────────────────────────────
 model FunctionGroup {
   id        String   @id @default(cuid())

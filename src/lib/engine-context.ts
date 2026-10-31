@@ -1,10 +1,13 @@
 // Shared loaders: build engine inputs (DB snapshot, FMs, includes) from Prisma data
 import { db, ensureSchema } from '@/lib/db'
+import { ensureSeeded } from '@/lib/ensure-seed'
 import { DbSnapshot, type FmEntry, type DbTableDef } from '@/lib/abap'
 import { parseAbap } from '@/lib/abap/parser'
 import { functionListWhere, programListWhere, type AccessUser } from '@/lib/access'
 
 export async function loadDbSnapshot(): Promise<DbSnapshot> {
+  // executions need the full demo model — seed on first use (idempotent)
+  await ensureSeeded()
   const snap = new DbSnapshot()
   const tables = await db.dbTable.findMany({
     include: { rows: true },
@@ -90,10 +93,40 @@ export async function loadEngineContext(viewer: EngineViewer) {
   // Builder screen has run its additive migration. Wait for it here so a
   // program run never queries columns that do not exist yet.
   await ensureSchema()
-  const [dbSnap, fms, includes] = await Promise.all([
+  const [dbSnap, fms, includes, messageClasses, numberRanges, files] = await Promise.all([
     loadDbSnapshot(),
     loadFunctionModules(viewer),
     loadIncludes(viewer),
+    loadMessageClasses(),
+    loadNumberRanges(),
+    loadAppServerFiles(),
   ])
-  return { dbSnap, fms, includes }
+  return { dbSnap, fms, includes, messageClasses, numberRanges, files }
+}
+
+// ── SE91 message classes: class → number → text ───────────────────────
+export async function loadMessageClasses(): Promise<Map<string, Record<string, string>>> {
+  const out = new Map<string, Record<string, string>>()
+  const classes = await db.messageClass.findMany()
+  for (const mc of classes) {
+    const msgs: { number: string; text: string }[] = JSON.parse(mc.messages || '[]')
+    out.set(mc.name.toUpperCase(), Object.fromEntries(msgs.map((m) => [String(m.number).padStart(3, '0'), m.text])))
+  }
+  return out
+}
+
+// ── SNRO number ranges: object → interval state ───────────────────────
+export async function loadNumberRanges(): Promise<Map<string, { from: number; to: number; current: number }>> {
+  const out = new Map<string, { from: number; to: number; current: number }>()
+  const ranges = await db.numberRange.findMany()
+  for (const r of ranges) out.set(r.object.toUpperCase(), { from: r.fromNumber, to: r.toNumber, current: r.currentNumber })
+  return out
+}
+
+// ── AL11 application server files: path → content ─────────────────────
+export async function loadAppServerFiles(): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  const list = await db.appServerFile.findMany()
+  for (const f of list) out.set(f.path, f.content)
+  return out
 }

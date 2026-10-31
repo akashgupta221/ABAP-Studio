@@ -65,7 +65,7 @@ export function LogonPad() {
               SAP — Secure Logon
             </h1>
             <p className="mf-login-sub">
-              One verified identity opens the workbench. ABAP-Studio never stores an application
+              One verified identity opens the workbench. ABAP Atelier never stores an application
               password.
             </p>
 

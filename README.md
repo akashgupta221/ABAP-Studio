@@ -28,7 +28,7 @@ logon pad, menu tree, SE38 editors, DDIC dictionary views and ALV grids — and 
 RAP and AMDP artefacts, with an explicit capability matrix instead of pretending to be a
 real HANA/RAP runtime.
 
-The shared curriculum contains 10 topics, **41 preloaded objects** (36 Standard examples,
+The shared curriculum contains 16 topics, **47 preloaded objects** (42 Standard examples,
 1 shared INCLUDE and 4 Modern examples), 11 demo tables with 113 rows and function
 modules. Everyone can read the examples; private programs and sandboxes are isolated per
 user.
@@ -106,7 +106,7 @@ objects and an always-visible capability matrix.
 
 ### 📚 A ready-made learning path
 - 10 syllabus topics following a classical ABAP course progression
-- 36 Standard examples, 1 shared INCLUDE and 4 Modern examples
+- 42 Standard examples, 1 shared INCLUDE and 4 Modern examples
 - **Private per-user sandbox** opened as “My Practice Program”
 - Save your own programs, keep favorites and see recent activity
 

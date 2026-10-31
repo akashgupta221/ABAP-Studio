@@ -19,7 +19,7 @@ export function AccessHero({
           AV
         </span>
         <div>
-          <b>ABAP-Studio</b>
+          <b>ABAP Atelier</b>
           <span>System MER · Client 105</span>
         </div>
       </div>

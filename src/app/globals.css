@@ -665,7 +665,7 @@ input[type='radio'].sap-radio:checked::after {
 
 /* ══════════════════════════════════════════════════════════════════════
    THE SYSTEM MANIFEST — owner administration + secure access
-   Grounded in the live ABAP-Studio palette. Square forms, steel rules,
+   Grounded in the live ABAP Atelier palette. Square forms, steel rules,
    carbon numerals, validation stamps, and manifest-line records.
    ══════════════════════════════════════════════════════════════════════ */
 
@@ -1883,4 +1883,84 @@ input[type='radio'].sap-radio:checked::after {
   .mf-fields { grid-template-columns: 1fr 1fr; }
   .mf-login-foot span:last-child { margin-left: 0; }
   .mf-auth-back { flex-wrap: wrap; }
+}
+
+/* ── landing page (lp-*) — dynamic marketing surface ────────────────── */
+
+.lp-grid-bg {
+  background-image:
+    linear-gradient(rgba(122, 167, 214, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(122, 167, 214, 0.08) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+.lp-grid-bg-light {
+  background-image:
+    linear-gradient(rgba(11, 43, 82, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 43, 82, 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.lp-float { animation: lp-float 5.2s ease-in-out infinite; }
+.lp-float-slow { animation: lp-float 7.4s ease-in-out infinite; }
+
+@keyframes lp-glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+}
+.lp-glow { animation: lp-glow 6.5s ease-in-out infinite; }
+
+@keyframes lp-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.lp-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: lp-marquee 36s linear infinite;
+}
+.lp-marquee:hover .lp-marquee-track { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .lp-float, .lp-float-slow, .lp-glow, .lp-marquee-track { animation: none; }
+}
+
+/* ── themed browser surfaces (craft floor: selection, scrollbars) ───── */
+
+[data-lp] ::selection,
+[data-auth] ::selection,
+[data-dash] ::selection {
+  background: #0a6ed1;
+  color: #ffffff;
+}
+
+[data-dash] ::-webkit-scrollbar,
+[data-dash] *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+[data-dash] ::-webkit-scrollbar-track,
+[data-dash] *::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-dash] ::-webkit-scrollbar-thumb,
+[data-dash] *::-webkit-scrollbar-thumb {
+  background: #c3d0de;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+[data-dash] .bg-\[\#0b2b52\] ::-webkit-scrollbar-thumb,
+[data-dash] .bg-\[\#0b2b52\] *::-webkit-scrollbar-thumb {
+  background: #2a5580;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+[data-dash] ::-webkit-scrollbar-thumb:hover,
+[data-dash] *::-webkit-scrollbar-thumb:hover {
+  background: #9db4c9;
+  background-clip: content-box;
 }

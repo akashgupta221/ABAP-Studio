@@ -168,7 +168,7 @@ export interface DdicField {
 }
 
 export interface TableDetail {
-  table: { name: string; description: string }
+  table: { name: string; description: string; isSap: boolean }
   fields: DdicField[]
   rows: Record<string, string>[]
   total: number
@@ -300,6 +300,19 @@ export type ViewKind =
   | 'classes'
   | 'functions'
   | 'modern'
+  | 'messages' // SE91 message class maintenance
+  | 'transactions' // SE93 transaction registry
+  | 'number-ranges' // SNRO
+  | 'al11' // application server directory
+  | 'rfc' // SM59 destinations
+  | 'slg1' // application logs
+  | 'sm21' // system log
+  | 'jobs' // SM36/SM37 background jobs
+  | 'inspector' // SCI/SLIN static checks
+  | 'query' // SQ01/SQ02 ABAP Query
+  | 'transports' // SE09/SE10/STMS
+  | 'sm50' // work process monitor
+  | 'boundary' // honest not-simulated screen
   | 'debugger' // ABAP Debugger (/h or Debug button)
   | 'dumps' // ABAP Dump Analysis (ST22)
 

@@ -6,10 +6,23 @@ function isAdminPage(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/')
 }
 
+// The dashboard and the SAP workbench are signed-in surfaces. Clerk redirects
+// anonymous visitors to the sign-in page; each page also performs its own
+// server-side session check.
+function isProtectedPage(pathname: string): boolean {
+  return (
+    isAdminPage(pathname) ||
+    pathname === '/dashboard' ||
+    pathname.startsWith('/dashboard/') ||
+    pathname === '/workbench' ||
+    pathname.startsWith('/workbench/')
+  )
+}
+
 // Clerk supplies the session; the admin page and every admin API still perform
 // their own database role/identity check.
 const clerkProxy = clerkMiddleware(async (auth, req) => {
-  if (isAdminPage(req.nextUrl.pathname)) {
+  if (isProtectedPage(req.nextUrl.pathname)) {
     await auth.protect()
   }
   return NextResponse.next()

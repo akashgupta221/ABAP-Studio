@@ -416,11 +416,11 @@ export function AboutDialog() {
   const addMessage = useWorkbench((s) => s.addMessage)
 
   const rows: [string, string][] = [
-    ['Component', 'ABAPForge Workbench — web edition'],
+    ['Component', 'ABAP Atelier Workbench — web edition'],
     ['Release', '1.0 (SAP GUI 7.70 look-alike)'],
     ['System', `MER (105) — Client ${session.client}`],
     ['User', session.user],
-    ['File Name', 'abapforge-web'],
+    ['File Name', 'abap-atelier-web'],
     ['Build', '2026.10'],
     ['Kernel', 'in-browser ABAP interpreter'],
     ['Database', 'simulated SFLIGHT / HDB'],
@@ -442,12 +442,12 @@ export function AboutDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent showCloseButton={false} className="sap-popup max-w-[470px] gap-0 p-0 sm:max-w-[470px]">
         <SapPopupTitle
-          title="About ABAPForge"
+          title="About ABAP Atelier"
           description="Information about this ABAP Workbench"
           onClose={() => setOpen(false)}
         />
         <div className="sap-popup-body text-[12.5px] text-[#1c2b3a]">
-          <h3 className="mb-3 text-[17px] font-bold leading-tight">ABAPForge Workbench</h3>
+          <h3 className="mb-3 text-[17px] font-bold leading-tight">ABAP Atelier Workbench</h3>
           <table className="w-full text-[12px]">
             <tbody>
               {rows.map(([k, v]) => (
@@ -463,7 +463,7 @@ export function AboutDialog() {
             with a custom ABAP interpreter and a runnable training syllabus.
           </p>
           <p className="mt-2 text-[11px] text-[#7b8a9c]">
-            Copyright (C) 2026 ABAPForge Project · Not affiliated with SAP SE
+            Copyright (C) 2026 ABAP Atelier Project · Not affiliated with SAP SE
           </p>
           <div className="mt-3 flex items-center gap-2 border-t border-[#d8dee6] pt-2.5" aria-hidden>
             <span className="flex h-8 w-8 items-center justify-center rounded-[2px] bg-[#0a6ed1]">
@@ -473,7 +473,7 @@ export function AboutDialog() {
                 <path d="M5 9.6l2 2 4-4.4" fill="none" stroke="#1c7a1c" strokeWidth="1.6" />
               </svg>
             </span>
-            <span className="text-[11px] text-[#7b8a9c]">ABAPForge — the modern ABAP studio</span>
+            <span className="text-[11px] text-[#7b8a9c]">ABAP Atelier — the modern ABAP studio</span>
           </div>
         </div>
         <div className="sap-popup-buttons">

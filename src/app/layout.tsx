@@ -30,18 +30,18 @@ const azeret = Azeret_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SAP Easy Access",
+  title: "ABAP Atelier — The Modern ABAP Studio",
   description:
-    "ABAPForge is a free, browser-based SAP-style ABAP studio: procedural + object-oriented ABAP, ALV reports, simulated SFLIGHT database with Open SQL, and modern 7.40+ syntax. SE38 editor, SE11 dictionary, SE16 data browser, SE24 class builder, SE37 function builder — no setup, no cost.",
+    "ABAP Atelier is a free, browser-based SAP-style ABAP studio: procedural + object-oriented ABAP, ALV reports, simulated SFLIGHT database with Open SQL, and modern 7.40+ syntax. SE38 editor, SE11 dictionary, SE16 data browser, SE24 class builder, SE37 function builder — no setup, no cost.",
   keywords: [
-    "ABAPForge", "ABAP", "SAP", "ABAP IDE", "ABAP editor", "SE38", "SE80", "SE11", "SE16",
+    "ABAP Atelier", "ABAP", "SAP", "ABAP IDE", "ABAP editor", "SE38", "SE80", "SE11", "SE16",
     "SE24", "SE37", "ALV", "ABAP Objects", "OOP", "POP", "training", "free", "online ABAP compiler",
   ],
   icons: {
-    icon: "/logo.svg",
+    icon: "/abap-atelier-mark.png",
   },
   openGraph: {
-    title: "ABAPForge — The Modern ABAP Studio",
+    title: "ABAP Atelier — The Modern ABAP Studio",
     description:
       "Write, run and master ABAP in your browser — procedural + OO ABAP, ALV grids, simulated SAP database and 41 runnable Standard + Modern examples. Free forever.",
     type: "website",

@@ -18,7 +18,7 @@ test.describe('ABAP Debugger (App 2 integration)', () => {
     })
     expect(created.status(), await created.text()).toBe(201)
 
-    await page.goto('/')
+    await page.goto('/workbench')
     await page.getByRole('textbox', { name: 'Command field' }).fill(name)
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('button', { name: 'Debug', exact: true })).toBeVisible()
@@ -50,7 +50,7 @@ test.describe('ABAP Debugger (App 2 integration)', () => {
     })
     expect(created.status(), await created.text()).toBe(201)
 
-    await page.goto('/')
+    await page.goto('/workbench')
     await page.getByRole('textbox', { name: 'Command field' }).fill(name)
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('button', { name: 'Debug', exact: true })).toBeVisible()
@@ -73,7 +73,7 @@ test.describe('ABAP Debugger (App 2 integration)', () => {
     })
     expect(dumped.status()).toBe(200)
 
-    await page.goto('/')
+    await page.goto('/workbench')
     await page.getByRole('textbox', { name: 'Command field' }).fill('ST22')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('heading', { name: 'ABAP Dump Analysis (ST22)' })).toBeVisible()
@@ -82,7 +82,7 @@ test.describe('ABAP Debugger (App 2 integration)', () => {
   })
 
   test('SE16 selection criteria narrow the data browser results', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/workbench')
     await page.getByRole('textbox', { name: 'Command field' }).fill('SE16')
     await page.getByRole('textbox', { name: 'Command field' }).press('Enter')
     await expect(page.getByRole('heading', { name: 'Data Browser (SE16)' })).toBeVisible()
